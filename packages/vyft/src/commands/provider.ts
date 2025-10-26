@@ -6,11 +6,10 @@ import {
   destroyProvider,
 } from '../services/provider.js';
 import { validateHetznerToken } from '../validators.js';
+import { printTable } from '../utils/table.js';
 
 export async function addProviderAction(): Promise<void> {
   try {
-    clack.intro('🐦 Adding cloud provider');
-
     const providerType = await clack.select({
       message: 'Which provider would you like to add?',
       options: [{ value: 'hetzner', label: 'Hetzner Cloud' }],
@@ -123,13 +122,7 @@ provider
         return;
       }
 
-      console.log('Configured providers:');
-      providers.forEach((provider, index) => {
-        console.log(`  ${index + 1}. ${provider.name} (${provider.type})`);
-        console.log(`     ID: ${provider.id}`);
-        console.log(`     Added: ${provider.addedAt}`);
-        console.log('');
-      });
+      printTable(providers, ['name', 'type']);
     } catch (error: any) {
       console.error(`Error: ${error.message}`);
       process.exit(1);

@@ -14,6 +14,7 @@ import {
 import { listProviders } from '../services/provider.js';
 import { addProviderAction } from './provider.js';
 import { provisionCluster, scaleCluster } from '../services/provisioning.js';
+import { printTableWithStatus } from '../utils/table.js';
 
 export const cluster = new Command('cluster').description('Manage clusters');
 
@@ -22,8 +23,6 @@ cluster
   .description('Add a new cluster')
   .action(async () => {
     try {
-      clack.intro('🐦 Adding cluster');
-
       const name = await clack.text({
         message: 'Enter a name for this cluster:',
         validate: (value) => {
@@ -169,10 +168,6 @@ cluster
 
       setCurrentCluster(clusterId);
       clack.log.info(`Set as current cluster`);
-
-      clack.outro(
-        `🎉 Cluster '${name}' created successfully! (ID: ${clusterId})`,
-      );
     } catch (error: any) {
       clack.log.error(`Failed to add cluster: ${error.message}`);
       process.exit(1);
@@ -184,8 +179,6 @@ cluster
   .description('Set the current active cluster')
   .action(async () => {
     try {
-      clack.intro('🎯 Setting current cluster');
-
       const clusters = await listClusters();
       if (clusters.length === 0) {
         clack.log.error('No clusters configured');
@@ -223,10 +216,6 @@ cluster
 
       const cluster = clusters.find((c) => c.id === selectedCluster);
       setCurrentCluster(selectedCluster as string);
-
-      clack.outro(
-        `🎉 Now using cluster '${cluster?.name}' (ID: ${selectedCluster})`,
-      );
     } catch (error: any) {
       clack.log.error(`Failed to set current cluster: ${error.message}`);
       process.exit(1);
@@ -271,21 +260,7 @@ cluster
         return;
       }
 
-      console.log('Configured clusters:');
-      clusters.forEach((cluster, index) => {
-        const isCurrent = cluster.id === currentClusterId;
-        const indicator = isCurrent ? '* ' : '  ';
-        const currentLabel = isCurrent ? ' [CURRENT]' : '';
-
-        console.log(
-          `${indicator}${index + 1}. ${cluster.name} (${cluster.type})${currentLabel}`,
-        );
-        console.log(`     ID: ${cluster.id}`);
-        console.log(`     Regions: ${cluster.regions.join(', ')}`);
-        console.log(`     Size: ${cluster.size}`);
-        console.log(`     Created: ${cluster.createdAt}`);
-        console.log('');
-      });
+      printTableWithStatus(clusters, ['name', 'type'], currentClusterId);
 
       if (!currentClusterId) {
         console.log('No cluster currently selected');
@@ -364,8 +339,6 @@ cluster
   .description('Scale cluster up or down')
   .action(async () => {
     try {
-      clack.intro('📈 Scaling cluster');
-
       const currentCluster = getCurrentClusterInfo();
       if (!currentCluster) {
         clack.log.error('No current cluster selected');
@@ -466,7 +439,6 @@ cluster
       spinner.stop(`Cluster scaled to ${targetCount} nodes`);
 
       clack.log.info(`Server IPs: ${outputs.serverIps.join(', ')}`);
-      clack.outro(`🎉 Cluster scaled successfully!`);
     } catch (error: any) {
       clack.log.error(`Failed to scale cluster: ${error.message}`);
       process.exit(1);

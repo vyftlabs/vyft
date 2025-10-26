@@ -8,8 +8,6 @@ export const ssh = new Command('ssh')
   .description('SSH into cluster nodes')
   .action(async () => {
     try {
-      clack.intro('🔐 SSH into cluster nodes');
-
       const currentCluster = getCurrentClusterInfo();
       if (!currentCluster) {
         clack.log.error('No current cluster selected');
@@ -63,7 +61,7 @@ export const ssh = new Command('ssh')
         const nodeName = `${currentCluster.name}-node-${index + 1}`;
         return {
           value: ip,
-          label: `${nodeName} (${ip}) - ${region}`,
+          label: `${nodeName} (${ip}) - ${region} - vyft-admin`,
         };
       });
 
@@ -123,7 +121,7 @@ export const ssh = new Command('ssh')
       conn.connect({
         host: selectedIp as string,
         port: 22,
-        username: 'root',
+        username: 'vyft-admin',
         privateKey: outputs!.sshPrivateKey,
         readyTimeout: 10000,
       });

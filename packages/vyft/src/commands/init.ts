@@ -8,8 +8,6 @@ export const init = new Command('init').description(
 );
 
 init.action(async () => {
-  clack.intro('🚀 Initializing Vyft project');
-
   try {
     const projectName = await clack.text({
       message: 'What is your project name?',
@@ -161,8 +159,6 @@ export default app;
 4. vyft deploy (to deploy your application)`,
       'Project initialized successfully!',
     );
-
-    clack.outro('🎉 Project ready! Happy coding!');
   } catch (error: any) {
     clack.cancel(`Failed to initialize project: ${error.message}`);
     process.exit(1);
