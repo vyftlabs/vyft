@@ -3,7 +3,6 @@ name: 'Vyft CodeQL Configuration'
 queries:
   - uses: security-and-quality
   - uses: security-extended
-  - uses: github/codeql-action/qlpack.yml@main
 
 paths-ignore:
   - '**/node_modules/**'
@@ -17,4 +16,3 @@ paths-ignore:
 paths:
   - 'packages/vyft/src'
   - 'apps'
-  - '.github/workflows'

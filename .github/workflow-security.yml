@@ -2,20 +2,20 @@ name: 'Workflow Security Configuration'
 
 workflow-security:
   enabled: true
-  
+
   checks:
     - name: 'Secret exposure'
       description: 'Detect hardcoded secrets in workflows'
-      
+
     - name: 'Insecure permissions'
       description: 'Check for overly permissive workflow permissions'
-      
+
     - name: 'Action security'
       description: 'Scan for vulnerable or malicious actions'
-      
+
     - name: 'Input validation'
       description: 'Validate workflow inputs and parameters'
-      
+
     - name: 'Dependency security'
       description: 'Check for vulnerable dependencies in workflows'
 

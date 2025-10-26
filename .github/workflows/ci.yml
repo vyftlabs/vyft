@@ -14,11 +14,12 @@ jobs:
       actions: read
       contents: read
       security-events: write
+      pull-requests: read
 
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript', 'yaml']
+        language: ['javascript']
 
     steps:
       - name: Checkout repository
@@ -60,11 +61,22 @@ jobs:
       security-events: write
 
     steps:
+      - name: Check for workflow changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            workflows:
+              - '.github/workflows/**'
+              - '.github/codeql-config.yml'
+              - '.github/workflow-security.yml'
       - name: Checkout repository
         uses: actions/checkout@v4
+        if: steps.changes.outputs.workflows == 'true'
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        if: steps.changes.outputs.workflows == 'true'
         with:
           scan-type: 'fs'
           scan-ref: '.github/workflows'
@@ -73,12 +85,13 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && steps.changes.outputs.workflows == 'true'
         with:
           sarif_file: 'trivy-results.sarif'
 
       - name: Run Actionlint
         uses: rhysd/actionlint@v1.7.0
+        if: steps.changes.outputs.workflows == 'true'
         with:
           files: '.github/workflows'
           format: 'sarif'
@@ -86,7 +99,7 @@ jobs:
 
       - name: Upload Actionlint results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && steps.changes.outputs.workflows == 'true'
         with:
           sarif_file: 'actionlint-results.sarif'
 
