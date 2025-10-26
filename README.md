@@ -1,5 +1,11 @@
 # Vyft
 
+[![CI](https://github.com/vyftlabs/vyft/workflows/CI/badge.svg)](https://github.com/vyftlabs/vyft/actions)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![npm version](https://img.shields.io/npm/v/@vyft/cli.svg)](https://www.npmjs.com/package/@vyft/cli)
+[![Node.js Version](https://img.shields.io/node/v/@vyft/cli.svg)](https://nodejs.org/)
+[![Coverage](https://codecov.io/gh/vyftlabs/vyft/branch/main/graph/badge.svg)](https://codecov.io/gh/vyftlabs/vyft)
+
 Self-host without the hassle.
 
 ## Install
@@ -16,9 +22,9 @@ vyft deploy
 
 ## What is Vyft?
 
-Vyft gives you PaaS-level simplicity for self-hosting. Deploy in under 5 minutes, own your infrastructure.
+Vyft makes self-hosting as easy as using a PaaS. Deploy any app in under 5 minutes while keeping full control of your infrastructure.
 
-10x cost savings at scale. 5-minute deployments. 100% ownership of your infrastructure.
+Building the complete open source toolkit for startups.
 
 ## Development
 

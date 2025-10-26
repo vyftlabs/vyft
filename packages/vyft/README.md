@@ -1,6 +1,12 @@
 # @vyft/cli
 
-Infrastructure deployment made simple and accessible.
+[![CI](https://github.com/vyftlabs/vyft/workflows/CI/badge.svg)](https://github.com/vyftlabs/vyft/actions)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![npm version](https://img.shields.io/npm/v/@vyft/cli.svg)](https://www.npmjs.com/package/@vyft/cli)
+[![Node.js Version](https://img.shields.io/node/v/@vyft/cli.svg)](https://nodejs.org/)
+[![Coverage](https://codecov.io/gh/vyftlabs/vyft/branch/main/graph/badge.svg)](https://codecov.io/gh/vyftlabs/vyft)
+
+Self-host without the hassle.
 
 ## Installation
 
@@ -11,22 +17,18 @@ npm install -g @vyft/cli
 ## Quick Start
 
 ```bash
-# Initialize a new project
-vyft init
-
-# Deploy your application
 vyft deploy
 ```
 
 ## Commands
 
-### `vyft init`
-
-Initialize a new Vyft project with configuration files and project structure.
-
 ### `vyft deploy`
 
-Deploy your application to the configured infrastructure.
+Deploy your application to the cloud. Works in any project directory.
+
+### `vyft init`
+
+Initialize a new Vyft project (optional - for advanced configuration).
 
 ### `vyft provider`
 
@@ -39,33 +41,6 @@ Manage deployment clusters and environments.
 ### `vyft ssh`
 
 Connect to your deployed infrastructure via SSH.
-
-## Configuration
-
-Create a `vyft.config.ts` file in your project:
-
-```typescript
-import { defineConfig } from '@vyft/cli';
-
-export default defineConfig({
-  name: 'my-app',
-  version: '1.0.0',
-  description: 'My awesome application',
-
-  infrastructure: {
-    provider: 'hetzner',
-    region: 'nbg1',
-    size: 'cx11',
-  },
-
-  app: {
-    port: 3000,
-    env: {
-      NODE_ENV: 'production',
-    },
-  },
-});
-```
 
 ## Development
 
