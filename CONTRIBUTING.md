@@ -22,7 +22,7 @@ This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating
 
 ### Prerequisites
 
-- Node.js >= 20.0.0
+- Node.js >= 22.0.0
 - pnpm >= 10.0.0
 - Git
 

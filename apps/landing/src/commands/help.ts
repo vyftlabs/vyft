@@ -7,7 +7,7 @@ interface LocalEcho {
 }
 
 export async function help(
-  terminal: Terminal,
+  _terminal: Terminal,
   localEcho: LocalEcho,
   _args: string[],
 ) {

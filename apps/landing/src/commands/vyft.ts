@@ -69,7 +69,7 @@ async function deploy(
 }
 
 async function logs(
-  terminal: Terminal,
+  _terminal: Terminal,
   localEcho: LocalEcho,
   args: string[],
   interruptSignal?: { interrupted: () => boolean },

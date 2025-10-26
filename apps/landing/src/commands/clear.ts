@@ -7,7 +7,7 @@ interface LocalEcho {
 }
 
 export async function clear(
-  terminal: Terminal,
+  _terminal: Terminal,
   localEcho: LocalEcho,
   _args: string[],
 ) {
