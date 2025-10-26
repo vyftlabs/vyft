@@ -29,7 +29,7 @@
     "pages:dev": "wrangler pages dev dist --port 3000"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^11.2.0",
+    "@astrojs/cloudflare": "^12.6.6",
     "@astrojs/react": "^3.6.3",
     "@astrojs/sitemap": "^3.6.0",
     "@astrojs/tailwind": "^5.1.5",
