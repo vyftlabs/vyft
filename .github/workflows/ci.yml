@@ -52,57 +52,6 @@ jobs:
         with:
           category: '/language:${{matrix.language}}'
 
-  workflow-security:
-    name: Workflow Security Scan
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Check for workflow changes
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            workflows:
-              - '.github/workflows/**'
-              - '.github/codeql-config.yml'
-              - '.github/workflow-security.yml'
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        if: steps.changes.outputs.workflows == 'true'
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        if: steps.changes.outputs.workflows == 'true'
-        with:
-          scan-type: 'fs'
-          scan-ref: '.github/workflows'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always() && steps.changes.outputs.workflows == 'true'
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Run Actionlint
-        uses: rhysd/actionlint@v1.7.0
-        if: steps.changes.outputs.workflows == 'true'
-        with:
-          files: '.github/workflows'
-          format: 'sarif'
-          output: 'actionlint-results.sarif'
-
-      - name: Upload Actionlint results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always() && steps.changes.outputs.workflows == 'true'
-        with:
-          sarif_file: 'actionlint-results.sarif'
-
   test:
     name: Test and Lint
     runs-on: ubuntu-latest
@@ -165,7 +114,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [test, codeql, workflow-security]
+    needs: [test, codeql]
 
     steps:
       - name: Checkout code

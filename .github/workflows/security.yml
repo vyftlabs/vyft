@@ -1,0 +1,56 @@
+name: Security Scans
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/**'
+      - '.github/codeql-config.yml'
+      - '.github/workflow-security.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/**'
+      - '.github/codeql-config.yml'
+      - '.github/workflow-security.yml'
+
+jobs:
+  workflow-security:
+    name: Workflow Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.github/workflows'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Actionlint
+        uses: rhysd/actionlint@v1.7.0
+        with:
+          files: '.github/workflows'
+          format: 'sarif'
+          output: 'actionlint-results.sarif'
+
+      - name: Upload Actionlint results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'actionlint-results.sarif'
