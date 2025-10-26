@@ -7,12 +7,7 @@
 [![Coverage](https://codecov.io/gh/vyftlabs/vyft/branch/main/graph/badge.svg)](https://codecov.io/gh/vyftlabs/vyft)
 
 Self-host without the hassle.
-
-## Install
-
-```bash
-npm install -g @vyft/cli
-```
+read
 
 ## Deploy
 
@@ -41,4 +36,4 @@ AGPL v3 - Use freely, but keep it open source.
 
 ---
 
-**Made with ❤️ by the Vyft community**
+**Made with ❤️ in Sweden**
