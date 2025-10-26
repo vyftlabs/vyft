@@ -5,7 +5,6 @@ import { provider } from './commands/provider.js';
 import { cluster } from './commands/cluster.js';
 import { ssh } from './commands/ssh.js';
 import { init } from './commands/init.js';
-import { deploy } from './commands/deploy.js';
 
 const program = new Command();
 
@@ -15,7 +14,6 @@ program
   .version('0.0.1');
 
 program.addCommand(init);
-program.addCommand(deploy);
 program.addCommand(provider);
 program.addCommand(cluster);
 program.addCommand(ssh);

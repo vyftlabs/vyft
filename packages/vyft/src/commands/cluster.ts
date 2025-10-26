@@ -36,6 +36,7 @@ cluster
       if (clack.isCancel(name)) {
         clack.cancel('Cluster addition cancelled');
         process.exit(1);
+        return;
       }
 
       let providers = await listProviders();

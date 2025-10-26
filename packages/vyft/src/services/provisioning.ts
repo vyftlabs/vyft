@@ -390,6 +390,9 @@ function generateInlineProgramWithToken(
 
     for (let i = 0; i < nodeCount; i++) {
       const region = regions[i % regions.length];
+      if (!region) {
+        throw new Error('No regions available for cluster deployment');
+      }
       const serverName = `${clusterName}-node-${i + 1}`;
 
       let userData: any;
