@@ -1,0 +1,60 @@
+{
+  "name": "@vyft/cli",
+  "version": "0.0.1",
+  "description": "Infrastructure deployment made simple and accessible",
+  "keywords": [
+    "infrastructure",
+    "deployment",
+    "pulumi",
+    "kubernetes",
+    "devops",
+    "iac"
+  ],
+  "homepage": "https://github.com/vyftlabs/vyft#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vyftlabs/vyft.git",
+    "directory": "packages/vyft"
+  },
+  "bugs": {
+    "url": "https://github.com/vyftlabs/vyft/issues"
+  },
+  "license": "AGPL-3.0",
+  "author": "Vyft Community",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "vyft": "./bin/vyft.js"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@pulumi/command": "1.0.0",
+    "@pulumi/hcloud": "1.20.0",
+    "@pulumi/kubernetes": "4.15.0",
+    "@pulumi/pulumi": "3.203.0",
+    "@pulumi/tls": "5.0.1",
+    "commander": "^14.0.1",
+    "ssh2": "^1.15.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/ssh2": "^1.15.5",
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.1"
+  }
+}

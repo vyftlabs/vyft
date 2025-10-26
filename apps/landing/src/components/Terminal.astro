@@ -1,0 +1,236 @@
+---
+import 'xterm/css/xterm.css';
+
+export interface Props {
+  commands?: string[];
+}
+
+const { commands } = Astro.props;
+---
+
+<div class="terminal-wrapper">
+  <div
+    id="terminal-container"
+    data-commands={commands ? JSON.stringify(commands) : ''}
+  >
+  </div>
+</div>
+
+<style>
+  .terminal-wrapper {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    overflow: hidden;
+    padding: 0.75rem 0.75rem 0rem 0.75rem;
+    height: 180px;
+  }
+
+  #terminal-container {
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* Remove xterm default background and constrain width */
+  :global(.xterm-viewport) {
+    background-color: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  :global(.xterm-screen) {
+    background-color: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  :global(.xterm) {
+    background-color: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Hide scrollbars without breaking functionality */
+  :global(.xterm-viewport)::-webkit-scrollbar {
+    display: none;
+  }
+
+  :global(.xterm-viewport) {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+
+<script>
+  import { Terminal } from 'xterm';
+  import { FitAddon } from 'xterm-addon-fit';
+  // @ts-ignore
+  import LocalEchoController from 'local-echo';
+  import { terminalCommands, handleUnknownCommand } from '../commands';
+
+  // Initialize terminal when DOM is ready
+  document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('terminal-container');
+    if (!container) return;
+
+    // Create terminal
+    const terminal = new Terminal({
+      fontSize: 14,
+      fontFamily:
+        "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, 'Courier New', monospace",
+      theme: {
+        background: '#171717',
+        foreground: 'var(--color-foreground)',
+        cursor: 'var(--color-primary)',
+      },
+      cursorBlink: true,
+    });
+
+    // Add fit addon
+    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+
+    // Open terminal
+    terminal.open(container);
+
+    // Global interrupt signal
+    let currentCommand: { interrupt: () => void } | null = null;
+
+    // Listen for keyboard events using xterm's onKey event
+    terminal.onKey((e) => {
+      if (e.domEvent.ctrlKey && e.domEvent.key === 'c') {
+        if (currentCommand && currentCommand.interrupt) {
+          e.domEvent.preventDefault();
+          e.domEvent.stopPropagation();
+          currentCommand.interrupt();
+        }
+      }
+    });
+
+    // Fit terminal and initialize local echo
+    setTimeout(() => {
+      fitAddon.fit();
+      // Create local echo controller for xterm.js v4+ (addon pattern)
+      const localEcho = new LocalEchoController();
+      terminal.loadAddon(localEcho);
+
+      // Check for animation commands
+      const commandsData = container.getAttribute('data-commands');
+      const animationCommands = commandsData ? JSON.parse(commandsData) : null;
+
+      if (animationCommands && animationCommands.length > 0) {
+        // Start with animation
+        playAnimation(animationCommands, localEcho);
+      } else {
+        // Start command loop immediately
+        commandLoop(localEcho);
+      }
+    }, 100);
+
+    // Typewriter animation function
+    async function playAnimation(commands: string[], localEcho: any) {
+      terminal.write('$ ');
+
+      // Initial delay after showing prompt but before typing
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      for (let i = 0; i < commands.length; i++) {
+        const command = commands[i];
+
+        // Type out the command character by character with human-like timing
+        for (let j = 0; j < command.length; j++) {
+          terminal.write(command[j]);
+
+          // Faster typing speed with subtle variation
+          let delay = 60 + Math.random() * 20; // 60-80ms base speed
+
+          // Slower after spaces (thinking time)
+          if (j > 0 && command[j - 1] === ' ') {
+            delay += 40 + Math.random() * 30; // Extra 40-70ms pause
+          }
+
+          // Occasional slight hesitation (less frequent)
+          if (Math.random() < 0.03) {
+            delay += 60 + Math.random() * 60; // Lighter hesitation
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        // Small pause before pressing enter
+        await new Promise((resolve) =>
+          setTimeout(resolve, 150 + Math.random() * 200),
+        );
+
+        // Press enter and execute command
+        terminal.write('\r\n');
+        await processCommand(command, localEcho);
+
+        // Add some delay before next command
+        if (i < commands.length - 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 800 + Math.random() * 400),
+          );
+          terminal.write('$ ');
+        }
+      }
+
+      // Animation finished, start interactive mode
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      commandLoop(localEcho);
+    }
+
+    // Command loop
+    async function commandLoop(localEcho: any) {
+      try {
+        while (true) {
+          const input = await localEcho.read('$ ');
+          await processCommand(input.trim(), localEcho);
+        }
+      } catch (error) {
+        console.error('Command loop error:', error);
+      }
+    }
+
+    // Process commands
+    async function processCommand(input: string, localEcho: any) {
+      if (!input) return;
+
+      const parts = input.split(' ');
+      const cmd = parts[0];
+      const args = parts.slice(1);
+
+      const command = terminalCommands[cmd as keyof typeof terminalCommands];
+      if (command) {
+        // Create interrupt controller for this command
+        let interrupted = false;
+        currentCommand = {
+          interrupt: () => {
+            interrupted = true;
+            localEcho.println('\x1b[90m^C\x1b[0m');
+            currentCommand = null;
+          },
+        };
+
+        try {
+          // Pass terminal instance, args, and interrupt signal to commands
+          await command(terminal, localEcho, args, {
+            interrupted: () => interrupted,
+          });
+        } catch (error) {
+          if (!interrupted) {
+            localEcho.println(`\x1b[31mError: ${error}\x1b[0m`);
+          }
+        } finally {
+          currentCommand = null;
+        }
+      } else {
+        await handleUnknownCommand(input, localEcho);
+      }
+    }
+  });
+</script>

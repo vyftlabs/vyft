@@ -1,0 +1,110 @@
+---
+import CodeBlock from './CodeBlock.astro';
+import Terminal from './Terminal.astro';
+
+const sampleCode = [
+  "import { service, domain } from '@vyft/core';",
+  "import postgres from '@vyft/postgres';",
+  "import minio from '@vyft/minio';",
+  '',
+  'const s3 = minio();',
+  '',
+  'const db = postgres({',
+  '  backup: {',
+  "    cron: '0 0 * * *',",
+  "    storage: s3.bucket('database'),",
+  '  },',
+  '});',
+  '',
+  'export const api = service({',
+  "  name: 'api',",
+  '  domain: domain("example.com"),',
+  '  env: {',
+  '    DATABASE_URL: db.connectionString,',
+  '  },',
+  '});',
+].join('\n');
+---
+
+<div class="demo-window">
+  <div class="demo-glow"></div>
+  <div class="demo-content">
+    <div class="code-wrapper">
+      <CodeBlock code={sampleCode} />
+    </div>
+    <div class="terminal-wrapper">
+      <Terminal commands={['vyft deploy']} />
+    </div>
+  </div>
+</div>
+
+<style>
+  .demo-window {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .demo-glow {
+    position: absolute;
+    inset: -1rem;
+    background: linear-gradient(
+      135deg,
+      rgb(from var(--color-primary) r g b / 0.2) 0%,
+      rgb(from var(--color-primary-glow) r g b / 0.2) 100%
+    );
+    filter: blur(48px);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .demo-content {
+    position: relative;
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1),
+      0 20px 25px -5px rgb(0 0 0 / 0.05);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .code-wrapper {
+    width: 100%;
+  }
+
+  .terminal-wrapper {
+    width: 100%;
+  }
+
+  /* When in column layout (below 1024px), make terminal full width */
+  @media (max-width: 1023px) {
+    .demo-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .code-wrapper {
+      width: 100%;
+    }
+
+    .terminal-wrapper {
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+  }
+
+  /* On larger screens, maintain existing layout */
+  @media (min-width: 1024px) {
+    .demo-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .code-wrapper,
+    .terminal-wrapper {
+      width: 100%;
+    }
+  }
+</style>

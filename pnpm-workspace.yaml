@@ -1,0 +1,13 @@
+packages:
+  - packages/*
+  - apps/*
+
+onlyBuiltDependencies:
+  - '@pulumi/command'
+  - '@pulumi/kubernetes'
+  - cpu-features
+  - esbuild
+  - protobufjs
+  - sharp
+  - ssh2
+  - workerd

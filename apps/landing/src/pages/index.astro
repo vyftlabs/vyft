@@ -1,0 +1,533 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import DemoWindow from '../components/DemoWindow.astro';
+---
+
+<Layout title="Vyft - Self-host without the hassle">
+  <Header />
+
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container">
+        <div class="hero-grid">
+          <!-- Left Column - Content -->
+          <div class="hero-content">
+            <div class="hero-text">
+              <h1 class="hero-title">
+                Skip the middleman.<br />
+                <span class="text-gradient">Own your infra.</span>
+              </h1>
+              <p class="hero-description">
+                You shouldn't have to sacrifice great developer experience to
+                own your infrastructure. Vyft brings PaaS-level ease to
+                self-hosting, <strong>free and open source.</strong>
+              </p>
+            </div>
+
+            <div class="hero-actions">
+              <div class="install-command">
+                <div class="command-input">
+                  <span class="command-text"
+                    ><span class="command-prompt">$</span>
+                    <span class="command-tool">npm</span>
+                    <span class="command-args">install -g @vyft/cli</span></span
+                  >
+                  <button class="copy-btn" onclick="window.copyToClipboard()">
+                    <svg
+                      class="copy-icon"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"
+                      ></rect>
+                      <path
+                        d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats or trust indicators -->
+            <div class="hero-stats">
+              <div class="stats-inner">
+                <div class="stat">
+                  <div class="stat-value text-gradient">10x</div>
+                  <div class="stat-label">Cheaper at scale</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value text-gradient">&lt; 5m</div>
+                  <div class="stat-label">To first deploy</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value text-gradient">100%</div>
+                  <div class="stat-label">Your infrastructure</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column - Demo -->
+          <div class="hero-demo">
+            <DemoWindow />
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .hero-section {
+    padding-top: 7rem;
+    padding-bottom: 3rem;
+  }
+
+  @media (min-width: 768px) {
+    .hero-section {
+      padding-top: 7.5rem;
+      padding-bottom: 4rem;
+    }
+  }
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    overflow-x: hidden;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .container {
+      padding: 0 2rem;
+    }
+  }
+
+  .hero-grid {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .hero-grid {
+      gap: 3rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-section {
+      padding-top: 8rem;
+      padding-bottom: 2rem;
+    }
+
+    .hero-grid {
+      grid-template-columns: 1fr 1fr;
+      align-items: flex-start;
+      gap: 3rem;
+    }
+
+    .hero-demo {
+      padding-left: 1rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .hero-section {
+      padding-top: 8.5rem;
+    }
+
+    .hero-grid {
+      gap: 4rem;
+    }
+
+    .hero-demo {
+      padding-left: 2rem;
+    }
+  }
+
+  .hero-content {
+    display: flex;
+    margin-top: 1rem;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .hero-content {
+      margin-top: 2rem;
+      gap: 2rem;
+    }
+  }
+
+  .hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .hero-title {
+    font-size: 2.25rem;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  @media (min-width: 640px) {
+    .hero-title {
+      font-size: 2.5rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .hero-title {
+      font-size: 3rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-title {
+      font-size: 3.5rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .hero-title {
+      font-size: 4rem;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .hero-title {
+      font-size: 4.5rem;
+    }
+  }
+
+  .hero-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+    max-width: 36rem;
+    margin: 0;
+  }
+
+  @media (min-width: 640px) {
+    .hero-description {
+      font-size: 1rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .hero-description {
+      font-size: 1.125rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-description {
+      font-size: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .hero-description {
+      font-size: 1.375rem;
+    }
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .hero-actions {
+      padding-top: 1rem;
+    }
+  }
+
+  .install-command {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .command-input {
+    display: flex;
+    align-items: center;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo,
+      'Courier New', monospace;
+    transition: all 0.2s ease;
+  }
+
+  .command-input:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgb(from var(--color-primary) r g b / 0.1);
+  }
+
+  .command-text {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    user-select: all;
+  }
+
+  .command-prompt {
+    color: var(--color-terminal-gray);
+    user-select: none;
+  }
+
+  .command-tool {
+    color: var(--color-primary);
+    font-weight: 500;
+  }
+
+  .command-args {
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 85%,
+      var(--color-primary) 15%
+    );
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+  }
+
+  .copy-btn:hover {
+    background: var(--color-primary);
+    color: white;
+    transform: scale(1.05);
+  }
+
+  .copy-btn.copied {
+    background: var(--color-primary) !important;
+    color: white !important;
+    transform: scale(0.9);
+    transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .copy-btn.copied .copy-icon {
+    animation: copySuccess 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  @keyframes copySuccess {
+    0% {
+      transform: scale(1) rotate(0deg);
+    }
+    50% {
+      transform: scale(1.4) rotate(5deg);
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  .copy-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .hero-stats {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .stats-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  /* Mobile view - justify between with max width for inner content */
+  @media (max-width: 767px) {
+    .stats-inner {
+      justify-content: space-between;
+      max-width: 24rem; /* 384px max width */
+      margin-left: auto;
+      margin-right: auto;
+      gap: 1rem;
+      width: 100%;
+      padding: 0 1rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .hero-stats {
+      padding-top: 2rem;
+    }
+
+    .stats-inner {
+      gap: 2rem;
+    }
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  @media (min-width: 768px) {
+    .stat-value {
+      font-size: 1.875rem;
+    }
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .command {
+    color: var(--color-primary);
+    font-weight: 500;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo,
+      'Courier New', monospace;
+  }
+</style>
+
+<script>
+  declare global {
+    interface Window {
+      copyToClipboard: () => void;
+    }
+  }
+
+  window.copyToClipboard = function () {
+    const text = 'npm install -g @vyft/cli';
+    navigator.clipboard.writeText(text).then(() => {
+      const button = document.querySelector('.copy-btn');
+      const icon = document.querySelector('.copy-icon');
+
+      if (!button || !icon) {
+        console.log('Button or icon not found');
+        return;
+      }
+
+      console.log('Adding copied class');
+      // Add copied class for animation
+      button.classList.add('copied');
+
+      // Change to checkmark
+      icon.innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+
+      // Reset after 2 seconds
+      setTimeout(() => {
+        icon.innerHTML =
+          '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+        button.classList.remove('copied');
+        console.log('Removed copied class');
+      }, 2000);
+    });
+  };
+
+  // Numpad Content Switcher
+  const contentVariations = [
+    {
+      title: 'Your code.<br /><span class="text-gradient">Your servers.</span>',
+      description:
+        'Full control, zero vendor lock-in. Deploy anywhere, scale infinitely, and keep your data where you want it with <strong>complete ownership.</strong>',
+    },
+    {
+      title:
+        'Skip the middleman.<br /><span class="text-gradient">Own your infra.</span>',
+      description:
+        "You shouldn't have to sacrifice great developer experience to own your infrastructure. Vyft brings PaaS-level ease to self-hosting, <strong>free and open source.</strong>",
+    },
+    {
+      title:
+        'Deploy anything<br /><span class="text-gradient command">vyft deploy</span>',
+      description:
+        'Vyft is a free, open-source CLI tool that gives you Heroku-style deployments on infrastructure you control. <strong>No platform fees, no vendor lock-in.</strong>',
+    },
+  ];
+
+  let currentContentIndex = 0;
+  const titleElement = document.querySelector('.hero-title') as HTMLElement;
+  const descriptionElement = document.querySelector(
+    '.hero-description',
+  ) as HTMLElement;
+
+  function switchContent(index: number) {
+    if (
+      index >= 0 &&
+      index < contentVariations.length &&
+      titleElement &&
+      descriptionElement &&
+      index !== currentContentIndex
+    ) {
+      currentContentIndex = index;
+
+      // Add fade out effect
+      titleElement.style.opacity = '0';
+      descriptionElement.style.opacity = '0';
+
+      setTimeout(() => {
+        // Update content
+        titleElement.innerHTML = contentVariations[index].title;
+        descriptionElement.innerHTML = contentVariations[index].description;
+
+        // Fade back in
+        titleElement.style.opacity = '1';
+        descriptionElement.style.opacity = '1';
+      }, 150);
+    }
+  }
+
+  // Add smooth transitions
+  if (titleElement && descriptionElement) {
+    titleElement.style.transition = 'opacity 0.15s ease-in-out';
+    descriptionElement.style.transition = 'opacity 0.15s ease-in-out';
+  }
+
+  // Numpad key mapping
+  const numpadKeys: Record<string, number> = {
+    Numpad0: 0,
+    Numpad1: 1,
+    Numpad2: 2,
+  };
+
+  // Listen for numpad key presses
+  document.addEventListener('keydown', (event) => {
+    if (event.code in numpadKeys) {
+      event.preventDefault();
+      const contentIndex = numpadKeys[event.code];
+      switchContent(contentIndex);
+    }
+  });
+</script>

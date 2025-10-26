@@ -1,0 +1,165 @@
+---
+import '@fontsource/geist-sans/500.css';
+import '@fontsource/geist-sans/600.css';
+import '@fontsource/geist-sans/700.css';
+import '@fontsource/source-sans-pro/400.css';
+import '@fontsource/source-sans-pro/600.css';
+
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = 'Skip the middleman. Self-hosting made as easy as cloud platforms, but on your own $4 servers.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    
+    <!-- OpenGraph meta tags -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="/opengraph.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={Astro.url} />
+    
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="/opengraph.png" />
+
+    <!-- Preload critical fonts -->
+    <link
+      rel="preload"
+      href="/node_modules/@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/node_modules/@fontsource/source-sans-pro/files/source-sans-pro-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --color-primary: #6366f1;
+    --color-primary-glow: #818cf8;
+    --color-background: #ffffff;
+    --color-foreground: #0a0a0a;
+    --color-card: #ffffff;
+    --color-muted: #6b7280;
+    --color-muted-foreground: #6b7280;
+    --color-border: #e5e7eb;
+    --color-code-keyword: #7c3aed;
+    --color-code-string: #059669;
+    --color-code-function: #2563eb;
+    --color-code-comment: #6b7280;
+    --color-code-operator: #dc2626;
+    --color-terminal-green: #10b981;
+    --color-terminal-gray: #9ca3af;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background: #0a0a0a;
+      --color-foreground: #fafafa;
+      --color-card: #171717;
+      --color-muted: #737373;
+      --color-muted-foreground: #a3a3a3;
+      --color-border: #262626;
+      --color-code-keyword: #a78bfa;
+      --color-code-string: #34d399;
+      --color-code-function: #818cf8;
+      --color-code-comment: #6b7280;
+      --color-code-operator: #f87171;
+      --color-terminal-green: #34d399;
+      --color-terminal-gray: #9ca3af;
+    }
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family:
+      'Source Sans Pro',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      system-ui,
+      sans-serif;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-display: swap;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family:
+      'Geist Sans',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      system-ui,
+      sans-serif;
+    font-display: swap;
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100vw;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      transparent 70%,
+      rgba(99, 102, 241, 0.08) 100%
+    );
+    background-color: var(--color-background);
+  }
+
+  .text-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--color-primary) 0%,
+      var(--color-primary-glow) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .shadow-elevated {
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1),
+      0 20px 25px -5px rgb(0 0 0 / 0.05);
+  }
+</style>

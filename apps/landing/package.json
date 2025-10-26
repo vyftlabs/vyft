@@ -1,0 +1,58 @@
+{
+  "name": "@vyft/landing",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Vyft interactive demo and documentation website",
+  "homepage": "https://vyft.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vyftlabs/vyft.git",
+    "directory": "apps/landing"
+  },
+  "bugs": {
+    "url": "https://github.com/vyftlabs/vyft/issues"
+  },
+  "license": "AGPL-3.0",
+  "author": "Vyft Community",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "clean": "rm -rf dist node_modules .astro",
+    "typecheck": "astro check && tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx,.astro",
+    "test": "vitest run --passWithNoTests",
+    "test:run": "vitest run",
+    "deploy": "pnpm run build && wrangler pages deploy dist",
+    "pages:deploy": "wrangler pages deploy dist --project-name vyft-landing",
+    "pages:dev": "wrangler pages dev dist --port 3000"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^11.2.0",
+    "@astrojs/react": "^3.6.3",
+    "@astrojs/sitemap": "^3.6.0",
+    "@astrojs/tailwind": "^5.1.5",
+    "@fontsource/geist-sans": "^5.2.5",
+    "@fontsource/source-sans-pro": "^5.2.5",
+    "@lottiefiles/dotlottie-web": "^0.54.1",
+    "@typescript/vfs": "^1.6.2",
+    "@xterm/addon-web-links": "^0.11.0",
+    "astro": "^5.14.8",
+    "local-echo": "github:wavesoft/local-echo",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.18",
+    "xterm": "4.19.0",
+    "xterm-addon-fit": "0.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "jsdom": "^25.0.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.1",
+    "wrangler": "^3.114.15"
+  }
+}
