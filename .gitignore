@@ -24,3 +24,6 @@ coverage
 
 # Verdaccio storage
 verdaccio/
+
+# Astro generated files
+.astro/
