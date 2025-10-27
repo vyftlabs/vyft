@@ -1,5 +1,4 @@
 import * as fsAsync from 'node:fs/promises';
-import { existsSync, mkdirSync } from 'fs';
 
 export async function ensureFileExists(
   filePath: string,

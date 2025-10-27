@@ -1,5 +1,4 @@
 import { LocalWorkspace, Stack } from '@pulumi/pulumi/automation/index.js';
-import { existsSync } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { getVyftHome } from '../config.js';

@@ -186,7 +186,6 @@ async function drainNodes(
   kubeconfig: string,
 ): Promise<void> {
   const drainProgram = async () => {
-    const pulumi = await import('@pulumi/pulumi');
     const k8s = await import('@pulumi/kubernetes');
 
     const provider = new k8s.Provider('k8s-provider', {
@@ -374,8 +373,6 @@ function generateInlineProgramWithToken(
     const pulumi = await import('@pulumi/pulumi');
     const hcloud = await import('@pulumi/hcloud');
     const tls = await import('@pulumi/tls');
-
-    const config = new pulumi.Config();
 
     const k3sToken = existingToken || randomBytes(32).toString('hex');
 
