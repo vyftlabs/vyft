@@ -87,7 +87,7 @@ export async function addProviderAction(): Promise<void> {
     const createSpinner = clack.spinner();
     createSpinner.start('Creating provider...');
 
-    const providerId = await createProvider(
+    await createProvider(
       name as string,
       providerType as 'hetzner',
       token as string,

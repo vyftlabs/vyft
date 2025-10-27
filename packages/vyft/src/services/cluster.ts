@@ -1,10 +1,16 @@
 import { LocalWorkspace, Stack } from '@pulumi/pulumi/automation/index.js';
-import * as fs from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { getVyftHome } from '../config.js';
 import { ClusterCreateSchema } from '../validators/cluster.js';
 import { destroyClusterInfrastructure } from './provisioning.js';
+import {
+  ensureFileExists,
+  ensureDirectoryExists,
+  readJsonFile,
+  writeJsonFile,
+} from '../utils/fs.js';
 
 interface ClusterInfo {
   id: string;
@@ -23,70 +29,61 @@ const CLUSTERS_DIR = path.join(VYFT_HOME, 'clusters');
 const CLUSTERS_FILE = path.join(CLUSTERS_DIR, 'clusters.json');
 const CURRENT_CONTEXT_FILE = path.join(CLUSTERS_DIR, 'current-context.json');
 
-function ensureVyftHome(): void {
-  if (!fs.existsSync(VYFT_HOME)) {
-    fs.mkdirSync(VYFT_HOME, { recursive: true });
-  }
-  if (!fs.existsSync(CLUSTERS_DIR)) {
-    fs.mkdirSync(CLUSTERS_DIR, { recursive: true });
-  }
+async function ensureVyftHome(): Promise<void> {
+  await ensureDirectoryExists(VYFT_HOME);
+  await ensureDirectoryExists(CLUSTERS_DIR);
 }
 
-function loadClusters(): Record<string, ClusterInfo> {
-  ensureVyftHome();
+async function loadClusters(): Promise<Record<string, ClusterInfo>> {
+  await ensureVyftHome();
 
-  if (!fs.existsSync(CLUSTERS_FILE)) {
+  const clusters =
+    await readJsonFile<Record<string, ClusterInfo>>(CLUSTERS_FILE);
+  if (!clusters) {
     return {};
   }
 
-  try {
-    const data = fs.readFileSync(CLUSTERS_FILE, 'utf8');
-    const clusters = JSON.parse(data);
-
-    // Migrate existing clusters that don't have nodeCount
-    let needsSave = false;
-    for (const clusterId in clusters) {
-      const cluster = clusters[clusterId];
-      if (cluster.nodeCount === undefined) {
-        cluster.nodeCount = cluster.size === 'ha' ? 3 : 1;
-        needsSave = true;
-      }
+  let needsSave = false;
+  for (const clusterId in clusters) {
+    const cluster = clusters[clusterId];
+    if (!cluster) {
+      continue;
     }
-
-    if (needsSave) {
-      saveClusters(clusters);
+    if (cluster.nodeCount === undefined) {
+      cluster.nodeCount = cluster.size === 'ha' ? 3 : 1;
+      needsSave = true;
     }
-
-    return clusters;
-  } catch (error) {
-    return {};
   }
+
+  if (needsSave) {
+    await saveClusters(clusters);
+  }
+
+  return clusters;
 }
 
-function saveClusters(clusters: Record<string, ClusterInfo>): void {
-  ensureVyftHome();
-  fs.writeFileSync(CLUSTERS_FILE, JSON.stringify(clusters, null, 2));
+async function saveClusters(
+  clusters: Record<string, ClusterInfo>,
+): Promise<void> {
+  await ensureVyftHome();
+  await writeJsonFile(CLUSTERS_FILE, clusters);
 }
 
 async function getWorkspace(passphrase: string): Promise<LocalWorkspace> {
-  ensureVyftHome();
+  await ensureVyftHome();
 
   const pulumiYamlPath = path.join(CLUSTERS_DIR, 'Pulumi.yaml');
-  if (!fs.existsSync(pulumiYamlPath)) {
-    const pulumiYaml = `name: vyft-clusters
+  const pulumiYaml = `name: vyft-clusters
 runtime: nodejs
 description: Vyft cluster secrets management
 `;
-    fs.writeFileSync(pulumiYamlPath, pulumiYaml);
-  }
+  await ensureFileExists(pulumiYamlPath, pulumiYaml);
 
   const indexJsPath = path.join(CLUSTERS_DIR, 'index.js');
-  if (!fs.existsSync(indexJsPath)) {
-    const indexJs = `// Vyft cluster secrets management
+  const indexJs = `// Vyft cluster secrets management
 // This file is required by Pulumi but not used for our secrets storage
 `;
-    fs.writeFileSync(indexJsPath, indexJs);
-  }
+  await ensureFileExists(indexJsPath, indexJs);
 
   const workspace = await LocalWorkspace.create({
     workDir: CLUSTERS_DIR,
@@ -131,7 +128,7 @@ export async function createCluster(
 
   const clusterId = randomUUID();
 
-  const clusters = loadClusters();
+  const clusters = await loadClusters();
   clusters[clusterId] = {
     id: clusterId,
     name,
@@ -143,7 +140,7 @@ export async function createCluster(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  saveClusters(clusters);
+  await saveClusters(clusters);
 
   const workspace = await getWorkspace(passphrase);
   await workspace.setConfig('vyft', `cluster_${clusterId}_kubeconfig`, {
@@ -182,11 +179,11 @@ export async function getClusterK3sToken(
   }
 }
 
-export function updateClusterNodeCount(
+export async function updateClusterNodeCount(
   clusterId: string,
   newNodeCount: number,
-): void {
-  const clusters = loadClusters();
+): Promise<void> {
+  const clusters = await loadClusters();
   const cluster = clusters[clusterId];
 
   if (!cluster) {
@@ -195,11 +192,11 @@ export function updateClusterNodeCount(
 
   cluster.nodeCount = newNodeCount;
   cluster.updatedAt = new Date().toISOString();
-  saveClusters(clusters);
+  await saveClusters(clusters);
 }
 
 export async function listClusters(): Promise<ClusterInfo[]> {
-  const clusters = loadClusters();
+  const clusters = await loadClusters();
   return Object.values(clusters);
 }
 
@@ -222,7 +219,7 @@ export async function getClusterKubeconfig(
 export async function getClusterById(
   clusterId: string,
 ): Promise<ClusterInfo | undefined> {
-  const clusters = loadClusters();
+  const clusters = await loadClusters();
   return clusters[clusterId];
 }
 
@@ -237,8 +234,8 @@ interface CurrentContext {
   setAt: string;
 }
 
-export function setCurrentCluster(clusterId: string): void {
-  const clusters = loadClusters();
+export async function setCurrentCluster(clusterId: string): Promise<void> {
+  const clusters = await loadClusters();
   const cluster = clusters[clusterId];
 
   if (!cluster) {
@@ -251,22 +248,24 @@ export function setCurrentCluster(clusterId: string): void {
     setAt: new Date().toISOString(),
   };
 
-  ensureVyftHome();
-  fs.writeFileSync(CURRENT_CONTEXT_FILE, JSON.stringify(context, null, 2));
+  await ensureVyftHome();
+  await writeJsonFile(CURRENT_CONTEXT_FILE, context);
 }
 
-export function getCurrentCluster(): string | undefined {
-  if (!fs.existsSync(CURRENT_CONTEXT_FILE)) {
+export async function getCurrentCluster(): Promise<string | undefined> {
+  if (!existsSync(CURRENT_CONTEXT_FILE)) {
     return undefined;
   }
 
   try {
-    const data = fs.readFileSync(CURRENT_CONTEXT_FILE, 'utf8');
-    const context: CurrentContext = JSON.parse(data);
+    const context = await readJsonFile<CurrentContext>(CURRENT_CONTEXT_FILE);
+    if (!context) {
+      return undefined;
+    }
 
-    const clusters = loadClusters();
+    const clusters = await loadClusters();
     if (!clusters[context.clusterId]) {
-      clearCurrentCluster();
+      await clearCurrentCluster();
       return undefined;
     }
 
@@ -277,18 +276,20 @@ export function getCurrentCluster(): string | undefined {
 }
 
 export function clearCurrentCluster(): void {
-  if (fs.existsSync(CURRENT_CONTEXT_FILE)) {
-    fs.unlinkSync(CURRENT_CONTEXT_FILE);
+  if (existsSync(CURRENT_CONTEXT_FILE)) {
+    unlinkSync(CURRENT_CONTEXT_FILE);
   }
 }
 
-export function getCurrentClusterInfo(): ClusterInfo | undefined {
-  const currentClusterId = getCurrentCluster();
+export async function getCurrentClusterInfo(): Promise<
+  ClusterInfo | undefined
+> {
+  const currentClusterId = await getCurrentCluster();
   if (!currentClusterId) {
     return undefined;
   }
 
-  const clusters = loadClusters();
+  const clusters = await loadClusters();
   return clusters[currentClusterId];
 }
 
@@ -298,14 +299,14 @@ export async function destroyCluster(
 ): Promise<void> {
   await destroyClusterInfrastructure(clusterId, passphrase);
 
-  const currentClusterId = getCurrentCluster();
+  const currentClusterId = await getCurrentCluster();
   if (currentClusterId === clusterId) {
-    clearCurrentCluster();
+    await clearCurrentCluster();
   }
 
-  const clusters = loadClusters();
+  const clusters = await loadClusters();
   delete clusters[clusterId];
-  saveClusters(clusters);
+  await saveClusters(clusters);
 
   try {
     const workspace = await getWorkspace(passphrase);

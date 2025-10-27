@@ -185,7 +185,7 @@ cluster
         process.exit(1);
       }
 
-      const currentClusterId = getCurrentCluster();
+      const currentClusterId = await getCurrentCluster();
       const currentCluster = currentClusterId
         ? clusters.find((c) => c.id === currentClusterId)
         : undefined;
@@ -214,7 +214,6 @@ cluster
         process.exit(1);
       }
 
-      const cluster = clusters.find((c) => c.id === selectedCluster);
       setCurrentCluster(selectedCluster as string);
     } catch (error: any) {
       clack.log.error(`Failed to set current cluster: ${error.message}`);
@@ -227,7 +226,7 @@ cluster
   .description('Show the current active cluster')
   .action(async () => {
     try {
-      const currentCluster = getCurrentClusterInfo();
+      const currentCluster = await getCurrentClusterInfo();
 
       if (currentCluster) {
         console.log(
@@ -253,7 +252,7 @@ cluster
   .action(async () => {
     try {
       const clusters = await listClusters();
-      const currentClusterId = getCurrentCluster();
+      const currentClusterId = await getCurrentCluster();
 
       if (clusters.length === 0) {
         console.log('No clusters configured');
@@ -339,7 +338,7 @@ cluster
   .description('Scale cluster up or down')
   .action(async () => {
     try {
-      const currentCluster = getCurrentClusterInfo();
+      const currentCluster = await getCurrentClusterInfo();
       if (!currentCluster) {
         clack.log.error('No current cluster selected');
         process.exit(1);

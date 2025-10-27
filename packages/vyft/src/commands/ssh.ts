@@ -8,7 +8,7 @@ export const ssh = new Command('ssh')
   .description('SSH into cluster nodes')
   .action(async () => {
     try {
-      const currentCluster = getCurrentClusterInfo();
+      const currentCluster = await getCurrentClusterInfo();
       if (!currentCluster) {
         clack.log.error('No current cluster selected');
         clack.log.info('Use "vyft cluster use" to select a cluster first');
