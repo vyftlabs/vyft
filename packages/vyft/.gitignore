@@ -1,0 +1,26 @@
+node_modules
+*.log
+*.log.*
+dist
+build
+coverage
+.env
+.env.local
+.env.*.local
+.DS_Store
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+.turbo
+.next
+.nuxt
+.cache
+.tmp-bundle-*
+
+# Verdaccio storage
+verdaccio/

@@ -1,0 +1,30 @@
+name: Workflow Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  workflow-security:
+    name: Workflow Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Actionlint
+        uses: rhysd/actionlint@v1.7.0
+
+      - name: Run Trivy workflow scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.github/workflows'
+          format: 'table'

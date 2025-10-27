@@ -1,0 +1,16 @@
+name = "vyft-landing"
+compatibility_date = "2024-09-25"
+
+[env.production]
+routes = [
+  { pattern = "vyft.dev", zone_name = "vyft.dev" },
+  { pattern = "www.vyft.dev", zone_name = "vyft.dev" }
+]
+
+
+# For Cloudflare Pages
+pages_build_output_dir = "dist"
+
+# Environment variables (if needed)
+# [env.production.vars]
+# API_URL = "https://api.vyft.dev"
