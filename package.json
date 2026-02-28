@@ -2,6 +2,9 @@
   "name": "@vyft/monorepo",
   "private": true,
   "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "build": "nx run-many -t build --outputStyle stream",
     "test": "nx run-many -t test --outputStyle stream",
@@ -9,7 +12,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
-    "@types/node": "^25.3.2",
+    "@types/node": "^24.11.0",
     "nx": "^22.5.3",
     "typescript": "^5.9.3"
   }
