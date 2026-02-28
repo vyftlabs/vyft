@@ -1,0 +1,26 @@
+{
+  "name": "vyft",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "vyft": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'src/**/*.test.ts'",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@vyft/core": "workspace:*",
+    "@vyft/provider": "workspace:*"
+  }
+}

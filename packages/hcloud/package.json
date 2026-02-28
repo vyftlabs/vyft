@@ -1,0 +1,27 @@
+{
+  "name": "@vyft/hcloud",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript assets/openapi.json -o src/schema.d.ts",
+    "build": "tsc",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@vyft/platform": "workspace:*",
+    "@vyft/provider": "workspace:*",
+    "openapi-fetch": "^0.13.5"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.6.1"
+  }
+}
