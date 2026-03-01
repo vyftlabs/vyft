@@ -7,9 +7,9 @@ import {
 } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
 import {
+  config,
   cronjob,
   interpolate,
-  secret,
   service,
   ValidationError,
   volume,
@@ -264,7 +264,7 @@ describe("runtime semantics", () => {
   // --- Secrets ---
 
   it("secret create produces zero runtime operations", async () => {
-    const s = secret("tok");
+    const s = config("tok", { secret: true });
     await sim.deploy({ s });
     strictEqual(sim.lastOps().length, 0);
     strictEqual(sim.state.length, 1);
@@ -272,15 +272,15 @@ describe("runtime semantics", () => {
   });
 
   it("secret modify produces zero runtime operations", async () => {
-    const s = secret("tok");
+    const s = config("tok", { secret: true });
     await sim.deploy({ s });
-    const s2 = secret("tok", { length: 64 });
+    const s2 = config("tok", { secret: true, length: 64 });
     await sim.deploy({ s: s2 });
     strictEqual(sim.lastOps().length, 0);
   });
 
   it("secret remove produces a remove operation", async () => {
-    const s = secret("tok");
+    const s = config("tok", { secret: true });
     await sim.deploy({ s });
     await sim.deploy({});
     deepStrictEqual(opSummary(sim), [{ action: "remove", id: "tok" }]);
@@ -518,7 +518,7 @@ describe("dependency ordering", () => {
   });
 
   it("secret created before service that uses it (state-wise, no ops for secret)", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const s = service("api", { image: "x", env: { TOKEN: sec } });
     await sim.deploy({ s, sec });
     // Secret has no runtime ops, but both should be in state
@@ -594,7 +594,7 @@ describe("dependency ordering", () => {
   });
 
   it("cronjob depends on secret via env", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const c = cronjob("report", {
       image: "alpine",
       schedule: "0 6 * * *",
@@ -618,7 +618,7 @@ describe("state correctness", () => {
 
   it("state count matches config resource count", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const s = service("api", {
       image: "x",
       env: { T: sec },
@@ -638,7 +638,7 @@ describe("state correctness", () => {
 
   it("state kind is correct", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const s = service("api", { image: "x" });
     const c = cronjob("job", { image: "alpine", schedule: "0 * * * *" });
     await sim.deploy({ v, sec, s, c });
@@ -672,7 +672,7 @@ describe("state correctness", () => {
 
   it("non-service outputs are empty", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const c = cronjob("job", { image: "alpine", schedule: "0 * * * *" });
     await sim.deploy({ v, sec, c });
     deepStrictEqual(getState(sim.state, "data").outputs, {});
@@ -695,7 +695,7 @@ describe("state correctness", () => {
 
   it("dependencies list is correct", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const db = service("db", { image: "pg" });
     const api = service("api", {
       image: "x",
@@ -711,7 +711,7 @@ describe("state correctness", () => {
 
   it("resources with no dependencies have empty dependencies array", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     await sim.deploy({ v, sec });
     deepStrictEqual(getState(sim.state, "data").dependencies, []);
     deepStrictEqual(getState(sim.state, "tok").dependencies, []);
@@ -1021,14 +1021,14 @@ describe("secrets and interpolation", () => {
   });
 
   it("secret referenced directly in env is tracked as dependency", async () => {
-    const sec = secret("db-pass");
+    const sec = config("db-pass", { secret: true });
     const s = service("api", { image: "x", env: { DB_PASSWORD: sec } });
     await sim.deploy({ sec, s });
     ok(getState(sim.state, "api").dependencies.includes("db-pass"));
   });
 
   it("secret via interpolate is tracked as dependency", async () => {
-    const sec = secret("db-pass");
+    const sec = config("db-pass", { secret: true });
     const s = service("api", {
       image: "x",
       env: { DATABASE_URL: interpolate`postgres://user:${sec}@db:5432/mydb` },
@@ -1038,8 +1038,8 @@ describe("secrets and interpolation", () => {
   });
 
   it("multiple secrets in one service are all tracked", async () => {
-    const s1 = secret("key-a");
-    const s2 = secret("key-b");
+    const s1 = config("key-a", { secret: true });
+    const s2 = config("key-b", { secret: true });
     const svc = service("api", { image: "x", env: { A: s1, B: s2 } });
     await sim.deploy({ s1, s2, svc });
     const deps = getState(sim.state, "api").dependencies.sort();
@@ -1047,7 +1047,7 @@ describe("secrets and interpolation", () => {
   });
 
   it("secret in interpolation alongside plain strings", async () => {
-    const sec = secret("token");
+    const sec = config("token", { secret: true });
     const svc = service("api", {
       image: "x",
       env: { AUTH: interpolate`Bearer ${sec}` },
@@ -1057,11 +1057,11 @@ describe("secrets and interpolation", () => {
   });
 
   it("changing a secret's config doesn't create runtime ops but updates state", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     await sim.deploy({ sec });
     const fp1 = getState(sim.state, "tok").fingerprint;
 
-    const sec2 = secret("tok", { length: 64 });
+    const sec2 = config("tok", { secret: true, length: 64 });
     await sim.deploy({ sec: sec2 });
     strictEqual(sim.lastOps().length, 0);
 
@@ -1074,7 +1074,7 @@ describe("secrets and interpolation", () => {
   });
 
   it("removing a secret that was referenced triggers both remove ops", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const svc = service("api", { image: "x", env: { T: sec } });
     await sim.deploy({ sec, svc });
     strictEqual(sim.state.length, 2);
@@ -1337,7 +1337,7 @@ describe("runtimeState", () => {
   });
 
   it("secrets are not in runtimeState (no execute called)", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     await sim.deploy({ sec });
     strictEqual(sim.runtime.runtimeState().size, 0);
   });
@@ -1576,7 +1576,7 @@ describe("complex topologies", () => {
   it("mixed resource types with complex dependencies", async () => {
     const v1 = volume("v1");
     const v2 = volume("v2");
-    const sec = secret("sec");
+    const sec = config("sec", { secret: true });
     const db = service("db", {
       image: "pg",
       mounts: [{ source: v1, path: "/d" }],
@@ -1695,7 +1695,7 @@ describe("cronjob specifics", () => {
 
   it("cronjob with volume mount and secret env", async () => {
     const v = volume("logs");
-    const sec = secret("api-key");
+    const sec = config("api-key", { secret: true });
     const c = cronjob("report", {
       image: "alpine",
       schedule: "0 6 * * *",
@@ -1812,7 +1812,7 @@ describe("edge cases", () => {
   });
 
   it("single secret deploy — no runtime ops, state exists", async () => {
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     await sim.deploy({ sec });
     strictEqual(sim.state.length, 1);
     strictEqual(sim.runtime.resources.size, 0); // no runtime ops for secrets
@@ -1820,9 +1820,9 @@ describe("edge cases", () => {
   });
 
   it("only secrets in config — no operations at all", async () => {
-    const a = secret("a");
-    const b = secret("b");
-    const c = secret("c");
+    const a = config("a", { secret: true });
+    const b = config("b", { secret: true });
+    const c = config("c", { secret: true });
     await sim.deploy({ a, b, c });
     strictEqual(sim.lastOps().length, 0);
     strictEqual(sim.state.length, 3);
@@ -1838,7 +1838,7 @@ describe("edge cases", () => {
 
   it("service with all optional fields set", async () => {
     const v = volume("data");
-    const sec = secret("tok");
+    const sec = config("tok", { secret: true });
     const db = service("db", { image: "pg" });
     const api = service("api", {
       image: "node:20",

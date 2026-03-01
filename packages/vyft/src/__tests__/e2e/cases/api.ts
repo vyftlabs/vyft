@@ -1,8 +1,8 @@
-import { interpolate, secret, service, volume } from "@vyft/core";
+import { config as cfg, interpolate, service, volume } from "@vyft/core";
 import type { TestContext } from "../context.ts";
 
 const data = volume("data");
-const dbPassword = secret("db-password");
+const dbPassword = cfg("db-password", { secret: true });
 
 const postgres = service("postgres", {
   image: "postgres:17",

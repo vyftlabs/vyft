@@ -1,8 +1,8 @@
-import { secret, service, volume } from "@vyft/core";
+import { config as cfg, service, volume } from "@vyft/core";
 import type { TestContext } from "../context.ts";
 
 const data = volume("data");
-const password = secret("password");
+const password = cfg("password", { secret: true });
 
 export const config = {
   data,
