@@ -22,7 +22,10 @@ import {
 } from "./service.ts";
 import { createVolume, removeVolume } from "./volume.ts";
 
-export type DockerRuntimeOptions = RuntimeOptions & { client?: DockerClient };
+export type DockerRuntimeOptions = RuntimeOptions & {
+  client?: DockerClient;
+  portBindings?: Record<string, number>;
+};
 
 /** Docker-based runtime — single-host containers with Caddy reverse proxy. */
 export function createDockerRuntime(
@@ -30,6 +33,7 @@ export function createDockerRuntime(
 ): ExtendedRuntime {
   const { project, secrets } = opts;
   const client = opts.client ?? createDockerClient();
+  const portBindingsMap = opts.portBindings ?? {};
   const networkName = `vyft-${project}`;
   const proxyName = `vyft-${project}-proxy`;
 
@@ -111,6 +115,10 @@ export function createDockerRuntime(
 
       if (resource.kind === "service") {
         warnReplicas(resource.id, resource.config);
+        const hostPort = portBindingsMap[resource.id];
+        const pb = hostPort
+          ? new Map([[resource.config.port ?? 3000, hostPort]])
+          : undefined;
         if (op.action === "recreate") {
           const cid = await recreateContainer(
             client,
@@ -120,6 +128,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            pb,
           );
           containerIds.set(resource.id, cid);
         } else {
@@ -131,6 +140,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            pb,
           );
           containerIds.set(resource.id, cid);
         }

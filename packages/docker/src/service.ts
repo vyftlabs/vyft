@@ -9,10 +9,12 @@ export interface ContainerConfig {
   Cmd?: string[];
   Labels?: Record<string, string>;
   Healthcheck?: Record<string, unknown>;
+  ExposedPorts?: Record<string, Record<string, never>>;
   HostConfig: {
     Binds: string[];
     NetworkMode: string;
     RestartPolicy: { Name: string; MaximumRetryCount: number };
+    PortBindings?: Record<string, { HostPort: string }[]>;
   };
   NetworkingConfig: {
     EndpointsConfig: Record<string, { Aliases: string[] }>;
@@ -26,6 +28,7 @@ export function buildContainerConfig(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  portBindings?: Map<number, number>,
 ): ContainerConfig {
   const image = config.image ?? `vyft-build-${id}:latest`;
   const env = config.env
@@ -77,6 +80,16 @@ export function buildContainerConfig(
     },
   };
 
+  if (portBindings && portBindings.size > 0) {
+    cc.ExposedPorts = {};
+    cc.HostConfig.PortBindings = {};
+    for (const [container, host] of portBindings) {
+      const key = `${container}/tcp`;
+      cc.ExposedPorts[key] = {};
+      cc.HostConfig.PortBindings[key] = [{ HostPort: String(host) }];
+    }
+  }
+
   if (config.command) {
     cc.Cmd = Array.isArray(config.command)
       ? config.command
@@ -111,6 +124,7 @@ export async function createContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  portBindings?: Map<number, number>,
 ): Promise<string> {
   if (config.build) {
     const tag = `vyft-build-${id}:latest`;
@@ -119,7 +133,14 @@ export async function createContainer(
     await pullImage(config.image);
   }
 
-  const cc = buildContainerConfig(id, config, networkName, secrets, project);
+  const cc = buildContainerConfig(
+    id,
+    config,
+    networkName,
+    secrets,
+    project,
+    portBindings,
+  );
   const result = (await client.post(
     `/containers/create?name=${encodeURIComponent(containerName)}`,
     cc,
@@ -151,6 +172,7 @@ export async function recreateContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  portBindings?: Map<number, number>,
 ): Promise<string> {
   await removeContainer(client, containerName);
   return createContainer(
@@ -161,6 +183,7 @@ export async function recreateContainer(
     networkName,
     secrets,
     project,
+    portBindings,
   );
 }
 
