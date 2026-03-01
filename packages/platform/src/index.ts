@@ -26,4 +26,16 @@ export const Platform = defineModuleShape("platform", {
       ipv4: z.string(),
     }),
   },
+  volume: {
+    config: z.object({
+      name: z.string(),
+      size: z.number(),
+      location: z.string(),
+      format: z.string().optional(),
+    }),
+    outputs: z.object({
+      volumeId: z.number(),
+      linuxDevice: z.string(),
+    }),
+  },
 });
