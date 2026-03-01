@@ -1,5 +1,5 @@
 import type { Resource, ResourceState, Runtime } from "@vyft/core";
-import { fingerprint, serializeConfig } from "@vyft/core";
+import { fingerprint, isSecretOutput, serializeConfig } from "@vyft/core";
 import type { ExecuteHook } from "./execute.ts";
 import { execute } from "./execute.ts";
 import type { Graph } from "./graph.ts";
@@ -21,6 +21,7 @@ export type StateHook = (event: StateEvent) => Promise<void>;
 
 export interface DeployResult {
   readonly state: ResourceState[];
+  readonly secretOutputs: Map<string, Record<string, string>>;
 }
 
 /** Extract the config portion (inputs) from a resource, replacing nested resources with IDs. */
@@ -36,26 +37,48 @@ function buildOutputs(resource: Resource): Record<string, unknown> {
   return {};
 }
 
+/** Separate secret-wrapped values from outputs, replacing them with placeholders. */
+export function separateSecretOutputs(outputs: Record<string, unknown>): {
+  plain: Record<string, unknown>;
+  secrets: Record<string, string>;
+} {
+  const plain: Record<string, unknown> = {};
+  const secrets: Record<string, string> = {};
+  for (const [key, value] of Object.entries(outputs)) {
+    if (isSecretOutput(value)) {
+      plain[key] = "[secret]";
+      secrets[key] = value.value;
+    } else {
+      plain[key] = value;
+    }
+  }
+  return { plain, secrets };
+}
+
 /** Build full ResourceState for a single resource. */
 function buildResourceState(
   resource: Resource,
   graph: Graph,
   previousMap: Map<string, ResourceState>,
   now: string,
-): ResourceState {
+): { state: ResourceState; secrets: Record<string, string> } {
   const prev = previousMap.get(resource.id);
   const deps = graph.dependencies.get(resource.id);
+  const { plain, secrets } = separateSecretOutputs(buildOutputs(resource));
   return {
-    id: resource.id,
-    kind: resource.kind,
-    fingerprint: fingerprint(resource),
-    inputs: buildInputs(resource),
-    outputs: buildOutputs(resource),
-    dependencies: deps ? [...deps] : [],
-    runtime: prev?.runtime ?? {},
-    created: prev?.created ?? now,
-    modified: now,
-    taint: false,
+    state: {
+      id: resource.id,
+      kind: resource.kind,
+      fingerprint: fingerprint(resource),
+      inputs: buildInputs(resource),
+      outputs: plain,
+      dependencies: deps ? [...deps] : [],
+      runtime: prev?.runtime ?? {},
+      created: prev?.created ?? now,
+      modified: now,
+      taint: false,
+    },
+    secrets,
   };
 }
 
@@ -99,7 +122,12 @@ export async function deploy(
           const resource = graph.resources.get(event.id);
           if (!resource)
             throw new Error(`Resource "${event.id}" not found in graph`);
-          const state = buildResourceState(resource, graph, previousMap, now);
+          const { state } = buildResourceState(
+            resource,
+            graph,
+            previousMap,
+            now,
+          );
           await onState({ type: "committed", id: event.id, state });
         } else {
           await onState({ type: "removed", id: event.id });
@@ -110,9 +138,19 @@ export async function deploy(
   const changes = plan(order(graph), previous, taintedIds);
   await execute(changes, runtime, graph, hook);
 
-  const state: ResourceState[] = resources.map((r) =>
-    buildResourceState(r, graph, previousMap, now),
-  );
+  const secretOutputs = new Map<string, Record<string, string>>();
+  const state: ResourceState[] = resources.map((r) => {
+    const { state: rs, secrets } = buildResourceState(
+      r,
+      graph,
+      previousMap,
+      now,
+    );
+    if (Object.keys(secrets).length > 0) {
+      secretOutputs.set(r.id, secrets);
+    }
+    return rs;
+  });
 
-  return { state };
+  return { state, secretOutputs };
 }

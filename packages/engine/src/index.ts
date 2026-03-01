@@ -8,7 +8,7 @@ export {
   serializeConfig,
 } from "@vyft/core";
 export type { DeployResult, StateEvent, StateHook } from "./deploy.ts";
-export { deploy } from "./deploy.ts";
+export { deploy, separateSecretOutputs } from "./deploy.ts";
 export type { ExecuteEvent, ExecuteHook } from "./execute.ts";
 export { execute } from "./execute.ts";
 export type { BindingLeaf, BindingTree, Graph } from "./graph.ts";

@@ -1,9 +1,10 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Change, Operation, ResourceState, Runtime } from "@vyft/core";
+import { secret } from "@vyft/core";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
 import type { StateEvent } from "./index.ts";
-import { deploy } from "./index.ts";
+import { deploy, separateSecretOutputs } from "./index.ts";
 
 function mockRuntime(): Runtime & { operations: Operation[] } {
   const operations: Operation[] = [];
@@ -250,5 +251,60 @@ describe("deploy", () => {
     const result = await deploy({ v }, [], rt);
     strictEqual(result.state.length, 1);
     strictEqual(result.state[0]?.id, "data");
+  });
+
+  it("returns empty secretOutputs when no secrets in outputs", async () => {
+    const v = vol("data");
+    const rt = mockRuntime();
+    const result = await deploy({ v }, [], rt);
+    strictEqual(result.secretOutputs.size, 0);
+  });
+});
+
+describe("separateSecretOutputs", () => {
+  it("passes plain values through unchanged", () => {
+    const { plain, secrets } = separateSecretOutputs({
+      host: "db",
+      port: 5432,
+    });
+    deepStrictEqual(plain, { host: "db", port: 5432 });
+    deepStrictEqual(secrets, {});
+  });
+
+  it("replaces secret values with placeholder and collects them", () => {
+    const { plain, secrets } = separateSecretOutputs({
+      host: "db",
+      password: secret("abc123"),
+    });
+    deepStrictEqual(plain, { host: "db", password: "[secret]" });
+    deepStrictEqual(secrets, { password: "abc123" });
+  });
+
+  it("handles multiple secret values", () => {
+    const { plain, secrets } = separateSecretOutputs({
+      host: "db",
+      password: secret("pass1"),
+      apiKey: secret("key2"),
+    });
+    deepStrictEqual(plain, {
+      host: "db",
+      password: "[secret]",
+      apiKey: "[secret]",
+    });
+    deepStrictEqual(secrets, { password: "pass1", apiKey: "key2" });
+  });
+
+  it("handles empty outputs", () => {
+    const { plain, secrets } = separateSecretOutputs({});
+    deepStrictEqual(plain, {});
+    deepStrictEqual(secrets, {});
+  });
+
+  it("handles all-secret outputs", () => {
+    const { plain, secrets } = separateSecretOutputs({
+      token: secret("tok"),
+    });
+    deepStrictEqual(plain, { token: "[secret]" });
+    deepStrictEqual(secrets, { token: "tok" });
   });
 });
