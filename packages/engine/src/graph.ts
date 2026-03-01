@@ -1,4 +1,52 @@
-import type { CronJob, EnvValue, Resource, Service } from "@vyft/core";
+import type {
+  Binding,
+  BindValue,
+  CronJob,
+  EnvValue,
+  Resource,
+  Service,
+} from "@vyft/core";
+
+export type BindingLeaf = { kind: "leaf"; value: BindValue };
+export type BindingTree =
+  | BindingLeaf
+  | { kind: "node"; children: Record<string, BindingTree> };
+
+/** Recursively walk a config tree and collect `{ kind: "binding" }` objects, preserving nesting. */
+export function collectBindings(config: unknown): Record<string, BindingTree> {
+  const result: Record<string, BindingTree> = {};
+
+  function walk(
+    obj: Record<string, unknown>,
+    target: Record<string, BindingTree>,
+  ): void {
+    for (const [key, val] of Object.entries(obj)) {
+      if (
+        val &&
+        typeof val === "object" &&
+        (val as { kind?: string }).kind === "binding"
+      ) {
+        target[key] = { kind: "leaf", value: (val as Binding).value };
+      } else if (
+        val &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        !(val as { kind?: string }).kind
+      ) {
+        const children: Record<string, BindingTree> = {};
+        walk(val as Record<string, unknown>, children);
+        if (Object.keys(children).length > 0) {
+          target[key] = { kind: "node", children };
+        }
+      }
+    }
+  }
+
+  if (config && typeof config === "object") {
+    walk(config as Record<string, unknown>, result);
+  }
+  return result;
+}
 
 export interface Graph {
   readonly resources: Map<string, Resource>;
