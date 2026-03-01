@@ -2,26 +2,50 @@
 
 Deploy apps with TypeScript. Define services, cron jobs, secrets, and volumes as code — then deploy to any runtime.
 
+<table>
+<tr>
+<td>
+
 ```ts
+// vyft.config.ts
 import { service, secret, volume } from "vyft";
 
-const db = secret("db-password");
+const dbPassword = secret("db-password");
 const data = volume("pgdata");
 
-service("db", {
+export const db = service("db", {
   image: "postgres:17",
   port: 5432,
-  env: { POSTGRES_PASSWORD: db },
+  env: { POSTGRES_PASSWORD: dbPassword },
   mounts: [{ volume: data, path: "/var/lib/postgresql/data" }],
 });
 
-service("api", {
-  build: "./apps/api",
-  route: "api.example.com",
-  env: { DATABASE_URL: `postgres://postgres:${db}@db:5432/app` },
-  dependsOn: [db],
-});
+
 ```
+
+</td>
+<td>
+
+```ts
+// index.ts
+import { Hono } from "hono";
+import postgres from "postgres";
+import { db } from "vyft/resource";
+
+const sql = postgres(db.url);
+const app = new Hono();
+
+app.get("/", async (c) => {
+  const users = await sql`SELECT * FROM users`;
+  return c.json(users);
+});
+
+export default app;
+```
+
+</td>
+</tr>
+</table>
 
 ## Install
 
