@@ -18,7 +18,17 @@
         "editor.codeActionsOnSave": {
           "source.organizeImports.biome": "explicit"
         },
-        "biome.lspBin": "./node_modules/@biomejs/biome/bin/biome"
+        "biome.lsp.bin": "./node_modules/@biomejs/biome/bin/biome"
+      },
+      "terminal.integrated.defaultProfile.linux": "zsh",
+      "terminal.integrated.profiles.linux": {
+        "bash": {
+          "path": "bash",
+          "icon": "terminal-bash"
+        },
+        "zsh": {
+          "path": "zsh"
+        }
       },
       "extensions": ["biomejs.biome"]
     }
