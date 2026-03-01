@@ -14,7 +14,7 @@ describe("defaultPlan", () => {
   it("secret change returns empty", () => {
     const change: Change = {
       status: "create",
-      resource: { kind: "secret", id: "s", config: {} },
+      resource: { kind: "config", id: "s", config: {} },
     };
     deepStrictEqual(defaultPlan(change), []);
   });

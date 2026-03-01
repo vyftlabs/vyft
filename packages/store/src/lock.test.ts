@@ -14,8 +14,8 @@ describe("FileStore lock", () => {
 
   it("acquires and releases a lock", async () => {
     const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj");
-    const lockFile = join(root, "ctx", "proj", "lock");
+    const unlock = await store.lock("ctx", "proj", "local");
+    const lockFile = join(root, "ctx", "proj", "local", "lock");
     const content = JSON.parse(await readFile(lockFile, "utf8"));
     strictEqual(content.pid, process.pid);
     strictEqual(typeof content.timestamp, "string");
@@ -31,9 +31,9 @@ describe("FileStore lock", () => {
 
   it("throws on concurrent lock from same process", async () => {
     const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj");
+    const unlock = await store.lock("ctx", "proj", "local");
     try {
-      await rejects(() => store.lock("ctx", "proj"), LockError);
+      await rejects(() => store.lock("ctx", "proj", "local"), LockError);
     } finally {
       await unlock();
     }
@@ -41,7 +41,7 @@ describe("FileStore lock", () => {
 
   it("throws LockError with vyft cancel hint for stale lock", async () => {
     const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj");
+    const dir = join(root, "ctx", "proj", "local");
     await mkdir(dir, { recursive: true });
 
     const stalePid = 2147483647;
@@ -51,7 +51,7 @@ describe("FileStore lock", () => {
     );
 
     await rejects(
-      () => store.lock("ctx", "proj"),
+      () => store.lock("ctx", "proj", "local"),
       (err: unknown) => {
         if (!(err instanceof LockError)) return false;
         if (!err.message.includes("vyft cancel")) return false;
@@ -63,7 +63,7 @@ describe("FileStore lock", () => {
 
   it("unlock is idempotent", async () => {
     const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj");
+    const unlock = await store.lock("ctx", "proj", "local");
     await unlock();
     await unlock();
   });
@@ -78,13 +78,13 @@ describe("FileStore inspectLock", () => {
 
   it("returns null when no lock exists", async () => {
     const store = createFileStore(root);
-    const result = await store.inspectLock("ctx", "proj");
+    const result = await store.inspectLock("ctx", "proj", "local");
     strictEqual(result, null);
   });
 
   it("returns lock info when lock file exists", async () => {
     const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj");
+    const dir = join(root, "ctx", "proj", "local");
     await mkdir(dir, { recursive: true });
 
     const ts = new Date().toISOString();
@@ -93,7 +93,7 @@ describe("FileStore inspectLock", () => {
       JSON.stringify({ pid: 12345, timestamp: ts }),
     );
 
-    const result = await store.inspectLock("ctx", "proj");
+    const result = await store.inspectLock("ctx", "proj", "local");
     deepStrictEqual(result, { pid: 12345, timestamp: ts });
   });
 });
@@ -107,14 +107,14 @@ describe("FileStore clearLock", () => {
 
   it("removes an existing lock file", async () => {
     const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj");
+    const dir = join(root, "ctx", "proj", "local");
     await mkdir(dir, { recursive: true });
 
     await writeFile(
       join(dir, "lock"),
       JSON.stringify({ pid: 12345, timestamp: new Date().toISOString() }),
     );
-    await store.clearLock("ctx", "proj");
+    await store.clearLock("ctx", "proj", "local");
 
     try {
       await stat(join(dir, "lock"));
@@ -126,6 +126,6 @@ describe("FileStore clearLock", () => {
 
   it("does not throw when no lock file exists", async () => {
     const store = createFileStore(root);
-    await store.clearLock("ctx", "proj");
+    await store.clearLock("ctx", "proj", "local");
   });
 });

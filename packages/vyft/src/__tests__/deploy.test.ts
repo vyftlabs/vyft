@@ -30,13 +30,14 @@ function vol(id: string, config: Record<string, unknown> = {}) {
 }
 
 function sec(id: string) {
-  return { kind: "secret" as const, id, config: {} };
+  return { kind: "config" as const, id, config: {} };
 }
 
 describe("store + deploy integration", () => {
   let root: string;
   const context = "default";
   const project = "test-project";
+  const stage = "local";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-deploy-"));
@@ -60,9 +61,9 @@ describe("store + deploy integration", () => {
       resources: result.state,
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded !== null);
     strictEqual(loaded?.resources.length, 2);
     strictEqual(loaded?.version, 1);
@@ -82,9 +83,9 @@ describe("store + deploy integration", () => {
       resources: first.state,
       secrets: null,
     };
-    await store.save(context, project, state1);
+    await store.save(context, project, stage, state1);
 
-    const previous = await store.load(context, project);
+    const previous = await store.load(context, project, stage);
     const result = await deploy({ v }, previous?.resources ?? [], runtime);
 
     strictEqual(result.state.length, 1);
@@ -103,10 +104,10 @@ describe("store + deploy integration", () => {
       resources: first.state,
       secrets: null,
     };
-    await store.save(context, project, state1);
+    await store.save(context, project, stage, state1);
     const originalCreated = first.state[0]?.created;
 
-    const previous = await store.load(context, project);
+    const previous = await store.load(context, project, stage);
     const v2 = vol("data", { size: "10Gi" });
     const second = await deploy({ v: v2 }, previous?.resources ?? [], runtime);
 
@@ -126,9 +127,9 @@ describe("store + deploy integration", () => {
       resources: second.state,
       secrets: null,
     };
-    await store.save(context, project, state2);
+    await store.save(context, project, stage, state2);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     strictEqual(loaded?.resources[0]?.inputs["size"], "10Gi");
   });
 
@@ -142,18 +143,18 @@ describe("store + deploy integration", () => {
       resources: [],
       secrets: encrypted,
     };
-    await store.save(context, project, state1);
+    await store.save(context, project, stage, state1);
 
-    const previous = await store.load(context, project);
+    const previous = await store.load(context, project, stage);
     const state2: PersistedState = {
       version: 1,
       manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
       resources: [],
       secrets: previous?.secrets ?? null,
     };
-    await store.save(context, project, state2);
+    await store.save(context, project, stage, state2);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     deepStrictEqual(loaded?.secrets, encrypted);
   });
 
@@ -162,9 +163,9 @@ describe("store + deploy integration", () => {
     const runtime = mockRuntime();
     const v = vol("data");
 
-    const unlock = await store.lock(context, project);
+    const unlock = await store.lock(context, project, stage);
     try {
-      const previous = await store.load(context, project);
+      const previous = await store.load(context, project, stage);
       const result = await deploy({ v }, previous?.resources ?? [], runtime);
 
       const state: PersistedState = {
@@ -173,12 +174,12 @@ describe("store + deploy integration", () => {
         resources: result.state,
         secrets: null,
       };
-      await store.save(context, project, state);
+      await store.save(context, project, stage, state);
     } finally {
       await unlock();
     }
 
-    const unlock2 = await store.lock(context, project);
+    const unlock2 = await store.lock(context, project, stage);
     await unlock2();
   });
 });

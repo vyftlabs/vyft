@@ -6,11 +6,11 @@ import { createK8sRuntime } from "./index.ts";
 const opts = { project: "test", secrets: new Map<string, string>() };
 
 describe("K8s runtime plan()", () => {
-  it("returns empty for secret create", () => {
+  it("returns empty for config create", () => {
     const runtime = createK8sRuntime(opts);
     const change: Change = {
       status: "create",
-      resource: { kind: "secret", id: "s", config: {} },
+      resource: { kind: "config", id: "s", config: {} },
     };
     deepStrictEqual(runtime.plan(change), []);
   });
@@ -100,7 +100,7 @@ describe("K8s runtime plan()", () => {
 
   it("returns remove for any resource kind", () => {
     const runtime = createK8sRuntime(opts);
-    for (const kind of ["volume", "secret", "service", "cronjob"] as const) {
+    for (const kind of ["volume", "config", "service", "cronjob"] as const) {
       const change: Change = { status: "remove", id: "x", kind };
       const ops = runtime.plan(change);
       strictEqual(ops.length, 1);

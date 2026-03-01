@@ -126,12 +126,12 @@ describe("plan", () => {
   it("removes multiple resources when desired is empty", () => {
     const current: StateEntry[] = [
       { id: "a", kind: "volume", fingerprint: "x" },
-      { id: "b", kind: "secret", fingerprint: "y" },
+      { id: "b", kind: "config", fingerprint: "y" },
     ];
     const changes = plan([], current);
     deepStrictEqual(changes, [
       { status: "remove", id: "a", kind: "volume" },
-      { status: "remove", id: "b", kind: "secret" },
+      { status: "remove", id: "b", kind: "config" },
     ]);
   });
 
@@ -142,7 +142,7 @@ describe("plan", () => {
     const current: StateEntry[] = [
       { id: "keep", kind: "volume", fingerprint: fingerprint(existing) },
       { id: "mod", kind: "volume", fingerprint: "old" },
-      { id: "gone", kind: "secret", fingerprint: "x" },
+      { id: "gone", kind: "config", fingerprint: "x" },
     ];
     const changes = plan([existing, modified, added], current);
     const statuses = changes.map((c) => c.status);

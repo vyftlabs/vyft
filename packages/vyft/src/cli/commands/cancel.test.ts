@@ -31,7 +31,7 @@ describe("cancel logic", () => {
 
   it("clears stale lock and WAL", async () => {
     const store = createFileStore(root);
-    const dir = join(root, context, project);
+    const dir = join(root, context, project, "local");
     await mkdir(dir, { recursive: true });
 
     // Plant a stale lock
@@ -42,35 +42,35 @@ describe("cancel logic", () => {
     );
 
     // Plant a WAL file
-    await store.appendLog(context, project, {
+    await store.appendLog(context, project, "local", {
       type: "pending",
       id: "svc-web",
       operation: "creating",
     });
 
     // Simulate cancel logic
-    const lock = await store.inspectLock(context, project);
+    const lock = await store.inspectLock(context, project, "local");
     ok(lock !== null);
     ok(!isProcessAlive(lock?.pid));
-    await store.clearLock(context, project);
+    await store.clearLock(context, project, "local");
 
-    ok(await store.hasWAL(context, project));
+    ok(await store.hasWAL(context, project, "local"));
 
     // Cancel deletes the WAL
-    const walFile = join(root, context, project, "wal.jsonl");
+    const walFile = join(root, context, project, "local", "wal.jsonl");
     const { unlink } = await import("node:fs/promises");
     await unlink(walFile).catch(() => {});
 
-    strictEqual(await store.hasWAL(context, project), false);
+    strictEqual(await store.hasWAL(context, project, "local"), false);
 
     // Lock should be gone
-    const lockAfter = await store.inspectLock(context, project);
+    const lockAfter = await store.inspectLock(context, project, "local");
     strictEqual(lockAfter, null);
   });
 
   it("errors when lock belongs to a live process", async () => {
     const store = createFileStore(root);
-    const dir = join(root, context, project);
+    const dir = join(root, context, project, "local");
     await mkdir(dir, { recursive: true });
 
     // Plant a lock with our own PID (guaranteed alive)
@@ -79,7 +79,7 @@ describe("cancel logic", () => {
       JSON.stringify({ pid: process.pid, timestamp: new Date().toISOString() }),
     );
 
-    const lock = await store.inspectLock(context, project);
+    const lock = await store.inspectLock(context, project, "local");
     ok(lock !== null);
     ok(isProcessAlive(lock?.pid));
     // cancel should NOT clear a live lock — the command would throw CliError
@@ -88,10 +88,10 @@ describe("cancel logic", () => {
   it("reports nothing to cancel when no lock and no WAL", async () => {
     const store = createFileStore(root);
 
-    const lock = await store.inspectLock(context, project);
+    const lock = await store.inspectLock(context, project, "local");
     strictEqual(lock, null);
 
-    strictEqual(await store.hasWAL(context, project), false);
+    strictEqual(await store.hasWAL(context, project, "local"), false);
     // nothing to cancel
   });
 
@@ -118,29 +118,29 @@ describe("cancel logic", () => {
       ],
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, "local", state);
 
     // Append WAL entries (simulating an interrupted deploy)
-    await store.appendLog(context, project, {
+    await store.appendLog(context, project, "local", {
       type: "pending",
       id: "svc-web",
       operation: "updating",
     });
 
-    const lock = await store.inspectLock(context, project);
+    const lock = await store.inspectLock(context, project, "local");
     strictEqual(lock, null);
 
-    ok(await store.hasWAL(context, project));
+    ok(await store.hasWAL(context, project, "local"));
 
     // Cancel deletes the WAL
-    const walFile = join(root, context, project, "wal.jsonl");
+    const walFile = join(root, context, project, "local", "wal.jsonl");
     const { unlink } = await import("node:fs/promises");
     await unlink(walFile).catch(() => {});
 
-    strictEqual(await store.hasWAL(context, project), false);
+    strictEqual(await store.hasWAL(context, project, "local"), false);
 
     // Resources should be preserved in state
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, "local");
     strictEqual(loaded?.resources.length, 1);
     strictEqual(loaded?.resources[0]?.id, "svc-web");
   });

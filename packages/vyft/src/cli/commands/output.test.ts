@@ -57,9 +57,9 @@ describe("output logic", () => {
       }),
       makeResource("data", "volume"),
     ]);
-    await store.save(context, project, state);
+    await store.save(context, project, "local", state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, "local");
     ok(loaded, "state should exist");
     const api = loaded.resources.find((r) => r.id === "api");
     ok(api, "api resource should exist");
@@ -76,9 +76,9 @@ describe("output logic", () => {
       makeResource("api", "service", { host: "api" }),
       makeResource("web", "service", { host: "web" }),
     ]);
-    await store.save(context, project, state);
+    await store.save(context, project, "local", state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, "local");
     ok(loaded, "state should exist");
     const filtered = loaded.resources.filter((r) => r.id === "api");
     strictEqual(filtered.length, 1);
@@ -91,9 +91,9 @@ describe("output logic", () => {
       makeResource("data", "volume"),
       makeResource("pass", "secret"),
     ]);
-    await store.save(context, project, state);
+    await store.save(context, project, "local", state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, "local");
     ok(loaded, "state should exist");
     for (const r of loaded.resources) {
       deepStrictEqual(r.outputs, {});
@@ -106,9 +106,9 @@ describe("output logic", () => {
       makeResource("api", "service", { host: "api", port: 3000 }),
       makeResource("data", "volume"),
     ]);
-    await store.save(context, project, state);
+    await store.save(context, project, "local", state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, "local");
     ok(loaded, "state should exist");
     const obj: Record<string, unknown> = {};
     for (const r of loaded.resources) obj[r.id] = r.outputs;

@@ -148,7 +148,7 @@ export async function runCase(
 function autoSecrets(config: unknown): Map<string, string> {
   const secrets = new Map<string, string>();
   for (const r of collect(config)) {
-    if (r.kind === "secret") {
+    if (r.kind === "config") {
       secrets.set(r.id, `test-${r.id}`);
     }
   }

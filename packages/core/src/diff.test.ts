@@ -1,14 +1,14 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
-import type { Secret, Service, Volume } from "./resource.ts";
+import type { Config, Service, Volume } from "./resource.ts";
 
 function vol(id: string): Volume {
   return { kind: "volume", id, config: {} };
 }
 
-function sec(id: string): Secret {
-  return { kind: "secret", id, config: {} };
+function sec(id: string): Config {
+  return { kind: "config", id, config: {} };
 }
 
 function svc(id: string): Service {

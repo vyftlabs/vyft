@@ -45,7 +45,7 @@ describe("buildDeploymentManifest", () => {
       "api",
       {
         image: "test",
-        env: { HOST: "0.0.0.0", TOKEN: { kind: "secret", id: "token" } },
+        env: { HOST: "0.0.0.0", TOKEN: { kind: "config", id: "token" } },
       },
       secrets,
     );

@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual, throws } from "node:assert";
 import { describe, it } from "node:test";
-import type { SecretRef } from "@vyft/core";
+import type { ConfigRef } from "@vyft/core";
 import { interpolate, resolve, resolveEnv } from "@vyft/core";
 
 const secrets = new Map([
@@ -14,17 +14,17 @@ describe("resolve", () => {
   });
 
   it("resolves a secret reference", () => {
-    const ref: SecretRef = { kind: "secret", id: "db-pass" };
+    const ref: ConfigRef = { kind: "config", id: "db-pass" };
     strictEqual(resolve(ref, secrets), "s3cret");
   });
 
   it("throws on missing secret", () => {
-    const ref: SecretRef = { kind: "secret", id: "missing" };
+    const ref: ConfigRef = { kind: "config", id: "missing" };
     throws(() => resolve(ref, secrets), /missing/);
   });
 
   it("resolves interpolation with mixed values", () => {
-    const ref: SecretRef = { kind: "secret", id: "db-pass" };
+    const ref: ConfigRef = { kind: "config", id: "db-pass" };
     const value = interpolate`postgres://user:${ref}@db:5432/mydb`;
     strictEqual(resolve(value, secrets), "postgres://user:s3cret@db:5432/mydb");
   });
@@ -35,8 +35,8 @@ describe("resolve", () => {
   });
 
   it("resolves interpolation with multiple secrets", () => {
-    const a: SecretRef = { kind: "secret", id: "db-pass" };
-    const b: SecretRef = { kind: "secret", id: "api-key" };
+    const a: ConfigRef = { kind: "config", id: "db-pass" };
+    const b: ConfigRef = { kind: "config", id: "api-key" };
     const value = interpolate`${a}:${b}`;
     strictEqual(resolve(value, secrets), "s3cret:abc123");
   });
@@ -47,7 +47,7 @@ describe("resolve", () => {
   });
 
   it("handles interpolation with trailing string segment", () => {
-    const ref: SecretRef = { kind: "secret", id: "db-pass" };
+    const ref: ConfigRef = { kind: "config", id: "db-pass" };
     const value = interpolate`user:${ref}@host`;
     strictEqual(resolve(value, secrets), "user:s3cret@host");
   });
@@ -59,7 +59,7 @@ describe("resolveEnv", () => {
   });
 
   it("resolves a full env record", () => {
-    const ref: SecretRef = { kind: "secret", id: "db-pass" };
+    const ref: ConfigRef = { kind: "config", id: "db-pass" };
     const env = {
       PLAIN: "hello",
       SECRET: ref,

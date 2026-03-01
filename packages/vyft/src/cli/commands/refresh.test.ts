@@ -36,7 +36,7 @@ function vol(id: string, config: Record<string, unknown> = {}) {
 }
 
 function sec(id: string) {
-  return { kind: "secret" as const, id, config: {} };
+  return { kind: "config" as const, id, config: {} };
 }
 
 /** Simulate what the refresh command does: re-fingerprint from config, update state. */
@@ -85,6 +85,7 @@ describe("refresh logic", () => {
   let root: string;
   const context = "default";
   const project = "test";
+  const stage = "local";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-refresh-"));
@@ -106,7 +107,7 @@ describe("refresh logic", () => {
       resources: result.state,
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     const refreshed = refreshState({ v }, state);
 
@@ -190,21 +191,21 @@ describe("refresh logic", () => {
       resources: result.state,
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     // Simulate an interrupted operation by appending a WAL entry
-    await store.appendLog(context, project, {
+    await store.appendLog(context, project, stage, {
       type: "pending",
       id: "data",
       operation: "updating",
     });
-    ok(await store.hasWAL(context, project));
+    ok(await store.hasWAL(context, project, stage));
 
     // Refresh compacts state, clearing WAL
     const refreshed = refreshState({ v }, state);
-    await store.compact(context, project, refreshed);
+    await store.compact(context, project, stage, refreshed);
 
-    strictEqual(await store.hasWAL(context, project), false);
+    strictEqual(await store.hasWAL(context, project, stage), false);
     strictEqual(refreshed.resources.length, 1);
   });
 

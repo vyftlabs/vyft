@@ -29,7 +29,7 @@ describe("buildContainerConfig", () => {
       "api",
       {
         image: "node:22",
-        env: { FOO: "bar", DB_PASS: { kind: "secret", id: "db-pass" } },
+        env: { FOO: "bar", DB_PASS: { kind: "config", id: "db-pass" } },
       },
       networkName,
       secrets,

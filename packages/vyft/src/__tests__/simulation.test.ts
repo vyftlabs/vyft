@@ -643,7 +643,7 @@ describe("state correctness", () => {
     const c = cronjob("job", { image: "alpine", schedule: "0 * * * *" });
     await sim.deploy({ v, sec, s, c });
     strictEqual(getState(sim.state, "data").kind, "volume");
-    strictEqual(getState(sim.state, "tok").kind, "secret");
+    strictEqual(getState(sim.state, "tok").kind, "config");
     strictEqual(getState(sim.state, "api").kind, "service");
     strictEqual(getState(sim.state, "job").kind, "cronjob");
   });

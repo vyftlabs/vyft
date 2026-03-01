@@ -12,7 +12,7 @@ export function vol(id: string): Volume {
 }
 
 export function sec(id: string): Secret {
-  return { kind: "secret", id, config: {} };
+  return { kind: "config", id, config: {} };
 }
 
 export function svc(

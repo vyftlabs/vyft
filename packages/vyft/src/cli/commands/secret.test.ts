@@ -39,6 +39,7 @@ describe("secret operations", () => {
   let root: string;
   const context = "default";
   const project = "test";
+  const stage = "local";
   const passphrase = "test-passphrase";
 
   beforeEach(async () => {
@@ -54,10 +55,10 @@ describe("secret operations", () => {
   it("set creates encrypted secret in state", async () => {
     const store = createFileStore(root);
     const state = emptyState();
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     // Simulate set
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const secrets = decryptSecrets(loaded.secrets, passphrase);
     secrets["db-password"] = "hunter2";
@@ -65,10 +66,10 @@ describe("secret operations", () => {
     const updated = emptyState({
       secrets: encryptSecrets(secrets, passphrase),
     });
-    await store.save(context, project, updated);
+    await store.save(context, project, stage, updated);
 
     // Verify
-    const reloaded = await store.load(context, project);
+    const reloaded = await store.load(context, project, stage);
     ok(reloaded, "state should exist after save");
     const result = decryptSecrets(reloaded.secrets, passphrase);
     strictEqual(result["db-password"], "hunter2");
@@ -78,9 +79,9 @@ describe("secret operations", () => {
     const store = createFileStore(root);
     const secrets: SecretMap = { "api-key": "sk-12345" };
     const state = emptyState({ secrets: encryptSecrets(secrets, passphrase) });
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const decrypted = decryptSecrets(loaded.secrets, passphrase);
     strictEqual(decrypted["api-key"], "sk-12345");
@@ -90,10 +91,10 @@ describe("secret operations", () => {
     const store = createFileStore(root);
     const secrets: SecretMap = { a: "1", b: "2" };
     const state = emptyState({ secrets: encryptSecrets(secrets, passphrase) });
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     // Simulate rm
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const decrypted = decryptSecrets(loaded.secrets, passphrase);
     delete decrypted["a"];
@@ -101,9 +102,9 @@ describe("secret operations", () => {
     const updated = emptyState({
       secrets: encryptSecrets(decrypted, passphrase),
     });
-    await store.save(context, project, updated);
+    await store.save(context, project, stage, updated);
 
-    const reloaded = await store.load(context, project);
+    const reloaded = await store.load(context, project, stage);
     ok(reloaded, "state should exist after save");
     const result = decryptSecrets(reloaded.secrets, passphrase);
     strictEqual("a" in result, false);
@@ -114,9 +115,9 @@ describe("secret operations", () => {
     const store = createFileStore(root);
     const secrets: SecretMap = { only: "one" };
     const state = emptyState({ secrets: encryptSecrets(secrets, passphrase) });
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const decrypted = decryptSecrets(loaded.secrets, passphrase);
     delete decrypted["only"];
@@ -124,9 +125,9 @@ describe("secret operations", () => {
     const updated = emptyState({
       secrets: encryptSecrets(decrypted, passphrase),
     });
-    await store.save(context, project, updated);
+    await store.save(context, project, stage, updated);
 
-    const reloaded = await store.load(context, project);
+    const reloaded = await store.load(context, project, stage);
     ok(reloaded, "state should exist after save");
     strictEqual(reloaded.secrets, null);
   });
@@ -136,9 +137,9 @@ describe("secret operations", () => {
     const state = emptyState({ secrets: encryptSecrets(secrets, passphrase) });
 
     const store = createFileStore(root);
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const decrypted = decryptSecrets(loaded.secrets, passphrase);
     const names = Object.keys(decrypted).sort();
@@ -150,9 +151,9 @@ describe("secret operations", () => {
     const store = createFileStore(root);
     const secrets: SecretMap = { key: "old" };
     const state = emptyState({ secrets: encryptSecrets(secrets, passphrase) });
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const decrypted = decryptSecrets(loaded.secrets, passphrase);
     decrypted["key"] = "new";
@@ -160,9 +161,9 @@ describe("secret operations", () => {
     const updated = emptyState({
       secrets: encryptSecrets(decrypted, passphrase),
     });
-    await store.save(context, project, updated);
+    await store.save(context, project, stage, updated);
 
-    const reloaded = await store.load(context, project);
+    const reloaded = await store.load(context, project, stage);
     ok(reloaded, "state should exist after save");
     const result = decryptSecrets(reloaded.secrets, passphrase);
     strictEqual(result["key"], "new");
@@ -186,10 +187,10 @@ describe("secret operations", () => {
     ];
 
     const state = emptyState({ resources });
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     // Add a secret, preserving resources
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     ok(loaded, "state should exist");
     const secrets = decryptSecrets(loaded.secrets, passphrase);
     secrets["key"] = "value";
@@ -199,9 +200,9 @@ describe("secret operations", () => {
       manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
       secrets: encryptSecrets(secrets, passphrase),
     };
-    await store.save(context, project, updated);
+    await store.save(context, project, stage, updated);
 
-    const reloaded = await store.load(context, project);
+    const reloaded = await store.load(context, project, stage);
     ok(reloaded, "state should exist after save");
     strictEqual(reloaded.resources.length, 1);
     strictEqual(reloaded.resources[0]?.id, "data");

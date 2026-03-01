@@ -25,7 +25,7 @@ describe("FileStore", () => {
 
   it("load returns null for missing state", async () => {
     const store = createFileStore(root);
-    strictEqual(await store.load("ctx", "proj"), null);
+    strictEqual(await store.load("ctx", "proj", "local"), null);
   });
 
   it("save + load round-trips state", async () => {
@@ -46,30 +46,33 @@ describe("FileStore", () => {
         },
       ],
     });
-    await store.save("ctx", "proj", state);
-    deepStrictEqual(await store.load("ctx", "proj"), state);
+    await store.save("ctx", "proj", "local", state);
+    deepStrictEqual(await store.load("ctx", "proj", "local"), state);
   });
 
   it("save writes valid JSON with trailing newline", async () => {
     const store = createFileStore(root);
-    await store.save("ctx", "proj", makeState());
-    const raw = await readFile(join(root, "ctx", "proj", "state.json"), "utf8");
+    await store.save("ctx", "proj", "local", makeState());
+    const raw = await readFile(
+      join(root, "ctx", "proj", "local", "state.json"),
+      "utf8",
+    );
     strictEqual(raw.endsWith("\n"), true);
     JSON.parse(raw);
   });
 
   it("save overwrites existing state", async () => {
     const store = createFileStore(root);
-    await store.save("ctx", "proj", makeState());
+    await store.save("ctx", "proj", "local", makeState());
     const updated = makeState({ version: 2 });
-    await store.save("ctx", "proj", updated);
-    deepStrictEqual(await store.load("ctx", "proj"), updated);
+    await store.save("ctx", "proj", "local", updated);
+    deepStrictEqual(await store.load("ctx", "proj", "local"), updated);
   });
 
   it("no tmp file left after save", async () => {
     const store = createFileStore(root);
-    await store.save("ctx", "proj", makeState());
-    const tmpPath = join(root, "ctx", "proj", ".state.json.tmp");
+    await store.save("ctx", "proj", "local", makeState());
+    const tmpPath = join(root, "ctx", "proj", "local", ".state.json.tmp");
     try {
       await stat(tmpPath);
       throw new Error("tmp file should not exist");
@@ -80,14 +83,14 @@ describe("FileStore", () => {
 
   it("delete removes the project directory", async () => {
     const store = createFileStore(root);
-    await store.save("ctx", "proj", makeState());
-    await store.delete("ctx", "proj");
-    strictEqual(await store.load("ctx", "proj"), null);
+    await store.save("ctx", "proj", "local", makeState());
+    await store.delete("ctx", "proj", "local");
+    strictEqual(await store.load("ctx", "proj", "local"), null);
   });
 
   it("delete is idempotent on missing directory", async () => {
     const store = createFileStore(root);
-    await store.delete("ctx", "nonexistent");
+    await store.delete("ctx", "nonexistent", "local");
   });
 });
 
@@ -118,17 +121,17 @@ describe("WAL", () => {
 
   it("hasWAL returns false when no WAL exists", async () => {
     const store = createFileStore(root);
-    strictEqual(await store.hasWAL("ctx", "proj"), false);
+    strictEqual(await store.hasWAL("ctx", "proj", "local"), false);
   });
 
   it("appendLog creates WAL and hasWAL returns true", async () => {
     const store = createFileStore(root);
-    await store.appendLog("ctx", "proj", {
+    await store.appendLog("ctx", "proj", "local", {
       type: "pending",
       id: "data",
       operation: "creating",
     });
-    strictEqual(await store.hasWAL("ctx", "proj"), true);
+    strictEqual(await store.hasWAL("ctx", "proj", "local"), true);
   });
 
   it("load replays committed WAL entries on top of checkpoint", async () => {
@@ -139,16 +142,16 @@ describe("WAL", () => {
       resources: [makeResource("a")],
       secrets: null,
     };
-    await store.save("ctx", "proj", state);
+    await store.save("ctx", "proj", "local", state);
 
     const newResource = makeResource("b", "secret");
-    await store.appendLog("ctx", "proj", {
+    await store.appendLog("ctx", "proj", "local", {
       type: "committed",
       id: "b",
       state: newResource,
     });
 
-    const loaded = await store.load("ctx", "proj");
+    const loaded = await store.load("ctx", "proj", "local");
     ok(loaded, "state should exist");
     strictEqual(loaded.resources.length, 2);
     ok(loaded.resources.some((r) => r.id === "a"));
@@ -163,11 +166,11 @@ describe("WAL", () => {
       resources: [makeResource("a"), makeResource("b")],
       secrets: null,
     };
-    await store.save("ctx", "proj", state);
+    await store.save("ctx", "proj", "local", state);
 
-    await store.appendLog("ctx", "proj", { type: "removed", id: "a" });
+    await store.appendLog("ctx", "proj", "local", { type: "removed", id: "a" });
 
-    const loaded = await store.load("ctx", "proj");
+    const loaded = await store.load("ctx", "proj", "local");
     ok(loaded, "state should exist");
     strictEqual(loaded.resources.length, 1);
     strictEqual(loaded.resources[0]?.id, "b");
@@ -181,22 +184,22 @@ describe("WAL", () => {
       resources: [makeResource("a")],
       secrets: null,
     };
-    await store.save("ctx", "proj", state);
+    await store.save("ctx", "proj", "local", state);
 
-    await store.appendLog("ctx", "proj", {
+    await store.appendLog("ctx", "proj", "local", {
       type: "committed",
       id: "b",
       state: makeResource("b"),
     });
-    ok(await store.hasWAL("ctx", "proj"));
+    ok(await store.hasWAL("ctx", "proj", "local"));
 
-    const replayed = await store.load("ctx", "proj");
+    const replayed = await store.load("ctx", "proj", "local");
     ok(replayed, "state should exist for compaction");
-    await store.compact("ctx", "proj", replayed);
+    await store.compact("ctx", "proj", "local", replayed);
 
-    strictEqual(await store.hasWAL("ctx", "proj"), false);
+    strictEqual(await store.hasWAL("ctx", "proj", "local"), false);
 
-    const loaded = await store.load("ctx", "proj");
+    const loaded = await store.load("ctx", "proj", "local");
     ok(loaded, "state should exist after compaction");
     strictEqual(loaded.resources.length, 2);
   });
@@ -209,15 +212,15 @@ describe("WAL", () => {
       resources: [makeResource("a")],
       secrets: null,
     };
-    await store.save("ctx", "proj", state);
+    await store.save("ctx", "proj", "local", state);
 
-    await store.appendLog("ctx", "proj", {
+    await store.appendLog("ctx", "proj", "local", {
       type: "pending",
       id: "a",
       operation: "updating",
     });
 
-    const loaded = await store.load("ctx", "proj");
+    const loaded = await store.load("ctx", "proj", "local");
     ok(loaded, "state should exist");
     strictEqual(loaded.resources.length, 1);
     strictEqual(loaded.resources[0]?.id, "a");

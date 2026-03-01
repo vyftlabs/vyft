@@ -1,5 +1,6 @@
 import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { StateEntry } from "@vyft/engine";
 import {
   buildGraph,
   collect,
@@ -8,32 +9,25 @@ import {
   plan,
   validate,
 } from "@vyft/engine";
-import type { ResourceState } from "@vyft/store";
 
 function vol(id: string, config: Record<string, unknown> = {}) {
   return { kind: "volume" as const, id, config };
 }
 
 function sec(id: string) {
-  return { kind: "secret" as const, id, config: {} };
+  return { kind: "config" as const, id, config: {} };
 }
 
-function makeResourceState(
+function makeStateEntry(
   id: string,
-  kind: ResourceState["kind"],
+  kind: StateEntry["kind"],
   fp: string,
-): ResourceState {
+): StateEntry {
   return {
     id,
     kind,
     fingerprint: fp,
     inputs: {},
-    outputs: {},
-    dependencies: [],
-    runtime: {},
-    created: new Date().toISOString(),
-    modified: new Date().toISOString(),
-    taint: false,
   };
 }
 
@@ -58,7 +52,7 @@ describe("preview logic", () => {
     const graph = buildGraph(resources);
     validate(graph);
 
-    const state = [makeResourceState("data", "volume", fingerprint(v))];
+    const state = [makeStateEntry("data", "volume", fingerprint(v))];
     const changes = plan(order(graph), state);
     strictEqual(changes.length, 0);
   });
@@ -70,7 +64,7 @@ describe("preview logic", () => {
     const graph = buildGraph(resources);
     validate(graph);
 
-    const state = [makeResourceState("data", "volume", "old-fingerprint")];
+    const state = [makeStateEntry("data", "volume", "old-fingerprint")];
     const changes = plan(order(graph), state);
 
     strictEqual(changes.length, 1);
@@ -82,7 +76,7 @@ describe("preview logic", () => {
     const graph = buildGraph(resources);
     validate(graph);
 
-    const state = [makeResourceState("data", "volume", "fp")];
+    const state = [makeStateEntry("data", "volume", "fp")];
     const changes = plan(order(graph), state);
 
     strictEqual(changes.length, 1);
@@ -99,9 +93,9 @@ describe("preview logic", () => {
     validate(graph);
 
     const state = [
-      makeResourceState("existing", "volume", fingerprint(existing)),
-      makeResourceState("modified", "volume", "old-fp"),
-      makeResourceState("removed", "secret", "fp"),
+      makeStateEntry("existing", "volume", fingerprint(existing)),
+      makeStateEntry("modified", "volume", "old-fp"),
+      makeStateEntry("removed", "config", "fp"),
     ];
 
     const changes = plan(order(graph), state);

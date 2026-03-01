@@ -30,13 +30,14 @@ function vol(id: string) {
 }
 
 function sec(id: string) {
-  return { kind: "secret" as const, id, config: {} };
+  return { kind: "config" as const, id, config: {} };
 }
 
 describe("destroy logic", () => {
   let root: string;
   const context = "default";
   const project = "test";
+  const stage = "local";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-destroy-"));
@@ -60,22 +61,22 @@ describe("destroy logic", () => {
       resources: result.state,
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
     // Destroy: deploy empty config against existing state
-    const previous = await store.load(context, project);
+    const previous = await store.load(context, project, stage);
     ok(previous, "state should exist before destroy");
     await deploy({}, previous.resources, runtime);
-    await store.delete(context, project);
+    await store.delete(context, project, stage);
 
     // State should be gone
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     strictEqual(loaded, null);
   });
 
   it("handles already-empty state gracefully", async () => {
     const store = createFileStore(root);
-    const loaded = await store.load(context, project);
+    const loaded = await store.load(context, project, stage);
     // No state file — nothing to destroy
     strictEqual(loaded, null);
   });
@@ -88,9 +89,9 @@ describe("destroy logic", () => {
       resources: [],
       secrets: null,
     };
-    await store.save(context, project, state);
+    await store.save(context, project, stage, state);
 
-    const previous = await store.load(context, project);
+    const previous = await store.load(context, project, stage);
     ok(previous, "state should exist");
     strictEqual(previous.resources.length, 0);
     // Nothing to destroy

@@ -43,7 +43,7 @@ export function defaultPlan(change: Change): Operation[] {
     return [{ action: "remove", id: change.id, kind: change.kind }];
   }
 
-  if (change.resource.kind === "secret") {
+  if (change.resource.kind === "config") {
     return [];
   }
 

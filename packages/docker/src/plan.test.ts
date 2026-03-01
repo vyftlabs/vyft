@@ -6,20 +6,20 @@ import { createDockerRuntime } from "./index.ts";
 const opts = { project: "test", secrets: new Map<string, string>() };
 
 describe("Docker runtime plan()", () => {
-  it("returns empty for secret create", () => {
+  it("returns empty for config create", () => {
     const runtime = createDockerRuntime(opts);
     const change: Change = {
       status: "create",
-      resource: { kind: "secret", id: "s", config: {} },
+      resource: { kind: "config", id: "s", config: {} },
     };
     deepStrictEqual(runtime.plan(change), []);
   });
 
-  it("returns empty for secret modify", () => {
+  it("returns empty for config modify", () => {
     const runtime = createDockerRuntime(opts);
     const change: Change = {
       status: "modify",
-      resource: { kind: "secret", id: "s", config: {} },
+      resource: { kind: "config", id: "s", config: {} },
     };
     deepStrictEqual(runtime.plan(change), []);
   });
@@ -164,7 +164,7 @@ describe("Docker runtime plan()", () => {
 
   it("returns remove for any resource kind", () => {
     const runtime = createDockerRuntime(opts);
-    for (const kind of ["volume", "secret", "service", "cronjob"] as const) {
+    for (const kind of ["volume", "config", "service", "cronjob"] as const) {
       const change: Change = { status: "remove", id: "x", kind };
       const ops = runtime.plan(change);
       strictEqual(ops.length, 1);
