@@ -1,7 +1,41 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { bindable, cronjob, service } from "./primitives.ts";
+import {
+  bindable,
+  cronjob,
+  isSecretOutput,
+  secret,
+  service,
+} from "./primitives.ts";
 import type { Linkable } from "./resource.ts";
+
+describe("secret()", () => {
+  it("creates a SecretOutput with kind and value", () => {
+    const s = secret("abc123");
+    deepStrictEqual(s, { kind: "secret", value: "abc123" });
+  });
+
+  it("isSecretOutput returns true for secret values", () => {
+    strictEqual(isSecretOutput(secret("x")), true);
+  });
+
+  it("isSecretOutput returns false for plain strings", () => {
+    strictEqual(isSecretOutput("abc"), false);
+  });
+
+  it("isSecretOutput returns false for null/undefined", () => {
+    strictEqual(isSecretOutput(null), false);
+    strictEqual(isSecretOutput(undefined), false);
+  });
+
+  it("isSecretOutput returns false for objects with different kind", () => {
+    strictEqual(isSecretOutput({ kind: "binding", value: "x" }), false);
+  });
+
+  it("isSecretOutput returns false for objects without kind", () => {
+    strictEqual(isSecretOutput({ value: "x" }), false);
+  });
+});
 
 describe("service() link expansion", () => {
   it("expands link bindings into env vars", () => {

@@ -27,6 +27,7 @@ export type {
   Binding,
   BindValue,
   ConfigOptions,
+  SecretOutput,
   Site,
   SiteOptions,
 } from "./primitives.ts";
@@ -35,6 +36,7 @@ export {
   bindable,
   config,
   cronjob,
+  isSecretOutput,
   secret,
   service,
   site,
@@ -64,7 +66,6 @@ export type {
   ProvidedSecretConfig,
   Resource,
   Secret,
-  SecretConfig,
   Service,
   ServiceConfig,
   Volume,
