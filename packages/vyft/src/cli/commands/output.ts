@@ -1,5 +1,5 @@
 import { CliError, projectInfo, resolveStage } from "@vyft/core";
-import { createFileStore } from "@vyft/store";
+import { createFileStore, decrypt, resolvePassphrase } from "@vyft/store";
 import type { Command } from "commander";
 
 export function registerOutput(program: Command): void {
@@ -8,11 +8,12 @@ export function registerOutput(program: Command): void {
     .description("Show resource outputs")
     .argument("[resource]", "Filter by resource ID")
     .option("-j, --json", "Output as JSON", false)
+    .option("--show-secrets", "Reveal secret output values", false)
     .option("--stage <stage>", "Stage to show outputs for")
     .action(
       async (
         resource: string | undefined,
-        opts: { json: boolean; stage?: string },
+        opts: { json: boolean; showSecrets: boolean; stage?: string },
       ) => {
         const { root, context, project } = await projectInfo();
         const stage = opts.stage ?? (await resolveStage(root));
@@ -22,6 +23,15 @@ export function registerOutput(program: Command): void {
 
         if (!state || state.resources.length === 0) {
           throw new CliError("No deployed resources. Run `vyft deploy` first.");
+        }
+
+        // Decrypt secret outputs if --show-secrets is set
+        let secretOutputs: Record<string, Record<string, string>> = {};
+        if (opts.showSecrets && state.secretOutputs) {
+          const passphrase = await resolvePassphrase();
+          secretOutputs = JSON.parse(
+            decrypt(state.secretOutputs, passphrase),
+          ) as Record<string, Record<string, string>>;
         }
 
         const resources = resource
@@ -34,13 +44,29 @@ export function registerOutput(program: Command): void {
 
         if (opts.json) {
           const obj: Record<string, unknown> = {};
-          for (const r of resources) obj[r.id] = r.outputs;
+          for (const r of resources) {
+            const outputs = { ...r.outputs };
+            const resSecrets = secretOutputs[r.id];
+            if (resSecrets) {
+              for (const [key, value] of Object.entries(resSecrets)) {
+                outputs[key] = value;
+              }
+            }
+            obj[r.id] = outputs;
+          }
           console.log(JSON.stringify(obj, null, 2));
           return;
         }
 
         for (const r of resources) {
-          const entries = Object.entries(r.outputs);
+          const outputs = { ...r.outputs };
+          const resSecrets = secretOutputs[r.id];
+          if (resSecrets) {
+            for (const [key, value] of Object.entries(resSecrets)) {
+              outputs[key] = value;
+            }
+          }
+          const entries = Object.entries(outputs);
           if (entries.length === 0) continue;
           console.log(`${r.kind}/${r.id}:`);
           for (const [key, value] of entries) {

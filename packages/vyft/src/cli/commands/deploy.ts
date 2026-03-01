@@ -194,6 +194,7 @@ export function registerDeploy(program: Command): void {
             manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
             resources: previousResources,
             secrets: currentSecrets,
+            secretOutputs: previous?.secretOutputs ?? null,
           };
           await store.save(context, project, stage, snapshot);
 
@@ -253,6 +254,16 @@ export function registerDeploy(program: Command): void {
             taintedIds,
           );
 
+          // Encrypt secret outputs from providers
+          const secretOutputObj: Record<string, Record<string, string>> = {};
+          for (const [id, secrets] of result.secretOutputs) {
+            secretOutputObj[id] = secrets;
+          }
+          const encryptedSecretOutputs =
+            Object.keys(secretOutputObj).length > 0
+              ? encrypt(JSON.stringify(secretOutputObj), passphrase)
+              : null;
+
           // Post-deploy: finalize proxy/ingress
           const services = resources.filter(
             (r): r is Service => r.kind === "service",
@@ -273,6 +284,7 @@ export function registerDeploy(program: Command): void {
             manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
             resources: finalResources,
             secrets: currentSecrets,
+            secretOutputs: encryptedSecretOutputs,
           };
 
           await store.compact(context, project, stage, state);
