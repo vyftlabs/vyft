@@ -3,7 +3,7 @@
 Deploy apps with TypeScript. Define services, cron jobs, secrets, and volumes as code — then deploy to any runtime.
 
 ```ts
-// ─────────────────────────── vyft.config.ts ───────────────────────────
+// vyft.config.ts
 
 import { service } from "vyft";
 import { postgres } from "vyft/services";
@@ -16,7 +16,7 @@ export const api = service("api", {
   link: [db],
 });
 
-// ──────────────────────────────── index.ts ────────────────────────────
+// index.ts
 
 import { Hono } from "hono";
 import postgres from "postgres";
