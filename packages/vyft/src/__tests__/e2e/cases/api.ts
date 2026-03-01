@@ -7,7 +7,7 @@ const dbPassword = secret("db-password");
 const postgres = service("postgres", {
   image: "postgres:17",
   port: 5432,
-  mounts: [{ volume: data, path: "/var/lib/postgresql/data" }],
+  mounts: [{ source: data, path: "/var/lib/postgresql/data" }],
   env: { POSTGRES_DB: "appdb", POSTGRES_PASSWORD: dbPassword },
   health: { command: "pg_isready -U postgres", interval: "3s", retries: 5 },
 });

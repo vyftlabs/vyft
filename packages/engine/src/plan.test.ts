@@ -1,7 +1,7 @@
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { StateEntry } from "@vyft/core";
-import { fingerprint, serializeConfig } from "@vyft/core";
+import { fingerprint, MOUNTABLE, serializeConfig } from "@vyft/core";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
 import { plan } from "./plan.ts";
 
@@ -13,7 +13,12 @@ describe("fingerprint", () => {
 
   it("changes when config changes", () => {
     const a = vol("data");
-    const b = { kind: "volume" as const, id: "data", config: { size: "10Gi" } };
+    const b = {
+      kind: "volume" as const,
+      id: "data",
+      config: { size: "10Gi" },
+      [MOUNTABLE]: true as const,
+    };
     notStrictEqual(fingerprint(a), fingerprint(b));
   });
 
@@ -21,10 +26,10 @@ describe("fingerprint", () => {
     const v = vol("data");
     const a = svc("api", {
       image: "node",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
     });
     const parsed = JSON.parse(fingerprint(a));
-    strictEqual(parsed.config.mounts[0].volume, "data");
+    strictEqual(parsed.config.mounts[0].source, "data");
   });
 
   it("replaces nested secrets with their IDs", () => {
@@ -65,14 +70,15 @@ describe("fingerprint", () => {
       kind: "volume" as const,
       id: "data",
       config: { size: "10Gi" },
+      [MOUNTABLE]: true as const,
     };
     const a = svc("api", {
       image: "node",
-      mounts: [{ volume: v1, path: "/data" }],
+      mounts: [{ source: v1, path: "/data" }],
     });
     const b = svc("api", {
       image: "node",
-      mounts: [{ volume: v2, path: "/data" }],
+      mounts: [{ source: v2, path: "/data" }],
     });
     strictEqual(fingerprint(a), fingerprint(b));
   });
@@ -227,8 +233,8 @@ describe("plan", () => {
 describe("serializeConfig", () => {
   it("replaces nested Volume objects with their IDs", () => {
     const v = vol("data");
-    const result = serializeConfig({ mounts: [{ volume: v, path: "/d" }] });
-    deepStrictEqual(result, { mounts: [{ volume: "data", path: "/d" }] });
+    const result = serializeConfig({ mounts: [{ source: v, path: "/d" }] });
+    deepStrictEqual(result, { mounts: [{ source: "data", path: "/d" }] });
   });
 
   it("replaces nested Secret objects with their IDs", () => {
@@ -246,7 +252,7 @@ describe("serializeConfig", () => {
     const v = vol("data");
     const s = sec("pass");
     const config = {
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
       env: { SECRET: s },
       image: "node",
     };

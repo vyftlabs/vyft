@@ -30,6 +30,11 @@ export interface ResourceHandler<C = any, O = any, Ctx = any> {
   read?(id: ResourceId, ctx: Ctx): Promise<HandlerResult<O> | null>;
   update?(id: ResourceId, config: C, ctx: Ctx): Promise<HandlerResult<O>>;
   delete?(id: ResourceId, ctx: Ctx): Promise<void>;
+  diff?(
+    id: ResourceId,
+    config: C,
+    previousOutputs: O,
+  ): "create" | "update" | "recreate";
 }
 
 /** Schema declaration for a single resource kind inside a module shape. */

@@ -11,6 +11,7 @@ export type {
   EnvValue,
   HealthCheck,
   Interpolation,
+  Linkable,
   PlainConfigConfig,
   Reference,
   Resource,

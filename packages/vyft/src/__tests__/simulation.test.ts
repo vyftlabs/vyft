@@ -53,7 +53,7 @@ describe("collection", () => {
     const v = volume("data");
     const s = service("api", {
       image: "node:20",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ infra: { storage: v }, services: { api: s } });
     strictEqual(sim.state.length, 2);
@@ -70,13 +70,13 @@ describe("collection", () => {
     const v = volume("data");
     const s1 = service("s1", {
       image: "x",
-      mounts: [{ volume: v, path: "/a" }],
+      mounts: [{ source: v, path: "/a" }],
     });
     const s2 = service("s2", {
       image: "x",
-      mounts: [{ volume: v, path: "/b" }],
+      mounts: [{ source: v, path: "/b" }],
     });
-    // v is reachable via config.v, config.s1.config.mounts[0].volume, and config.s2.config.mounts[0].volume
+    // v is reachable via config.v, config.s1.config.mounts[0].source, and config.s2.config.mounts[0].source
     await sim.deploy({ v, s1, s2 });
     strictEqual(sim.state.length, 3); // v, s1, s2 — not 5
   });
@@ -111,7 +111,7 @@ describe("validation", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ s }); // only pass service — volume discovered inside config
     strictEqual(sim.state.length, 2);
@@ -207,7 +207,7 @@ describe("fingerprinting", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
 
@@ -217,7 +217,7 @@ describe("fingerprinting", () => {
     const v2 = volume("data", { size: "100Gi" });
     const s2 = service("api", {
       image: "x",
-      mounts: [{ volume: v2, path: "/d" }],
+      mounts: [{ source: v2, path: "/d" }],
     });
     await sim.deploy({ v: v2, s: s2 });
 
@@ -417,7 +417,7 @@ describe("service modification triggers", () => {
     await sim.deploy({ v, s: service("api", { image: "x" }) });
     await sim.deploy({
       v,
-      s: service("api", { image: "x", mounts: [{ volume: v, path: "/d" }] }),
+      s: service("api", { image: "x", mounts: [{ source: v, path: "/d" }] }),
     });
     deepStrictEqual(opSummary(sim), [{ action: "recreate", id: "api" }]);
   });
@@ -426,11 +426,11 @@ describe("service modification triggers", () => {
     const v = volume("data");
     await sim.deploy({
       v,
-      s: service("api", { image: "x", mounts: [{ volume: v, path: "/a" }] }),
+      s: service("api", { image: "x", mounts: [{ source: v, path: "/a" }] }),
     });
     await sim.deploy({
       v,
-      s: service("api", { image: "x", mounts: [{ volume: v, path: "/b" }] }),
+      s: service("api", { image: "x", mounts: [{ source: v, path: "/b" }] }),
     });
     deepStrictEqual(opSummary(sim), [{ action: "recreate", id: "api" }]);
   });
@@ -439,7 +439,7 @@ describe("service modification triggers", () => {
     const v = volume("data");
     await sim.deploy({
       v,
-      s: service("api", { image: "x", mounts: [{ volume: v, path: "/d" }] }),
+      s: service("api", { image: "x", mounts: [{ source: v, path: "/d" }] }),
     });
     await sim.deploy({ v, s: service("api", { image: "x" }) });
     deepStrictEqual(opSummary(sim), [{ action: "recreate", id: "api" }]);
@@ -508,7 +508,7 @@ describe("dependency ordering", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ s, v }); // intentionally pass service first in config
     const ops = opSummary(sim);
@@ -540,8 +540,8 @@ describe("dependency ordering", () => {
 
   it("diamond dependency — D before B,C before A", async () => {
     const d = volume("d");
-    const b = service("b", { image: "x", mounts: [{ volume: d, path: "/d" }] });
-    const c = service("c", { image: "x", mounts: [{ volume: d, path: "/d" }] });
+    const b = service("b", { image: "x", mounts: [{ source: d, path: "/d" }] });
+    const c = service("c", { image: "x", mounts: [{ source: d, path: "/d" }] });
     const a = service("a", { image: "x", dependsOn: [b, c] });
     await sim.deploy({ a, b, c, d });
 
@@ -561,7 +561,7 @@ describe("dependency ordering", () => {
     const v = volume("v");
     const s1 = service("s1", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const s2 = service("s2", { image: "x", dependsOn: [s1] });
     const s3 = service("s3", { image: "x", dependsOn: [s2] });
@@ -584,7 +584,7 @@ describe("dependency ordering", () => {
     const c = cronjob("backup", {
       image: "alpine",
       schedule: "0 2 * * *",
-      mounts: [{ volume: v, path: "/logs" }],
+      mounts: [{ source: v, path: "/logs" }],
     });
     await sim.deploy({ c, v });
     const ops = opSummary(sim);
@@ -622,7 +622,7 @@ describe("state correctness", () => {
     const s = service("api", {
       image: "x",
       env: { T: sec },
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, sec, s });
     strictEqual(sim.state.length, 3);
@@ -684,13 +684,13 @@ describe("state correctness", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
     const st = getState(sim.state, "api");
     // The volume in mounts should be replaced with its ID string
-    const mounts = st.inputs["mounts"] as { volume: string; path: string }[];
-    strictEqual(mounts[0]?.volume, "data");
+    const mounts = st.inputs["mounts"] as { source: string; path: string }[];
+    strictEqual(mounts[0]?.source, "data");
   });
 
   it("dependencies list is correct", async () => {
@@ -699,7 +699,7 @@ describe("state correctness", () => {
     const db = service("db", { image: "pg" });
     const api = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
       env: { TOKEN: sec },
       dependsOn: [db],
     });
@@ -876,7 +876,7 @@ describe("multi-deploy lifecycle", () => {
     const v = volume("data");
     const api = service("api", {
       image: "node:20",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, api });
     strictEqual(sim.lastOps().length, 2);
@@ -890,7 +890,7 @@ describe("multi-deploy lifecycle", () => {
     // 3. Modify service
     const apiV2 = service("api", {
       image: "node:22",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, api: apiV2 });
     deepStrictEqual(opSummary(sim), [{ action: "recreate", id: "api" }]);
@@ -933,7 +933,7 @@ describe("multi-deploy lifecycle", () => {
     const v = volume("data");
     const s1 = service("s1", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const s2 = service("s2", { image: "y" });
     await sim.deploy({ v, s1, s2 });
@@ -942,7 +942,7 @@ describe("multi-deploy lifecycle", () => {
     const s1b = service("s1", { image: "x" });
     const s2b = service("s2", {
       image: "y",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s1: s1b, s2: s2b });
 
@@ -963,15 +963,15 @@ describe("multi-deploy lifecycle", () => {
 
     const s1 = service("s1", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const s2 = service("s2", {
       image: "y",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const s3 = service("s3", {
       image: "z",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s1, s2, s3 });
 
@@ -1148,7 +1148,7 @@ describe("failure injection", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
 
     sim.runtime.failOn(
@@ -1223,7 +1223,7 @@ describe("operation interception", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
 
@@ -1303,7 +1303,7 @@ describe("finalize and teardown", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
     strictEqual(sim.runtime.resources.size, 2);
@@ -1381,7 +1381,7 @@ describe("reset", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
     await sim.runtime.finalize([s]);
@@ -1442,7 +1442,7 @@ describe("operation log", () => {
     const v = volume("data");
     const s = service("api", {
       image: "x",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     await sim.deploy({ v, s });
 
@@ -1556,7 +1556,7 @@ describe("complex topologies", () => {
   it("fan-out: one volume shared by many services", async () => {
     const v = volume("shared");
     const services = Array.from({ length: 5 }, (_, i) =>
-      service(`svc${i}`, { image: "x", mounts: [{ volume: v, path: "/d" }] }),
+      service(`svc${i}`, { image: "x", mounts: [{ source: v, path: "/d" }] }),
     );
     await sim.deploy({
       v,
@@ -1579,11 +1579,11 @@ describe("complex topologies", () => {
     const sec = secret("sec");
     const db = service("db", {
       image: "pg",
-      mounts: [{ volume: v1, path: "/d" }],
+      mounts: [{ source: v1, path: "/d" }],
     });
     const cache = service("cache", {
       image: "redis",
-      mounts: [{ volume: v2, path: "/d" }],
+      mounts: [{ source: v2, path: "/d" }],
     });
     const api = service("api", {
       image: "x",
@@ -1593,7 +1593,7 @@ describe("complex topologies", () => {
     const cron = cronjob("cleanup", {
       image: "alpine",
       schedule: "0 3 * * *",
-      mounts: [{ volume: v1, path: "/d" }],
+      mounts: [{ source: v1, path: "/d" }],
       env: { SECRET: sec },
     });
     await sim.deploy({ v1, v2, sec, db, cache, api, cron });
@@ -1699,7 +1699,7 @@ describe("cronjob specifics", () => {
     const c = cronjob("report", {
       image: "alpine",
       schedule: "0 6 * * *",
-      mounts: [{ volume: v, path: "/logs" }],
+      mounts: [{ source: v, path: "/logs" }],
       env: { API_KEY: sec },
     });
     await sim.deploy({ v, sec, c });
@@ -1847,7 +1847,7 @@ describe("edge cases", () => {
       route: "api.example.com",
       env: { TOKEN: sec, NODE_ENV: "production" },
       command: ["node", "server.js"],
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
       dependsOn: [db],
       health: {
         command: "curl localhost:8080/health",

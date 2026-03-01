@@ -1,4 +1,5 @@
 import type { Resource } from "./resource.ts";
+import { MOUNTABLE } from "./resource.ts";
 
 export interface StateEntry {
   readonly id: string;
@@ -28,9 +29,14 @@ export function resourceReplacer(key: string, value: unknown): unknown {
       kind === "secret" ||
       kind === "config" ||
       kind === "service" ||
-      kind === "cronjob"
+      kind === "cronjob" ||
+      kind === "bind"
     ) {
       return r["id"];
+    }
+    // Catch-all for any MOUNTABLE-branded resource (e.g. Archive from @vyft/fs)
+    if (MOUNTABLE in (value as object)) {
+      return (value as unknown as { id: string }).id;
     }
   }
   return value;

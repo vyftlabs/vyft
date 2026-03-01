@@ -1,5 +1,6 @@
 import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { MOUNTABLE } from "@vyft/core";
 import type { StateEntry } from "@vyft/engine";
 import {
   buildGraph,
@@ -11,7 +12,7 @@ import {
 } from "@vyft/engine";
 
 function vol(id: string, config: Record<string, unknown> = {}) {
-  return { kind: "volume" as const, id, config };
+  return { kind: "volume" as const, id, config, [MOUNTABLE]: true as const };
 }
 
 function sec(id: string) {

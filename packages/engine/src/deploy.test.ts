@@ -32,7 +32,7 @@ describe("deploy", () => {
     const s = sec("pass");
     const api = svc("api", {
       image: "node",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
       env: { SECRET: s },
     });
     const rt = mockRuntime();
@@ -141,7 +141,7 @@ describe("deploy", () => {
     const v = vol("data");
     const api = svc("api", {
       image: "node",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
     });
     const rt = mockRuntime();
     const result = await deploy({ v, api }, [], rt);

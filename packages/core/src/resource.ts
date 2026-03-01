@@ -1,6 +1,21 @@
 import { ValidationError } from "./errors.ts";
 import type { EnvValue } from "./ref.ts";
 
+export const MOUNTABLE: unique symbol = Symbol.for("vyft:mountable");
+
+export interface Mountable {
+  readonly [MOUNTABLE]: true;
+  readonly kind: string;
+  readonly id: string;
+}
+
+export interface BindMount {
+  readonly kind: "bind";
+  readonly id: string;
+  readonly hostPath: string;
+  readonly [MOUNTABLE]: true;
+}
+
 const ID_RE = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;
 const ROUTE_RE =
   /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(\/.+)?$/;
@@ -143,7 +158,7 @@ interface BaseServiceConfig {
   /** Override the container entrypoint. Array form bypasses shell interpretation. */
   command?: string | string[];
   /** Volume mounts into the container. */
-  mounts?: { volume: Volume; path: string }[];
+  mounts?: { source: Mountable; path: string }[];
   /** Services that must be healthy before this one starts. */
   dependsOn?: Service[];
   health?: HealthCheck;
@@ -157,6 +172,8 @@ interface BaseServiceConfig {
   replicas?: number;
   /** Local development override. Runs this command instead of the container. */
   dev?: { cwd?: string; command: string };
+  /** Linkable services whose bindings are injected as env vars. */
+  link?: Linkable[];
 }
 
 /**
@@ -175,6 +192,7 @@ export interface Volume {
   readonly kind: "volume";
   readonly id: string;
   readonly config: VolumeConfig;
+  readonly [MOUNTABLE]: true;
 }
 
 /** A long-running container. */
@@ -198,10 +216,12 @@ interface BaseCronJobConfig {
   /** Override the container entrypoint. Array form bypasses shell interpretation. */
   command?: string | string[];
   /** Volume mounts into the container. */
-  mounts?: { volume: Volume; path: string }[];
+  mounts?: { source: Mountable; path: string }[];
   health?: HealthCheck;
   /** @default "on-failure" */
   restart?: "none" | "on-failure";
+  /** Linkable services whose bindings are injected as env vars. */
+  link?: Linkable[];
 }
 
 /**
@@ -220,6 +240,12 @@ export interface CronJob {
   readonly kind: "cronjob";
   readonly id: string;
   readonly config: CronJobConfig;
+}
+
+export interface Linkable {
+  readonly id: string;
+  readonly service: Service;
+  readonly [key: string]: unknown;
 }
 
 export type Resource = Volume | Config | Service | CronJob;

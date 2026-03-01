@@ -7,6 +7,7 @@ export const NON_SPEC_FIELDS: ReadonlySet<string> = new Set([
   "replicas",
   "dev",
   "dependsOn",
+  "link",
 ]);
 
 /**

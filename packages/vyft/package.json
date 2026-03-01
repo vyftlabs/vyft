@@ -10,6 +10,10 @@
     "./resource": {
       "types": "./dist/resource.d.ts",
       "default": "./dist/resource.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts",
+      "default": "./dist/services/index.js"
     }
   },
   "files": [
@@ -27,9 +31,7 @@
     "@vyft/core": "workspace:*",
     "@vyft/engine": "workspace:*",
     "@vyft/store": "workspace:*",
-    "@vyft/docker": "workspace:*",
-    "@vyft/swarm": "workspace:*",
-    "@vyft/kubernetes": "workspace:*",
+    "@vyft/runtime": "workspace:*",
     "commander": "^13.0.0"
   }
 }

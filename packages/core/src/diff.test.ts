@@ -2,9 +2,10 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
 import type { Config, Service, Volume } from "./resource.ts";
+import { MOUNTABLE } from "./resource.ts";
 
 function vol(id: string): Volume {
-  return { kind: "volume", id, config: {} };
+  return { kind: "volume", id, config: {}, [MOUNTABLE]: true };
 }
 
 function sec(id: string): Config {
@@ -36,9 +37,9 @@ describe("changedFields", () => {
 
   it("handles serialization asymmetry for volume mounts", () => {
     const v = vol("data");
-    const prev = { mounts: [{ volume: "data", path: "/d" }] };
+    const prev = { mounts: [{ source: "data", path: "/d" }] };
     const changed = changedFields(prev, {
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     deepStrictEqual(changed, new Set());
   });
@@ -111,10 +112,10 @@ describe("hasSpecChange", () => {
     strictEqual(hasSpecChange(new Set()), false);
   });
 
-  it("NON_SPEC_FIELDS contains exactly route, replicas, dev, dependsOn", () => {
+  it("NON_SPEC_FIELDS contains exactly route, replicas, dev, dependsOn, link", () => {
     deepStrictEqual(
       new Set(NON_SPEC_FIELDS),
-      new Set(["route", "replicas", "dev", "dependsOn"]),
+      new Set(["route", "replicas", "dev", "dependsOn", "link"]),
     );
   });
 });

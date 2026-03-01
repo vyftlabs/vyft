@@ -8,7 +8,7 @@ export const config = {
   app: service("app", {
     image: "alpine:latest",
     command: ["sh", "-c", "touch /data/ready && sleep 3600"],
-    mounts: [{ volume: data, path: "/data" }],
+    mounts: [{ source: data, path: "/data" }],
     health: { command: "test -f /data/ready", interval: "2s", retries: 3 },
   }),
 };

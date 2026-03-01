@@ -16,6 +16,7 @@ export {
   durationToSeconds,
   nanosToDigits,
 } from "./duration.ts";
+export { loadEnv, parseEnv } from "./env.ts";
 export { CliError, ValidationError, VyftError } from "./errors.ts";
 // New exports for monorepo migration
 export { generateSecret } from "./generate.ts";
@@ -24,6 +25,7 @@ export type { Change, StateEntry } from "./plan.ts";
 export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
 export type { Binding, BindValue, ConfigOptions } from "./primitives.ts";
 export {
+  bind,
   bindable,
   config,
   cronjob,
@@ -41,6 +43,7 @@ export type {
 export { interpolate, isInterpolation, isReference } from "./ref.ts";
 export { resolve, resolveCompat, resolveEnv } from "./resolve.ts";
 export type {
+  BindMount,
   BuildConfig,
   Config,
   ConfigConfig,
@@ -48,6 +51,8 @@ export type {
   CronJobConfig,
   GeneratedSecretConfig,
   HealthCheck,
+  Linkable,
+  Mountable,
   PlainConfigConfig,
   ProvidedSecretConfig,
   Resource,
@@ -60,6 +65,7 @@ export type {
 } from "./resource.ts";
 export {
   isSecretConfig,
+  MOUNTABLE,
   validateCron,
   validateDuration,
   validateId,

@@ -6,3 +6,4 @@ dist/
 .nx/workspace-data/
 *.tsbuildinfo
 .claude/
+.env*.local

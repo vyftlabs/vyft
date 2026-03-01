@@ -1,10 +1,12 @@
 import { ValidationError } from "./errors.ts";
-import type { Interpolation, Reference } from "./ref.ts";
+import type { EnvValue, Interpolation, Reference } from "./ref.ts";
 import type {
+  BindMount,
   Config,
   ConfigConfig,
   CronJob,
   CronJobConfig,
+  Linkable,
   SecretConfig,
   Service,
   ServiceConfig,
@@ -12,6 +14,7 @@ import type {
   VolumeConfig,
 } from "./resource.ts";
 import {
+  MOUNTABLE,
   validateCron,
   validateDuration,
   validateId,
@@ -44,7 +47,12 @@ const MAX_SECRET_LENGTH = 256;
  */
 export function volume(id: string, config: VolumeConfig = {}): Volume {
   validateId(id);
-  return { kind: "volume", id, config };
+  return { kind: "volume", id, config, [MOUNTABLE]: true };
+}
+
+export function bind(id: string, hostPath: string): BindMount {
+  validateId(id);
+  return { kind: "bind", id, hostPath, [MOUNTABLE]: true };
 }
 
 export interface ConfigOptions {
@@ -134,27 +142,72 @@ export function secret(id: string, cfg: SecretConfig = {}): Config {
  * service("db", { image: "postgres:17", port: 5432 })
  * ```
  */
+function isBinding(value: unknown): value is Binding {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Binding).kind === "binding"
+  );
+}
+
+function bindingToEnvValue(value: BindValue): EnvValue {
+  if (typeof value === "number") return String(value);
+  return value; // string | Reference | Interpolation are already EnvValue
+}
+
+function expandLink(linkItems: Linkable[]): {
+  env: Record<string, EnvValue>;
+  deps: Service[];
+} {
+  const env: Record<string, EnvValue> = {};
+  const deps: Service[] = [];
+  for (const item of linkItems) {
+    deps.push(item.service);
+    const prefix = item.id.toUpperCase().replace(/-/g, "_");
+    for (const [key, value] of Object.entries(item)) {
+      if (isBinding(value)) {
+        const envName = `${prefix}_${key.toUpperCase()}`;
+        env[envName] = bindingToEnvValue(value.value);
+      }
+    }
+  }
+  return { env, deps };
+}
+
 export function service(id: string, config: ServiceConfig): Service {
   validateId(id);
-  if (config.route !== undefined) validateRoute(config.route);
-  const port = config.port ?? DEFAULT_PORT;
+
+  // Expand link items into env vars and dependsOn, then strip link from config
+  const { link: linkItems, ...restConfig } = config;
+  let finalConfig: ServiceConfig = restConfig;
+  if (linkItems) {
+    const { env, deps } = expandLink(linkItems);
+    finalConfig = {
+      ...restConfig,
+      env: { ...env, ...restConfig.env },
+      dependsOn: [...deps, ...(restConfig.dependsOn ?? [])],
+    };
+  }
+
+  if (finalConfig.route !== undefined) validateRoute(finalConfig.route);
+  const port = finalConfig.port ?? DEFAULT_PORT;
   if (port < 1 || port > 65535 || !Number.isInteger(port)) {
     throw new ValidationError(
       `Service "${id}" port must be an integer between 1 and 65535`,
     );
   }
-  if (config.health) {
-    if (config.health.interval !== undefined)
-      validateDuration("health.interval", config.health.interval);
-    if (config.health.timeout !== undefined)
-      validateDuration("health.timeout", config.health.timeout);
-    if (config.health.startPeriod !== undefined)
-      validateDuration("health.startPeriod", config.health.startPeriod);
+  if (finalConfig.health) {
+    if (finalConfig.health.interval !== undefined)
+      validateDuration("health.interval", finalConfig.health.interval);
+    if (finalConfig.health.timeout !== undefined)
+      validateDuration("health.timeout", finalConfig.health.timeout);
+    if (finalConfig.health.startPeriod !== undefined)
+      validateDuration("health.startPeriod", finalConfig.health.startPeriod);
   }
   return {
     kind: "service",
     id,
-    config,
+    config: finalConfig,
     host: id,
     port,
     url: `http://${id}:${port}`,
@@ -171,14 +224,26 @@ export function service(id: string, config: ServiceConfig): Service {
  */
 export function cronjob(id: string, config: CronJobConfig): CronJob {
   validateId(id);
-  validateCron(config.schedule);
-  if (config.health) {
-    if (config.health.interval !== undefined)
-      validateDuration("health.interval", config.health.interval);
-    if (config.health.timeout !== undefined)
-      validateDuration("health.timeout", config.health.timeout);
-    if (config.health.startPeriod !== undefined)
-      validateDuration("health.startPeriod", config.health.startPeriod);
+
+  // Expand link items into env vars, then strip link from config
+  const { link: linkItems, ...restConfig } = config;
+  let finalConfig: CronJobConfig = restConfig;
+  if (linkItems) {
+    const { env } = expandLink(linkItems);
+    finalConfig = {
+      ...restConfig,
+      env: { ...env, ...restConfig.env },
+    };
   }
-  return { kind: "cronjob", id, config };
+
+  validateCron(finalConfig.schedule);
+  if (finalConfig.health) {
+    if (finalConfig.health.interval !== undefined)
+      validateDuration("health.interval", finalConfig.health.interval);
+    if (finalConfig.health.timeout !== undefined)
+      validateDuration("health.timeout", finalConfig.health.timeout);
+    if (finalConfig.health.startPeriod !== undefined)
+      validateDuration("health.startPeriod", finalConfig.health.startPeriod);
+  }
+  return { kind: "cronjob", id, config: finalConfig };
 }

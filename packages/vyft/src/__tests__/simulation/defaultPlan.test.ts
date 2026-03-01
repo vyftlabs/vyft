@@ -1,6 +1,7 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Change } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/core";
 import { defaultPlan } from "../simulation.ts";
 
 describe("defaultPlan", () => {
@@ -22,7 +23,7 @@ describe("defaultPlan", () => {
   it("volume modify returns empty", () => {
     const change: Change = {
       status: "modify",
-      resource: { kind: "volume", id: "v", config: {} },
+      resource: { kind: "volume", id: "v", config: {}, [MOUNTABLE]: true },
     };
     deepStrictEqual(defaultPlan(change), []);
   });
@@ -30,7 +31,7 @@ describe("defaultPlan", () => {
   it("volume modify with previous returns empty (immutability check fires first)", () => {
     const change: Change = {
       status: "modify",
-      resource: { kind: "volume", id: "v", config: {} },
+      resource: { kind: "volume", id: "v", config: {}, [MOUNTABLE]: true },
       previous: {},
     };
     deepStrictEqual(defaultPlan(change), []);
@@ -148,10 +149,13 @@ describe("defaultPlan", () => {
   it("volume create returns create", () => {
     const change: Change = {
       status: "create",
-      resource: { kind: "volume", id: "v", config: {} },
+      resource: { kind: "volume", id: "v", config: {}, [MOUNTABLE]: true },
     };
     deepStrictEqual(defaultPlan(change), [
-      { action: "create", resource: { kind: "volume", id: "v", config: {} } },
+      {
+        action: "create",
+        resource: { kind: "volume", id: "v", config: {}, [MOUNTABLE]: true },
+      },
     ]);
   });
 });

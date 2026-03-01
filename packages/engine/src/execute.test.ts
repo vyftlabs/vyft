@@ -138,7 +138,7 @@ describe("execute", () => {
     const v = vol("data");
     const s = svc("api", {
       image: "test",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
     });
     const graph = buildGraph([v, s]);
 
@@ -177,11 +177,11 @@ describe("execute", () => {
     const v = vol("data");
     const s1 = svc("s1", {
       image: "test",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const s2 = svc("s2", {
       image: "test",
-      mounts: [{ volume: v, path: "/d" }],
+      mounts: [{ source: v, path: "/d" }],
     });
     const graph = buildGraph([v, s1, s2]);
 

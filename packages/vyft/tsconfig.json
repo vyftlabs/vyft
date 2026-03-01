@@ -9,8 +9,6 @@
     { "path": "../core" },
     { "path": "../engine" },
     { "path": "../store" },
-    { "path": "../docker" },
-    { "path": "../swarm" },
-    { "path": "../kubernetes" }
+    { "path": "../runtime" }
   ]
 }

@@ -7,11 +7,9 @@ import type {
   Service,
 } from "@vyft/core";
 import { changedFields, hasSpecChange } from "@vyft/core";
-import { createDockerRuntime } from "@vyft/docker";
 import { deploy } from "@vyft/engine";
-import { createK8sRuntime } from "@vyft/kubernetes";
+import { docker, kubernetes, swarm } from "@vyft/runtime";
 import type { ResourceState } from "@vyft/store";
-import { createSwarmRuntime } from "@vyft/swarm";
 import {
   createMockDockerClient,
   createMockK8sClient,
@@ -175,15 +173,14 @@ export class Simulation {
     if (!runtimeType) {
       this.runtime = new SimulationRuntime();
     } else if (runtimeType === "k8s") {
-      const rt = createK8sRuntime({
+      const rt = kubernetes({
         project: "test",
         secrets: new Map(),
         client: createMockK8sClient(),
       });
       this.runtime = new SimulationRuntime(rt.plan);
     } else {
-      const factory =
-        runtimeType === "swarm" ? createSwarmRuntime : createDockerRuntime;
+      const factory = runtimeType === "swarm" ? swarm : docker;
       const rt = factory({
         project: "test",
         secrets: new Map(),

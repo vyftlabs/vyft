@@ -16,7 +16,7 @@ describe("validate", () => {
     const api = svc("api", {
       image: "node",
       dependsOn: [db],
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
       env: { SECRET: s },
     });
     doesNotThrow(() => validate(buildGraph([v, s, db, api])));

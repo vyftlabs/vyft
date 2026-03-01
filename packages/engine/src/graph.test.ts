@@ -32,7 +32,7 @@ describe("collect", () => {
     const s = sec("pass");
     const a = svc("api", {
       image: "node",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
       env: { SECRET: s },
     });
     const result = collect(a);
@@ -86,7 +86,7 @@ describe("buildGraph", () => {
     const v = vol("data");
     const api = svc("api", {
       image: "node",
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
     });
     const graph = buildGraph([v, api]);
     ok(graph.dependencies.get("api")?.has("data"));
@@ -122,7 +122,7 @@ describe("buildGraph", () => {
     const api = svc("api", {
       image: "node",
       dependsOn: [db],
-      mounts: [{ volume: v, path: "/data" }],
+      mounts: [{ source: v, path: "/data" }],
       env: { SECRET: s },
     });
     const graph = buildGraph([v, s, db, api]);

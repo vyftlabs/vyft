@@ -36,12 +36,12 @@
     { "path": "packages/core" },
     { "path": "packages/engine" },
     { "path": "packages/store" },
-    { "path": "packages/docker" },
-    { "path": "packages/swarm" },
-    { "path": "packages/kubernetes" },
+    { "path": "packages/runtime" },
     { "path": "packages/vyft" },
     { "path": "packages/provider" },
     { "path": "packages/platform" },
-    { "path": "packages/hcloud" }
+    { "path": "packages/hcloud" },
+    { "path": "packages/crypto" },
+    { "path": "packages/fs" }
   ]
 }

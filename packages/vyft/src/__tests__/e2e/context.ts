@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
-import type { DockerClient } from "@vyft/docker/client";
-import type { K8sClient } from "@vyft/kubernetes/client";
+import type { DockerClient } from "@vyft/runtime/docker/client";
+import type { K8sClient } from "@vyft/runtime/kubernetes/client";
 import type { ResourceState } from "@vyft/store";
 
 interface ContainerInspect {

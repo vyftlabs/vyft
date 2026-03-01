@@ -32,8 +32,8 @@ describe("order", () => {
 
   it("handles diamond dependencies", () => {
     const d = vol("d");
-    const b = svc("b", { image: "test", mounts: [{ volume: d, path: "/d" }] });
-    const c = svc("c", { image: "test", mounts: [{ volume: d, path: "/d" }] });
+    const b = svc("b", { image: "test", mounts: [{ source: d, path: "/d" }] });
+    const c = svc("c", { image: "test", mounts: [{ source: d, path: "/d" }] });
     const a = svc("a", { image: "test", dependsOn: [b, c] });
     const ids = order(buildGraph([a, b, c, d])).map((r) => r.id);
     ok(ids.indexOf("d") < ids.indexOf("b"));
@@ -106,8 +106,8 @@ describe("levels", () => {
 
   it("handles diamond dependencies", () => {
     const d = vol("d");
-    const b = svc("b", { image: "test", mounts: [{ volume: d, path: "/d" }] });
-    const c = svc("c", { image: "test", mounts: [{ volume: d, path: "/d" }] });
+    const b = svc("b", { image: "test", mounts: [{ source: d, path: "/d" }] });
+    const c = svc("c", { image: "test", mounts: [{ source: d, path: "/d" }] });
     const a = svc("a", { image: "test", dependsOn: [b, c] });
     const result = levels(buildGraph([a, b, c, d]));
     strictEqual(result.length, 3);

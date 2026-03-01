@@ -1,5 +1,5 @@
-import type { DockerClient } from "@vyft/docker/client";
-import type { K8sClient, K8sManifest } from "@vyft/kubernetes/client";
+import type { DockerClient } from "@vyft/runtime/docker/client";
+import type { K8sClient, K8sManifest } from "@vyft/runtime/kubernetes/client";
 
 export function createMockDockerClient(): DockerClient {
   return {

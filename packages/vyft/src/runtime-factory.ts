@@ -1,15 +1,13 @@
 import type { ExtendedRuntime, RuntimeName, RuntimeOptions } from "@vyft/core";
-import { createDockerRuntime } from "@vyft/docker";
-import { createK8sRuntime } from "@vyft/kubernetes";
-import { createSwarmRuntime } from "@vyft/swarm";
+import { docker, kubernetes, swarm } from "@vyft/runtime";
 
 const factories: Record<
   RuntimeName,
   (opts: RuntimeOptions) => ExtendedRuntime
 > = {
-  docker: createDockerRuntime,
-  swarm: createSwarmRuntime,
-  k8s: createK8sRuntime,
+  docker,
+  swarm,
+  k8s: kubernetes,
 };
 
 /** Create an ExtendedRuntime instance for the given runtime name. */

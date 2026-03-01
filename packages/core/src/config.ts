@@ -1,6 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { createJiti } from "jiti";
+import { loadEnv } from "./env.ts";
 import { VyftError } from "./errors.ts";
 
 export const RUNTIMES = ["docker", "swarm", "k8s"] as const;
@@ -61,6 +62,7 @@ export async function findConfig(dir: string): Promise<string> {
 
 /** Load and execute a config file. Returns the raw module for collect(). */
 export async function loadConfig(path: string): Promise<unknown> {
+  await loadEnv(dirname(path));
   const jiti = createJiti(import.meta.url);
   return jiti.import(path);
 }

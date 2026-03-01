@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { Change, Operation, Runtime } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/core";
 import { deploy } from "@vyft/engine";
 import type { PersistedState } from "@vyft/store";
 import { createFileStore } from "@vyft/store";
@@ -26,7 +27,12 @@ function mockRuntime(): Runtime {
 }
 
 function vol(id: string) {
-  return { kind: "volume" as const, id, config: {} };
+  return {
+    kind: "volume" as const,
+    id,
+    config: {},
+    [MOUNTABLE]: true as const,
+  };
 }
 
 function sec(id: string) {

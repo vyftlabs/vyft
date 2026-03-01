@@ -1,0 +1,69 @@
+{
+  "name": "@vyft/runtime",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./docker": {
+      "types": "./dist/docker/index.d.ts",
+      "default": "./dist/docker/index.js"
+    },
+    "./docker/client": {
+      "types": "./dist/docker/client.d.ts",
+      "default": "./dist/docker/client.js"
+    },
+    "./docker/caddy": {
+      "types": "./dist/docker/caddy.d.ts",
+      "default": "./dist/docker/caddy.js"
+    },
+    "./docker/cronjob": {
+      "types": "./dist/docker/cronjob.d.ts",
+      "default": "./dist/docker/cronjob.js"
+    },
+    "./docker/volume": {
+      "types": "./dist/docker/volume.d.ts",
+      "default": "./dist/docker/volume.js"
+    },
+    "./docker/service": {
+      "types": "./dist/docker/service.d.ts",
+      "default": "./dist/docker/service.js"
+    },
+    "./kubernetes": {
+      "types": "./dist/kubernetes/index.d.ts",
+      "default": "./dist/kubernetes/index.js"
+    },
+    "./kubernetes/client": {
+      "types": "./dist/kubernetes/client.d.ts",
+      "default": "./dist/kubernetes/client.js"
+    },
+    "./swarm": {
+      "types": "./dist/swarm/index.d.ts",
+      "default": "./dist/swarm/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'src/**/*.test.ts'",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@vyft/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@kubernetes/client-node": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@kubernetes/client-node": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@kubernetes/client-node": "^1.4.0"
+  }
+}

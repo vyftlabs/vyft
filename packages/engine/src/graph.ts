@@ -6,6 +6,7 @@ import type {
   Resource,
   Service,
 } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/core";
 
 export type BindingLeaf = { kind: "leaf"; value: BindValue };
 export type BindingTree =
@@ -70,8 +71,11 @@ export function collect(value: unknown): Resource[] {
       kind === "secret" ||
       kind === "config" ||
       kind === "service" ||
-      kind === "cronjob"
+      kind === "cronjob" ||
+      kind === "bind"
     ) {
+      found.push(v as Resource);
+    } else if (typeof v === "object" && v !== null && MOUNTABLE in v) {
       found.push(v as Resource);
     }
 
@@ -105,7 +109,7 @@ function depsOf(svc: Service): Set<string> {
     for (const s of svc.config.dependsOn) deps.add(s.id);
   }
   if (svc.config.mounts) {
-    for (const m of svc.config.mounts) deps.add(m.volume.id);
+    for (const m of svc.config.mounts) deps.add(m.source.id);
   }
   if (svc.config.env) {
     for (const v of Object.values(svc.config.env)) refsIn(v, deps);
@@ -117,7 +121,7 @@ function depsOf(svc: Service): Set<string> {
 function cronDepsOf(cron: CronJob): Set<string> {
   const deps = new Set<string>();
   if (cron.config.mounts) {
-    for (const m of cron.config.mounts) deps.add(m.volume.id);
+    for (const m of cron.config.mounts) deps.add(m.source.id);
   }
   if (cron.config.env) {
     for (const v of Object.values(cron.config.env)) refsIn(v, deps);

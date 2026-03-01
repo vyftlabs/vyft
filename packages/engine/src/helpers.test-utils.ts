@@ -6,9 +6,10 @@ import type {
   ServiceConfig,
   Volume,
 } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/core";
 
 export function vol(id: string): Volume {
-  return { kind: "volume", id, config: {} };
+  return { kind: "volume", id, config: {}, [MOUNTABLE]: true };
 }
 
 export function sec(id: string): Secret {

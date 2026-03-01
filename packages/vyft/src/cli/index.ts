@@ -8,6 +8,7 @@ import { registerDeploy } from "./commands/deploy.ts";
 import { registerDestroy } from "./commands/destroy.ts";
 import { registerDev } from "./commands/dev.ts";
 import { registerDiff } from "./commands/diff.ts";
+import { registerGenerate } from "./commands/generate.ts";
 import { registerOutput } from "./commands/output.ts";
 import { registerPreview } from "./commands/preview.ts";
 import { registerRefresh } from "./commands/refresh.ts";
@@ -33,6 +34,7 @@ registerOutput(program);
 registerPreview(program);
 registerCancel(program);
 registerDiff(program);
+registerGenerate(program);
 
 program.parseAsync().catch((err: unknown) => {
   if (err instanceof VyftError) {

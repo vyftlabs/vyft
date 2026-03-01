@@ -68,6 +68,15 @@ export async function deploy(
   taintedIds?: Set<string>,
 ): Promise<DeployResult> {
   const resources = collect(config);
+
+  // Resolve mountable resources (e.g., archive runs glob + computes content hash)
+  for (const r of resources) {
+    const rec = r as unknown as Record<string, unknown>;
+    if (typeof rec["resolve"] === "function") {
+      await (rec["resolve"] as () => Promise<void>)();
+    }
+  }
+
   const graph = buildGraph(resources);
   validate(graph);
 
