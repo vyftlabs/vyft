@@ -18,11 +18,12 @@ export const api = service("api", {
 
 // index.ts
 
+import { db } from "vyft/resource";
 import { Hono } from "hono";
 import postgres from "postgres";
-import { db } from "vyft/resource";
 
 const sql = postgres(db.url);
+
 const app = new Hono();
 
 app.get("/", async (c) => {
