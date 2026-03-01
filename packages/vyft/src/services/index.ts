@@ -1,3 +1,5 @@
+export type { Site, SiteOptions } from "@vyft/core";
+export { site } from "@vyft/core";
 export type { Bucket } from "./bucket.ts";
 export { bucket } from "./bucket.ts";
 export type { Postgres, PostgresOptions } from "./postgres.ts";

@@ -23,7 +23,13 @@ export { generateSecret } from "./generate.ts";
 export { buildImage, pullImage, pushImage } from "./image.ts";
 export type { Change, StateEntry } from "./plan.ts";
 export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
-export type { Binding, BindValue, ConfigOptions } from "./primitives.ts";
+export type {
+  Binding,
+  BindValue,
+  ConfigOptions,
+  Site,
+  SiteOptions,
+} from "./primitives.ts";
 export {
   bind,
   bindable,
@@ -31,6 +37,7 @@ export {
   cronjob,
   secret,
   service,
+  site,
   volume,
 } from "./primitives.ts";
 export type {

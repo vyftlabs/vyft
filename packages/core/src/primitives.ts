@@ -247,3 +247,64 @@ export function cronjob(id: string, config: CronJobConfig): CronJob {
   }
   return { kind: "cronjob", id, config: finalConfig };
 }
+
+export interface SiteOptions {
+  /** Path to directory with package.json containing a "build" script. */
+  path: string;
+  /** Public domain, e.g. "example.com". */
+  domain?: string;
+  /** Custom build command. @default "npm run build" */
+  buildCommand?: string;
+  /** Output directory relative to path. @default "dist" */
+  outDir?: string;
+  /** SPA fallback to index.html. @default true */
+  spa?: boolean;
+}
+
+export interface Site extends Linkable {
+  readonly service: Service;
+  readonly url: Binding;
+  readonly host: Binding;
+  readonly port: Binding;
+  readonly path: string;
+  readonly buildCommand: string;
+  readonly outDir: string;
+  readonly spa: boolean;
+}
+
+/**
+ * Create a static site served by nginx.
+ *
+ * @example
+ * ```ts
+ * site("web", { path: "./apps/web", domain: "example.com" })
+ * ```
+ */
+export function site(id: string, opts: SiteOptions): Site {
+  const buildCommand = opts.buildCommand ?? "npm run build";
+  const outDir = opts.outDir ?? "dist";
+  const spa = opts.spa ?? true;
+
+  const svc = service(id, {
+    image: "nginx:alpine",
+    port: 80,
+    ...(opts.domain ? { route: opts.domain } : {}),
+    health: {
+      command: "curl -f http://localhost/ || exit 1",
+      interval: "5s",
+      retries: 3,
+    },
+  });
+
+  return {
+    id,
+    service: svc,
+    url: bindable(`http://${id}:80`),
+    host: bindable(id),
+    port: bindable(80),
+    path: opts.path,
+    buildCommand,
+    outDir,
+    spa,
+  };
+}
