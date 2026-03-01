@@ -13,7 +13,7 @@ import { postgres } from "vyft/services";
 
 export const db = postgres("db");
 
-export const backend = service("backend", {
+export const api = service("api", {
   domain: "api.example.com",
   replicas: 2,
   link: [db],
