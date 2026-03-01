@@ -5,7 +5,7 @@ Core primitives for defining infrastructure resources.
 ## Usage
 
 ```ts
-import { service, cronjob, volume, secret } from "@vyft/core";
+import { config, service, cronjob, volume } from "@vyft/core";
 
 const db = volume("db-data", { driver: "local" });
 
@@ -21,7 +21,7 @@ const backup = cronjob("backup", {
   command: ["sh", "-c", "backup.sh"],
 });
 
-const token = secret("api-token", { generate: { length: 32 } });
+const token = config("api-token", { secret: true, length: 32 });
 ```
 
 ## Exports
@@ -29,6 +29,7 @@ const token = secret("api-token", { generate: { length: 32 } });
 - `service(id, config)` — long-running container
 - `cronjob(id, config)` — scheduled job
 - `volume(id, config)` — persistent storage
-- `secret(id, config)` — secret value (generated or user-provided)
+- `config(id, opts?)` — configuration value (plain or secret)
+- `site(id, opts)` — static site served by nginx
 - Validators: `validateId`, `validateDuration`, `validateRoute`, `validateCron`
 - Reference utilities: `interpolate`, `isReference`, `isInterpolation`
