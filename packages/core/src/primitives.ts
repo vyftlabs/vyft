@@ -1,4 +1,5 @@
 import { ValidationError } from "./errors.ts";
+import type { Interpolation, Reference } from "./ref.ts";
 import type {
   CronJob,
   CronJobConfig,
@@ -15,6 +16,17 @@ import {
   validateId,
   validateRoute,
 } from "./resource.ts";
+
+export type BindValue = string | number | Reference | Interpolation;
+
+export interface Binding {
+  readonly kind: "binding";
+  readonly value: BindValue;
+}
+
+export function bindable(value: BindValue): Binding {
+  return { kind: "binding", value };
+}
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_SECRET_LENGTH = 32;
