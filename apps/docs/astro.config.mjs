@@ -4,8 +4,8 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://vyftlabs.github.io',
-	base: '/vyft',
+	site: 'https://vyft.dev',
+	base: '/docs',
 	integrations: [
 		starlight({
 			title: 'Vyft',
