@@ -16,13 +16,13 @@ describe("bucket()", () => {
   it("has bindable url, name, host, and port", () => {
     const uploads = bucket("uploads");
     strictEqual(uploads.url.kind, "binding");
-    strictEqual(uploads.url.value, "http://storage:9000");
+    strictEqual(uploads.url.value, "http://storage:3900");
     strictEqual(uploads.name.kind, "binding");
     strictEqual(uploads.name.value, "uploads");
     strictEqual(uploads.host.kind, "binding");
     strictEqual(uploads.host.value, "storage");
     strictEqual(uploads.port.kind, "binding");
-    strictEqual(uploads.port.value, 9000);
+    strictEqual(uploads.port.value, 3900);
   });
 
   it("multiple buckets share the same underlying service", () => {
@@ -53,16 +53,15 @@ describe("bucket()", () => {
     strictEqual(secretRef.id, "storage-secret-key");
   });
 
-  it("shared service has correct MinIO configuration", () => {
+  it("shared service has correct Garage configuration", () => {
     const uploads = bucket("uploads");
     const svc = uploads.service;
-    strictEqual(svc.config.image, "minio/minio");
-    strictEqual(svc.port, 9000);
-    strictEqual(svc.config.command, "server /data --console-address :9001");
-    strictEqual(svc.config.mounts?.[0]?.path, "/data");
+    strictEqual(svc.config.image, "dxflrs/garage:v1.1.0");
+    strictEqual(svc.port, 3900);
+    strictEqual(svc.config.mounts?.[0]?.path, "/var/lib/garage");
     strictEqual(
       svc.config.health?.command,
-      "curl -f http://localhost:9000/minio/health/live",
+      "curl -f http://localhost:3900/health || exit 1",
     );
     strictEqual(svc.config.health?.interval, "5s");
     strictEqual(svc.config.health?.retries, 5);
@@ -74,10 +73,10 @@ describe("bucket()", () => {
       build: "./apps/api",
       link: [uploads],
     });
-    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:9000");
+    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:3900");
     strictEqual(api.config.env?.["UPLOADS_NAME"], "uploads");
     strictEqual(api.config.env?.["UPLOADS_HOST"], "storage");
-    strictEqual(api.config.env?.["UPLOADS_PORT"], "9000");
+    strictEqual(api.config.env?.["UPLOADS_PORT"], "3900");
     // access and secret are Config references, passed through as-is
     const accessEnv = api.config.env?.["UPLOADS_ACCESS"] as {
       kind: string;
@@ -101,9 +100,9 @@ describe("bucket()", () => {
       build: "./apps/worker",
       link: [uploads, assets],
     });
-    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:9000");
+    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:3900");
     strictEqual(api.config.env?.["UPLOADS_NAME"], "uploads");
-    strictEqual(api.config.env?.["ASSETS_URL"], "http://storage:9000");
+    strictEqual(api.config.env?.["ASSETS_URL"], "http://storage:3900");
     strictEqual(api.config.env?.["ASSETS_NAME"], "assets");
   });
 });

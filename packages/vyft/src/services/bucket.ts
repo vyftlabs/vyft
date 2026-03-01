@@ -11,7 +11,7 @@ export interface Bucket extends Linkable {
   readonly secret: Binding;
 }
 
-// Module-level singleton for shared MinIO
+// Module-level singleton for shared Garage
 let shared: {
   svc: Service;
   vol: Volume;
@@ -25,16 +25,15 @@ function getSharedStorage() {
     const accessKey = config("storage-access-key", { secret: true });
     const secretKey = config("storage-secret-key", { secret: true });
     const svc = service("storage", {
-      image: "minio/minio",
-      port: 9000,
-      command: "server /data --console-address :9001",
+      image: "dxflrs/garage:v1.1.0",
+      port: 3900,
       env: {
-        MINIO_ROOT_USER: accessKey,
-        MINIO_ROOT_PASSWORD: secretKey,
+        GARAGE_ACCESS_KEY: accessKey,
+        GARAGE_SECRET_KEY: secretKey,
       },
-      mounts: [{ source: vol, path: "/data" }],
+      mounts: [{ source: vol, path: "/var/lib/garage" }],
       health: {
-        command: "curl -f http://localhost:9000/minio/health/live",
+        command: "curl -f http://localhost:3900/health || exit 1",
         interval: "5s",
         retries: 5,
       },
@@ -49,10 +48,10 @@ export function bucket(name: string): Bucket {
   return {
     id: name,
     service: svc,
-    url: bindable("http://storage:9000"),
+    url: bindable("http://storage:3900"),
     name: bindable(name),
     host: bindable("storage"),
-    port: bindable(9000),
+    port: bindable(3900),
     access: bindable(accessKey),
     secret: bindable(secretKey),
   };
