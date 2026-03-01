@@ -8,17 +8,17 @@ Deploy apps with TypeScript. Define services, cron jobs, secrets, and volumes as
 
 ```ts
 // vyft.config.ts
-import { service, secret, volume } from "vyft";
+import { service } from "vyft";
+import { postgres } from "vyft/services";
 
-const dbPassword = secret("db-password");
-const data = volume("pgdata");
+export const db = postgres("db");
 
-export const db = service("db", {
-  image: "postgres:17",
-  port: 5432,
-  env: { POSTGRES_PASSWORD: dbPassword },
-  mounts: [{ volume: data, path: "/var/lib/postgresql/data" }],
+export const backend = service("backend", {
+  domain: "api.example.com",
+  replicas: 2,
+  link: [db],
 });
+
 
 
 ```
