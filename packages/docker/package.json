@@ -6,6 +6,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./caddy": {
+      "types": "./dist/caddy.d.ts",
+      "default": "./dist/caddy.js"
+    },
+    "./cronjob": {
+      "types": "./dist/cronjob.d.ts",
+      "default": "./dist/cronjob.js"
+    },
+    "./volume": {
+      "types": "./dist/volume.d.ts",
+      "default": "./dist/volume.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
     }
   },
   "files": [

@@ -17,6 +17,7 @@
     "lint": "biome check ."
   },
   "dependencies": {
-    "@vyft/core": "workspace:*"
+    "@vyft/core": "workspace:*",
+    "@vyft/docker": "workspace:*"
   }
 }

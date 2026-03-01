@@ -22,7 +22,6 @@
 
     // Output
     "outDir": "dist",
-    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -32,6 +31,17 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "*.ts"],
-  "exclude": ["node_modules", "dist", "packages"]
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/engine" },
+    { "path": "packages/store" },
+    { "path": "packages/docker" },
+    { "path": "packages/swarm" },
+    { "path": "packages/kubernetes" },
+    { "path": "packages/vyft" },
+    { "path": "packages/provider" },
+    { "path": "packages/platform" },
+    { "path": "packages/hcloud" }
+  ]
 }

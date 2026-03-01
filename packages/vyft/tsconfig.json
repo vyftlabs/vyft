@@ -5,5 +5,12 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../provider" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../engine" },
+    { "path": "../store" },
+    { "path": "../docker" },
+    { "path": "../swarm" },
+    { "path": "../kubernetes" }
+  ]
 }

@@ -6,3 +6,5 @@ export class VyftError extends Error {
 }
 
 export class ValidationError extends VyftError {}
+
+export class CliError extends VyftError {}

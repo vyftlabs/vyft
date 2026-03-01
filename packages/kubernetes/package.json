@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
     }
   },
   "files": [
@@ -18,5 +22,11 @@
   },
   "dependencies": {
     "@vyft/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@kubernetes/client-node": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@kubernetes/client-node": "^1.4.0"
   }
 }

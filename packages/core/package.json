@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "default": "./dist/logger.js"
     }
   },
   "files": [
@@ -15,5 +19,8 @@
     "build": "tsc",
     "test": "node --test 'src/**/*.test.ts'",
     "lint": "biome check ."
+  },
+  "dependencies": {
+    "jiti": "^2.4.2"
   }
 }
