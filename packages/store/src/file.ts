@@ -107,6 +107,7 @@ export function createFileStore(root: string): Store {
         },
         resources: [...resources.values()],
         secrets: state?.secrets ?? null,
+        secretOutputs: state?.secretOutputs ?? null,
       };
     },
 

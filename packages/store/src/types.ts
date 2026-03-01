@@ -16,6 +16,7 @@ export interface PersistedState {
   readonly manifest: { readonly timestamp: string; readonly tool: string };
   readonly resources: ResourceState[];
   readonly secrets: EncryptedPayload | null;
+  readonly secretOutputs?: EncryptedPayload | null;
 }
 
 /** A single WAL entry appended during deploy/destroy. */
