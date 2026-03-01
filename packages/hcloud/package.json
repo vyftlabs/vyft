@@ -19,7 +19,7 @@
   "dependencies": {
     "@vyft/platform": "workspace:*",
     "@vyft/provider": "workspace:*",
-    "openapi-fetch": "^0.13.5"
+    "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
     "openapi-typescript": "^7.6.1"
