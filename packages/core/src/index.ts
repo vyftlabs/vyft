@@ -6,6 +6,7 @@ export {
   projectInfo,
   RUNTIMES,
   resolveContext,
+  resolveStage,
   saveContextConfig,
 } from "./config.ts";
 export { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
@@ -21,17 +22,33 @@ export { generateSecret } from "./generate.ts";
 export { buildImage, pullImage, pushImage } from "./image.ts";
 export type { Change, StateEntry } from "./plan.ts";
 export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
-export type { Binding, BindValue } from "./primitives.ts";
-export { bindable, cronjob, secret, service, volume } from "./primitives.ts";
-export type { EnvValue, Interpolation, Reference, SecretRef } from "./ref.ts";
+export type { Binding, BindValue, ConfigOptions } from "./primitives.ts";
+export {
+  bindable,
+  config,
+  cronjob,
+  secret,
+  service,
+  volume,
+} from "./primitives.ts";
+export type {
+  ConfigRef,
+  EnvValue,
+  Interpolation,
+  Reference,
+  SecretRef,
+} from "./ref.ts";
 export { interpolate, isInterpolation, isReference } from "./ref.ts";
-export { resolve, resolveEnv } from "./resolve.ts";
+export { resolve, resolveCompat, resolveEnv } from "./resolve.ts";
 export type {
   BuildConfig,
+  Config,
+  ConfigConfig,
   CronJob,
   CronJobConfig,
   GeneratedSecretConfig,
   HealthCheck,
+  PlainConfigConfig,
   ProvidedSecretConfig,
   Resource,
   Secret,
@@ -42,6 +59,7 @@ export type {
   VolumeConfig,
 } from "./resource.ts";
 export {
+  isSecretConfig,
   validateCron,
   validateDuration,
   validateId,

@@ -87,10 +87,33 @@ export async function resolveContext(root: string): Promise<string> {
   return "default";
 }
 
+/**
+ * Resolve the active stage name.
+ *
+ * 1. `VYFT_STAGE` env var
+ * 2. `.vyft/stages/active` file
+ * 3. `"local"`
+ */
+export async function resolveStage(root: string): Promise<string> {
+  const env = process.env["VYFT_STAGE"];
+  if (env) return env;
+
+  try {
+    const active = await readFile(join(root, "stages", "active"), "utf8");
+    const trimmed = active.trim();
+    if (trimmed) return trimmed;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+
+  return "local";
+}
+
 export interface ProjectInfo {
   readonly cwd: string;
   readonly root: string;
   readonly context: string;
+  readonly stage: string;
   readonly project: string;
   readonly runtimeName: RuntimeName;
 }
@@ -100,6 +123,7 @@ export async function projectInfo(): Promise<ProjectInfo> {
   const cwd = process.cwd();
   const root = join(cwd, ".vyft");
   const context = await resolveContext(root);
+  const stage = await resolveStage(root);
   const project = basename(cwd);
 
   const ctxConfig = await loadContextConfig(root, context);
@@ -109,5 +133,5 @@ export async function projectInfo(): Promise<ProjectInfo> {
     );
   }
 
-  return { cwd, root, context, project, runtimeName: ctxConfig.runtime };
+  return { cwd, root, context, stage, project, runtimeName: ctxConfig.runtime };
 }

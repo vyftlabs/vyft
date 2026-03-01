@@ -2,7 +2,7 @@ import type { Resource } from "./resource.ts";
 
 export interface StateEntry {
   readonly id: string;
-  readonly kind: Resource["kind"];
+  readonly kind: Resource["kind"] | "secret";
   readonly fingerprint: string;
   readonly inputs?: Record<string, unknown>;
 }
@@ -11,7 +11,7 @@ export interface StateEntry {
 export type Change =
   | { status: "create"; resource: Resource }
   | { status: "modify"; resource: Resource; previous?: Record<string, unknown> }
-  | { status: "remove"; id: string; kind: Resource["kind"] };
+  | { status: "remove"; id: string; kind: Resource["kind"] | "secret" };
 
 /** JSON replacer that swaps nested resources for their IDs. */
 export function resourceReplacer(key: string, value: unknown): unknown {
@@ -26,6 +26,7 @@ export function resourceReplacer(key: string, value: unknown): unknown {
     if (
       kind === "volume" ||
       kind === "secret" ||
+      kind === "config" ||
       kind === "service" ||
       kind === "cronjob"
     ) {

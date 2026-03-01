@@ -69,7 +69,8 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
         return [{ action: "remove", id: change.id, kind: change.kind }];
       }
 
-      if (change.resource.kind === "secret") {
+      const rkind = change.resource.kind as string;
+      if (rkind === "secret" || rkind === "config") {
         return [];
       }
 
@@ -160,7 +161,7 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
     ): Promise<Record<string, unknown> | null> {
       const k = await getClient();
 
-      if (kind === "secret") return null;
+      if (kind === "secret" || kind === "config") return null;
 
       if (kind === "volume") {
         try {

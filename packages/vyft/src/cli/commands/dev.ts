@@ -5,17 +5,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
   BindValue,
+  Config,
   EnvValue,
   RuntimeName,
-  Secret,
   Service,
 } from "@vyft/core";
 import {
   findConfig,
   generateSecret,
+  isSecretConfig,
   loadConfig,
   projectInfo,
   resolve,
+  resolveStage,
 } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { BindingTree } from "@vyft/engine";
@@ -27,6 +29,7 @@ import {
 } from "@vyft/engine";
 import {
   createFileStore,
+  createStageStore,
   decrypt,
   encrypt,
   resolvePassphrase,
@@ -214,6 +217,7 @@ const RESET = "\x1b[0m";
 interface DevState {
   context: string;
   project: string;
+  stage: string;
   runtimeName: RuntimeName;
   unlock: () => Promise<void>;
   ac: AbortController;
@@ -224,12 +228,14 @@ export function registerDev(program: Command): void {
     .command("dev")
     .description("Start local development environment")
     .option("-c, --config <path>", "Path to config file", "vyft.config.ts")
+    .option("--stage <stage>", "Stage to use for config values")
     .action(
       withLifecycle<DevState>({
-        async setup() {
+        async setup(opts: { stage?: string } = {}) {
           const { root, context, project, runtimeName } = await projectInfo();
+          const stage = opts.stage ?? (await resolveStage(root));
           const store = createFileStore(root);
-          const unlock = await store.lock(context, project);
+          const unlock = await store.lock(context, project, stage);
           const ac = new AbortController();
 
           // Signal handling
@@ -237,10 +243,10 @@ export function registerDev(program: Command): void {
           process.on("SIGINT", onSignal);
           process.on("SIGTERM", onSignal);
 
-          return { context, project, runtimeName, unlock, ac };
+          return { context, project, stage, runtimeName, unlock, ac };
         },
 
-        async run({ context, project, runtimeName, ac }) {
+        async run({ context, project, stage, runtimeName, ac }) {
           const configPath = await findConfig(process.cwd());
           const devProcesses = new Map<string, ChildProcess>();
 
@@ -252,39 +258,83 @@ export function registerDev(program: Command): void {
             const { infra, dev } = classifyServices(resources);
             const infraIds = new Set(infra.map((s) => s.id));
 
-            // Resolve secrets
+            // Resolve config values from stage
             const { root } = await projectInfo();
             const store = createFileStore(root);
-            const previous = await store.load(context, project);
+            const stageStore = createStageStore(root);
+            const stageData = await stageStore.loadStage(stage);
+            const previous = await store.load(context, project, stage);
             const passphrase = await resolvePassphrase();
             const secretMap = new Map<string, string>();
-            if (previous?.secrets) {
+
+            // Load from stage storage
+            if (stageData?.values) {
+              for (const [k, v] of Object.entries(stageData.values))
+                secretMap.set(k, v);
+            }
+            if (stageData?.secrets) {
               const raw = JSON.parse(
-                decrypt(previous.secrets, passphrase),
+                decrypt(stageData.secrets, passphrase),
               ) as Record<string, string>;
               for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
             }
 
+            // Fallback to state secrets
+            if (previous?.secrets) {
+              const raw = JSON.parse(
+                decrypt(previous.secrets, passphrase),
+              ) as Record<string, string>;
+              for (const [k, v] of Object.entries(raw)) {
+                if (!secretMap.has(k)) secretMap.set(k, v);
+              }
+            }
+
             // Auto-generate missing secrets
-            const secretResources = resources.filter(
-              (r): r is Secret => r.kind === "secret",
+            const configResources = resources.filter(
+              (r): r is Config => r.kind === "config",
             );
             let secretsChanged = false;
-            for (const sr of secretResources) {
-              if (!secretMap.has(sr.id)) {
-                if (sr.config.generated === false) continue;
-                secretMap.set(
-                  sr.id,
-                  generateSecret(sr.config.length, sr.config.alphabet),
-                );
-                secretsChanged = true;
+            for (const cr of configResources) {
+              if (!secretMap.has(cr.id)) {
+                if (isSecretConfig(cr.config)) {
+                  if (cr.config.generated === false) continue;
+                  secretMap.set(
+                    cr.id,
+                    generateSecret(cr.config.length, cr.config.alphabet),
+                  );
+                  secretsChanged = true;
+                }
+                // Plain config with no value: skip for dev (warn only)
               }
             }
 
             if (secretsChanged) {
+              const currentStageData = (await stageStore.loadStage(stage)) ?? {
+                version: 1,
+                values: {},
+                secrets: null,
+              };
+              const stageSecrets: Record<string, string> = {};
+              if (currentStageData.secrets) {
+                const existing = JSON.parse(
+                  decrypt(currentStageData.secrets, passphrase),
+                ) as Record<string, string>;
+                Object.assign(stageSecrets, existing);
+              }
+              for (const cr of configResources) {
+                if (isSecretConfig(cr.config) && secretMap.has(cr.id)) {
+                  const val = secretMap.get(cr.id);
+                  if (val !== undefined) stageSecrets[cr.id] = val;
+                }
+              }
+              await stageStore.saveStage(stage, {
+                ...currentStageData,
+                secrets: encrypt(JSON.stringify(stageSecrets), passphrase),
+              });
+
               const allSecrets = Object.fromEntries(secretMap);
               const encrypted = encrypt(JSON.stringify(allSecrets), passphrase);
-              await store.save(context, project, {
+              await store.save(context, project, stage, {
                 version: previous?.version ?? 1,
                 manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
                 resources: previous?.resources ?? [],

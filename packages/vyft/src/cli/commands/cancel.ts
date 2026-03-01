@@ -1,6 +1,6 @@
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { CliError, projectInfo } from "@vyft/core";
+import { CliError, projectInfo, resolveStage } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import { createFileStore } from "@vyft/store";
 import type { Command } from "commander";
@@ -18,11 +18,13 @@ export function registerCancel(program: Command): void {
   program
     .command("cancel")
     .description("Clear a stale lock and pending operations")
-    .action(async () => {
+    .option("--stage <stage>", "Stage to cancel")
+    .action(async (opts: { stage?: string }) => {
       const { root, context, project } = await projectInfo();
+      const stage = opts.stage ?? (await resolveStage(root));
       const store = createFileStore(root);
 
-      const lock = await store.inspectLock(context, project);
+      const lock = await store.inspectLock(context, project, stage);
 
       if (lock && isProcessAlive(lock.pid)) {
         throw new CliError(
@@ -34,13 +36,13 @@ export function registerCancel(program: Command): void {
       let cleared = false;
 
       if (lock) {
-        await store.clearLock(context, project);
+        await store.clearLock(context, project, stage);
         log.step("clear", `stale lock (PID ${lock.pid})`);
         cleared = true;
       }
 
-      if (await store.hasWAL(context, project)) {
-        const walFile = join(root, context, project, "wal.jsonl");
+      if (await store.hasWAL(context, project, stage)) {
+        const walFile = join(root, context, project, stage, "wal.jsonl");
         await unlink(walFile).catch((err: unknown) => {
           if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
         });

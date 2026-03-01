@@ -78,7 +78,8 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
         return [{ action: "remove", id: change.id, kind: change.kind }];
       }
 
-      if (change.resource.kind === "secret") return [];
+      const rkind = change.resource.kind as string;
+      if (rkind === "secret" || rkind === "config") return [];
 
       if (change.resource.kind === "volume" && change.status === "modify")
         return [];
@@ -203,7 +204,7 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
       id: string,
       kind: string,
     ): Promise<Record<string, unknown> | null> {
-      if (kind === "secret") return null;
+      if (kind === "secret" || kind === "config") return null;
 
       if (kind === "volume") {
         try {

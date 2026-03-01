@@ -6,7 +6,7 @@ export type Operation =
   | { action: "create"; resource: Resource }
   | { action: "update"; resource: Resource }
   | { action: "recreate"; resource: Resource }
-  | { action: "remove"; id: string; kind: Resource["kind"] };
+  | { action: "remove"; id: string; kind: Resource["kind"] | "secret" };
 
 /** Options passed to runtime factories. */
 export interface RuntimeOptions {

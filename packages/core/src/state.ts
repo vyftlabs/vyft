@@ -3,7 +3,7 @@ import type { Resource } from "./resource.ts";
 /** Full per-resource state. Structurally compatible with engine's StateEntry. */
 export interface ResourceState {
   readonly id: string;
-  readonly kind: Resource["kind"];
+  readonly kind: Resource["kind"] | "secret";
   readonly fingerprint: string;
   readonly inputs: Record<string, unknown>;
   readonly outputs: Record<string, unknown>;

@@ -1,10 +1,12 @@
-import type { RuntimeName, Secret, Service } from "@vyft/core";
+import type { Config, RuntimeName, Service } from "@vyft/core";
 import {
   CliError,
   findConfig,
   generateSecret,
+  isSecretConfig,
   loadConfig,
   projectInfo,
+  resolveStage,
 } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { StateHook } from "@vyft/engine";
@@ -12,6 +14,7 @@ import { buildGraph, collect, deploy as engineDeploy } from "@vyft/engine";
 import type { PersistedState, ResourceState, Store } from "@vyft/store";
 import {
   createFileStore,
+  createStageStore,
   decrypt,
   encrypt,
   resolvePassphrase,
@@ -24,6 +27,7 @@ interface DeployState {
   store: Store;
   context: string;
   project: string;
+  stage: string;
   runtimeName: RuntimeName;
   refresh: boolean;
   unlock: () => Promise<void>;
@@ -36,30 +40,33 @@ export function registerDeploy(program: Command): void {
     .option("-v, --verbose", "Enable verbose output", false)
     .option("-c, --config <path>", "Path to config file", "vyft.config.ts")
     .option("--refresh", "Inspect live state before planning", false)
+    .option("--stage <stage>", "Stage to deploy")
     .action(
       withLifecycle<DeployState>({
-        async setup(opts: { refresh?: boolean } = {}) {
+        async setup(opts: { refresh?: boolean; stage?: string } = {}) {
           const { root, context, project, runtimeName } = await projectInfo();
+          const stage = opts.stage ?? (await resolveStage(root));
           const store = createFileStore(root);
-          const unlock = await store.lock(context, project);
+          const unlock = await store.lock(context, project, stage);
           return {
             store,
             context,
             project,
+            stage,
             runtimeName,
             refresh: !!opts.refresh,
             unlock,
           };
         },
 
-        async run({ store, context, project, runtimeName, refresh }) {
+        async run({ store, context, project, stage, runtimeName, refresh }) {
           const configPath = await findConfig(process.cwd());
           const config = await loadConfig(configPath);
           log.info("loaded config from %s", configPath);
 
-          const previous = await store.load(context, project);
+          const previous = await store.load(context, project, stage);
 
-          if (await store.hasWAL(context, project)) {
+          if (await store.hasWAL(context, project, stage)) {
             throw new CliError(
               `Previous deploy did not complete cleanly. ` +
                 `Run \`vyft cancel\` to clear, or \`vyft refresh\` to reconcile before deploying.`,
@@ -68,31 +75,55 @@ export function registerDeploy(program: Command): void {
 
           const previousResources = previous?.resources ?? [];
 
-          // Resolve secrets for runtime
+          // Load config values from stage storage
+          const root = (await projectInfo()).root;
+          const stageStore = createStageStore(root);
+          const stageData = await stageStore.loadStage(stage);
+
           const passphrase = await resolvePassphrase();
           const secretMap = new Map<string, string>();
-          if (previous?.secrets) {
+
+          // Load plain values from stage
+          if (stageData?.values) {
+            for (const [k, v] of Object.entries(stageData.values)) {
+              secretMap.set(k, v);
+            }
+          }
+
+          // Load encrypted values from stage
+          if (stageData?.secrets) {
             const raw = JSON.parse(
-              decrypt(previous.secrets, passphrase),
+              decrypt(stageData.secrets, passphrase),
             ) as Record<string, string>;
             for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
           }
 
+          // Fallback: also load from PersistedState.secrets for backward compat
+          // (stage takes precedence — values loaded above win)
+          if (previous?.secrets) {
+            const raw = JSON.parse(
+              decrypt(previous.secrets, passphrase),
+            ) as Record<string, string>;
+            for (const [k, v] of Object.entries(raw)) {
+              if (!secretMap.has(k)) secretMap.set(k, v);
+            }
+          }
+
           const onState: StateHook = async (event) => {
             if (event.type === "pending") {
-              await store.appendLog(context, project, {
+              await store.appendLog(context, project, stage, {
                 type: "pending",
                 id: event.id,
                 operation: event.operation,
               });
             } else if (event.type === "committed") {
-              await store.appendLog(context, project, {
+              await store.appendLog(context, project, stage, {
                 type: "committed",
                 id: event.id,
                 state: event.state,
               });
             } else {
-              await store.appendLog(context, project, {
+              await store.appendLog(context, project, stage, {
                 type: "removed",
                 id: event.id,
               });
@@ -102,35 +133,69 @@ export function registerDeploy(program: Command): void {
           const resources = collect(config);
           const graph = buildGraph(resources);
 
-          // Auto-generate missing secret values
-          const secretResources = resources.filter(
-            (r): r is Secret => r.kind === "secret",
+          // Auto-generate missing secret values for config({ secret: true })
+          const configResources = resources.filter(
+            (r): r is Config => r.kind === "config",
           );
           let secretsChanged = false;
-          for (const sr of secretResources) {
-            if (!secretMap.has(sr.id)) {
-              if (sr.config.generated === false) continue;
-              secretMap.set(
-                sr.id,
-                generateSecret(sr.config.length, sr.config.alphabet),
-              );
-              secretsChanged = true;
+          for (const cr of configResources) {
+            if (!secretMap.has(cr.id)) {
+              if (isSecretConfig(cr.config)) {
+                if (cr.config.generated === false) continue;
+                secretMap.set(
+                  cr.id,
+                  generateSecret(cr.config.length, cr.config.alphabet),
+                );
+                secretsChanged = true;
+              } else {
+                // Plain config with no value set — error
+                throw new CliError(
+                  `Config "${cr.id}" has no value. Set it with: vyft config set ${cr.id} <value> --stage ${stage}`,
+                );
+              }
             }
           }
 
-          // Persist any newly generated secrets
-          let currentSecrets = previous?.secrets ?? null;
+          // Persist newly generated secrets to stage storage
           if (secretsChanged) {
-            const allSecrets = Object.fromEntries(secretMap);
-            currentSecrets = encrypt(JSON.stringify(allSecrets), passphrase);
-            const snapshot: PersistedState = {
-              version: previous?.version ?? 1,
-              manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-              resources: previousResources,
-              secrets: currentSecrets,
+            const currentStageData = (await stageStore.loadStage(stage)) ?? {
+              version: 1,
+              values: {},
+              secrets: null,
             };
-            await store.save(context, project, snapshot);
+            // Collect all secret values to encrypt
+            const stageSecrets: Record<string, string> = {};
+            if (currentStageData.secrets) {
+              const existing = JSON.parse(
+                decrypt(currentStageData.secrets, passphrase),
+              ) as Record<string, string>;
+              Object.assign(stageSecrets, existing);
+            }
+            for (const cr of configResources) {
+              if (isSecretConfig(cr.config) && secretMap.has(cr.id)) {
+                const val = secretMap.get(cr.id);
+                if (val !== undefined) stageSecrets[cr.id] = val;
+              }
+            }
+            await stageStore.saveStage(stage, {
+              ...currentStageData,
+              secrets: encrypt(JSON.stringify(stageSecrets), passphrase),
+            });
           }
+
+          // Also persist secrets in PersistedState for backward compat
+          const allSecrets = Object.fromEntries(secretMap);
+          const currentSecrets = encrypt(
+            JSON.stringify(allSecrets),
+            passphrase,
+          );
+          const snapshot: PersistedState = {
+            version: previous?.version ?? 1,
+            manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
+            resources: previousResources,
+            secrets: currentSecrets,
+          };
+          await store.save(context, project, stage, snapshot);
 
           // Build tainted set — find resources that depend on secrets whose values changed
           const oldSecrets = new Map<string, string>();
@@ -142,12 +207,12 @@ export function registerDeploy(program: Command): void {
           }
 
           const taintedIds = new Set<string>();
-          for (const sr of secretResources) {
-            const oldVal = oldSecrets.get(sr.id);
-            const newVal = secretMap.get(sr.id);
+          for (const cr of configResources) {
+            const oldVal = oldSecrets.get(cr.id);
+            const newVal = secretMap.get(cr.id);
             if (oldVal !== undefined && oldVal !== newVal) {
               for (const [id, deps] of graph.dependencies) {
-                if (deps.has(sr.id)) taintedIds.add(id);
+                if (deps.has(cr.id)) taintedIds.add(id);
               }
             }
           }
@@ -163,8 +228,8 @@ export function registerDeploy(program: Command): void {
             log.info("inspecting live infrastructure...");
             const inspected: ResourceState[] = [];
             for (const rs of previousResources) {
-              if (rs.kind === "secret") {
-                inspected.push(rs); // Secrets have no runtime presence
+              if (rs.kind === "secret" || rs.kind === "config") {
+                inspected.push(rs);
                 continue;
               }
               const live = await runtime.inspect(rs.id, rs.kind);
@@ -210,7 +275,7 @@ export function registerDeploy(program: Command): void {
             secrets: currentSecrets,
           };
 
-          await store.compact(context, project, state);
+          await store.compact(context, project, stage, state);
           log.info("state saved (%d resources)", finalResources.length);
         },
 

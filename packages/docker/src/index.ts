@@ -61,7 +61,8 @@ export function createDockerRuntime(
         return [{ action: "remove", id: change.id, kind: change.kind }];
       }
 
-      if (change.resource.kind === "secret") {
+      const rkind = change.resource.kind as string;
+      if (rkind === "secret" || rkind === "config") {
         return [];
       }
 
@@ -179,7 +180,7 @@ export function createDockerRuntime(
       id: string,
       kind: string,
     ): Promise<Record<string, unknown> | null> {
-      if (kind === "secret") return null;
+      if (kind === "secret" || kind === "config") return null; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
       if (kind === "volume") {
         try {

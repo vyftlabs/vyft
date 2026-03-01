@@ -75,6 +75,34 @@ export interface ProvidedSecretConfig {
 
 export type SecretConfig = GeneratedSecretConfig | ProvidedSecretConfig;
 
+export interface PlainConfigConfig {
+  secret?: false;
+}
+
+export type ConfigConfig =
+  | (GeneratedSecretConfig & { secret: true })
+  | (ProvidedSecretConfig & { secret: true })
+  | PlainConfigConfig;
+
+/** A config value — plain or encrypted (secret). */
+export interface Config {
+  readonly kind: "config";
+  readonly id: string;
+  readonly config: ConfigConfig;
+}
+
+/** Check whether a ConfigConfig represents a secret (encrypted) value. */
+export function isSecretConfig(
+  cfg: ConfigConfig,
+): cfg is
+  | (GeneratedSecretConfig & { secret: true })
+  | (ProvidedSecretConfig & { secret: true }) {
+  return (cfg as { secret?: boolean }).secret === true;
+}
+
+/** @deprecated Use Config instead. */
+export type Secret = Config;
+
 export interface HealthCheck {
   /** Shell command executed inside the container. Exit 0 = healthy. */
   command: string;
@@ -149,13 +177,6 @@ export interface Volume {
   readonly config: VolumeConfig;
 }
 
-/** A secret value — either auto-generated or provided at deploy time via the CLI. */
-export interface Secret {
-  readonly kind: "secret";
-  readonly id: string;
-  readonly config: SecretConfig;
-}
-
 /** A long-running container. */
 export interface Service {
   readonly kind: "service";
@@ -201,4 +222,4 @@ export interface CronJob {
   readonly config: CronJobConfig;
 }
 
-export type Resource = Volume | Secret | Service | CronJob;
+export type Resource = Volume | Config | Service | CronJob;

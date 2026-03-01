@@ -1,9 +1,20 @@
 import type { RuntimeName } from "@vyft/core";
-import { CliError, findConfig, loadConfig, projectInfo } from "@vyft/core";
+import {
+  CliError,
+  findConfig,
+  loadConfig,
+  projectInfo,
+  resolveStage,
+} from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import { buildGraph, collect, fingerprint, validate } from "@vyft/engine";
 import type { PersistedState, ResourceState, Store } from "@vyft/store";
-import { createFileStore, decrypt, resolvePassphrase } from "@vyft/store";
+import {
+  createFileStore,
+  createStageStore,
+  decrypt,
+  resolvePassphrase,
+} from "@vyft/store";
 import type { Command } from "commander";
 import { createRuntime } from "../../runtime-factory.ts";
 import { withLifecycle } from "../lifecycle.ts";
@@ -12,6 +23,7 @@ interface RefreshState {
   store: Store;
   context: string;
   project: string;
+  stage: string;
   runtimeName: RuntimeName;
   clearPending: boolean;
   live: boolean;
@@ -33,16 +45,21 @@ export function registerRefresh(program: Command): void {
       "Inspect live infrastructure instead of reconciling from config",
       false,
     )
+    .option("--stage <stage>", "Stage to refresh")
     .action(
       withLifecycle<RefreshState>({
-        async setup(opts: { clearPending?: boolean; live?: boolean } = {}) {
+        async setup(
+          opts: { clearPending?: boolean; live?: boolean; stage?: string } = {},
+        ) {
           const { root, context, project, runtimeName } = await projectInfo();
+          const stage = opts.stage ?? (await resolveStage(root));
           const store = createFileStore(root);
-          const unlock = await store.lock(context, project);
+          const unlock = await store.lock(context, project, stage);
           return {
             store,
             context,
             project,
+            stage,
             runtimeName,
             clearPending: !!opts.clearPending,
             live: !!opts.live,
@@ -54,20 +71,21 @@ export function registerRefresh(program: Command): void {
           store,
           context,
           project,
+          stage,
           runtimeName,
           clearPending,
           live,
         }) {
-          const previous = await store.load(context, project);
+          const previous = await store.load(context, project, stage);
 
           if (clearPending) {
-            if (!(await store.hasWAL(context, project))) {
+            if (!(await store.hasWAL(context, project, stage))) {
               log.info("no pending operations to clear");
               return;
             }
-            const state = await store.load(context, project);
+            const state = await store.load(context, project, stage);
             if (state) {
-              await store.compact(context, project, state);
+              await store.compact(context, project, stage, state);
             }
             log.info("cleared pending operations");
             return;
@@ -77,7 +95,7 @@ export function registerRefresh(program: Command): void {
             throw new CliError("No state to refresh. Run `vyft deploy` first.");
           }
 
-          if (await store.hasWAL(context, project)) {
+          if (await store.hasWAL(context, project, stage)) {
             log.warn("WAL exists — clearing pending operations during refresh");
           }
 
@@ -85,11 +103,30 @@ export function registerRefresh(program: Command): void {
           if (live) {
             const passphrase = await resolvePassphrase();
             const secretMap = new Map<string, string>();
+
+            // Load from stage storage
+            const root = (await projectInfo()).root;
+            const stageStore = createStageStore(root);
+            const stageData = await stageStore.loadStage(stage);
+            if (stageData?.values) {
+              for (const [k, v] of Object.entries(stageData.values))
+                secretMap.set(k, v);
+            }
+            if (stageData?.secrets) {
+              const raw = JSON.parse(
+                decrypt(stageData.secrets, passphrase),
+              ) as Record<string, string>;
+              for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
+            }
+
+            // Fallback to state secrets
             if (previous.secrets) {
               const raw = JSON.parse(
                 decrypt(previous.secrets, passphrase),
               ) as Record<string, string>;
-              for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
+              for (const [k, v] of Object.entries(raw)) {
+                if (!secretMap.has(k)) secretMap.set(k, v);
+              }
             }
 
             const runtime = createRuntime(runtimeName, {
@@ -106,8 +143,8 @@ export function registerRefresh(program: Command): void {
             let changedCount = 0;
 
             for (const rs of previous.resources) {
-              if (rs.kind === "secret") {
-                reconciled.push(rs); // Keep secrets as-is
+              if (rs.kind === "secret" || rs.kind === "config") {
+                reconciled.push(rs); // Keep config/secrets as-is
                 continue;
               }
 
@@ -135,7 +172,7 @@ export function registerRefresh(program: Command): void {
               secrets: previous.secrets,
             };
 
-            await store.compact(context, project, state);
+            await store.compact(context, project, stage, state);
 
             if (removedCount === 0 && changedCount === 0) {
               log.info("live state matches stored state");
@@ -216,7 +253,7 @@ export function registerRefresh(program: Command): void {
             secrets: previous.secrets,
           };
 
-          await store.compact(context, project, state);
+          await store.compact(context, project, stage, state);
 
           if (added === 0 && updated === 0 && removed === 0) {
             log.info("state is up to date");

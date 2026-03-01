@@ -8,6 +8,7 @@ import {
   loadContextConfig,
   RUNTIMES,
   resolveContext,
+  resolveStage,
   saveContextConfig,
 } from "@vyft/core";
 import { createFileStore } from "@vyft/store";
@@ -182,12 +183,14 @@ export function registerContext(program: Command): void {
               `  Passphrase: ${hasPassphrase ? "set (via VYFT_PASSPHRASE)" : "not set"}`,
             );
 
+            const stage = await resolveStage(root);
+
             if (projects.length === 0) {
               console.log("  Projects: none");
             } else {
               console.log("  Projects:");
               for (const p of projects) {
-                const state = await store.load(name, p);
+                const state = await store.load(name, p, stage);
                 const count = state?.resources.length ?? 0;
                 console.log(
                   `    ${p}: ${count} resource${count !== 1 ? "s" : ""}`,

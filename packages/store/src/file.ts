@@ -19,29 +19,52 @@ import type {
 
 export class LockError extends VyftError {}
 
-function statePath(root: string, context: string, project: string): string {
-  return join(root, context, project, "state.json");
+function statePath(
+  root: string,
+  context: string,
+  project: string,
+  stage: string,
+): string {
+  return join(root, context, project, stage, "state.json");
 }
 
-function lockPath(root: string, context: string, project: string): string {
-  return join(root, context, project, "lock");
+function lockPath(
+  root: string,
+  context: string,
+  project: string,
+  stage: string,
+): string {
+  return join(root, context, project, stage, "lock");
 }
 
-function dirPath(root: string, context: string, project: string): string {
-  return join(root, context, project);
+function dirPath(
+  root: string,
+  context: string,
+  project: string,
+  stage: string,
+): string {
+  return join(root, context, project, stage);
 }
 
-function walPath(root: string, context: string, project: string): string {
-  return join(root, context, project, "wal.jsonl");
+function walPath(
+  root: string,
+  context: string,
+  project: string,
+  stage: string,
+): string {
+  return join(root, context, project, stage, "wal.jsonl");
 }
 
 /** Create a file-backed Store rooted at the given directory (typically `.vyft/`). */
 export function createFileStore(root: string): Store {
   return {
-    async load(context, project) {
+    async load(context, project, stage) {
       let state: PersistedState | null = null;
       try {
-        const raw = await readFile(statePath(root, context, project), "utf8");
+        const raw = await readFile(
+          statePath(root, context, project, stage),
+          "utf8",
+        );
         state = JSON.parse(raw) as PersistedState;
       } catch (err: unknown) {
         if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
@@ -50,7 +73,7 @@ export function createFileStore(root: string): Store {
       // Read and replay WAL if present
       let walRaw: string;
       try {
-        walRaw = await readFile(walPath(root, context, project), "utf8");
+        walRaw = await readFile(walPath(root, context, project, stage), "utf8");
       } catch (err: unknown) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return state;
         throw err;
@@ -87,24 +110,24 @@ export function createFileStore(root: string): Store {
       };
     },
 
-    async save(context, project, state) {
-      const dir = dirPath(root, context, project);
+    async save(context, project, stage, state) {
+      const dir = dirPath(root, context, project, stage);
       await mkdir(dir, { recursive: true });
-      const dest = statePath(root, context, project);
+      const dest = statePath(root, context, project, stage);
       const tmp = join(dir, ".state.json.tmp");
       await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, "utf8");
       await rename(tmp, dest);
     },
 
-    async delete(context, project) {
-      const dir = dirPath(root, context, project);
+    async delete(context, project, stage) {
+      const dir = dirPath(root, context, project, stage);
       await rm(dir, { recursive: true, force: true });
     },
 
-    async lock(context, project) {
-      const dir = dirPath(root, context, project);
+    async lock(context, project, stage) {
+      const dir = dirPath(root, context, project, stage);
       await mkdir(dir, { recursive: true });
-      const file = lockPath(root, context, project);
+      const file = lockPath(root, context, project, stage);
       const payload = JSON.stringify({
         pid: process.pid,
         timestamp: new Date().toISOString(),
@@ -135,9 +158,12 @@ export function createFileStore(root: string): Store {
       };
     },
 
-    async inspectLock(context, project) {
+    async inspectLock(context, project, stage) {
       try {
-        const raw = await readFile(lockPath(root, context, project), "utf8");
+        const raw = await readFile(
+          lockPath(root, context, project, stage),
+          "utf8",
+        );
         return JSON.parse(raw) as { pid: number; timestamp: string };
       } catch (err: unknown) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
@@ -145,38 +171,40 @@ export function createFileStore(root: string): Store {
       }
     },
 
-    async clearLock(context, project) {
-      await unlink(lockPath(root, context, project)).catch((err: unknown) => {
-        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-      });
+    async clearLock(context, project, stage) {
+      await unlink(lockPath(root, context, project, stage)).catch(
+        (err: unknown) => {
+          if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+        },
+      );
     },
 
-    async hasWAL(context, project) {
+    async hasWAL(context, project, stage) {
       try {
-        await access(walPath(root, context, project));
+        await access(walPath(root, context, project, stage));
         return true;
       } catch {
         return false;
       }
     },
 
-    async appendLog(context, project, entry) {
-      const dir = dirPath(root, context, project);
+    async appendLog(context, project, stage, entry) {
+      const dir = dirPath(root, context, project, stage);
       await mkdir(dir, { recursive: true });
       await appendFile(
-        walPath(root, context, project),
+        walPath(root, context, project, stage),
         `${JSON.stringify(entry)}\n`,
         "utf8",
       );
     },
 
-    async compact(context, project, state) {
-      const dir = dirPath(root, context, project);
-      const dest = statePath(root, context, project);
+    async compact(context, project, stage, state) {
+      const dir = dirPath(root, context, project, stage);
+      const dest = statePath(root, context, project, stage);
       const tmp = join(dir, ".state.json.tmp");
       await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, "utf8");
       await rename(tmp, dest);
-      await unlink(walPath(root, context, project)).catch(() => {});
+      await unlink(walPath(root, context, project, stage)).catch(() => {});
     },
   };
 }

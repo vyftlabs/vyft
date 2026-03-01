@@ -1,15 +1,18 @@
-import type { Secret, Service } from "@vyft/core";
+import type { Config, Service } from "@vyft/core";
 import {
   CliError,
   findConfig,
   generateSecret,
+  isSecretConfig,
   loadConfig,
   projectInfo,
+  resolveStage,
 } from "@vyft/core";
 import { buildGraph, collect, deploy as engineDeploy } from "@vyft/engine";
 import type { EncryptedPayload, PersistedState } from "@vyft/store";
 import {
   createFileStore,
+  createStageStore,
   decrypt,
   encrypt,
   resolvePassphrase,
@@ -39,12 +42,18 @@ function encryptSecrets(
 export function registerSecret(program: Command): void {
   program
     .command("secret")
-    .description("Manage secrets")
+    .description("Manage secrets (deprecated: use `vyft config` instead)")
     .argument("<action>", "Action to perform (set|get|rm|ls|rotate)")
     .argument("[args...]", "Action arguments")
     .action(async (action: string, args: string[]) => {
+      console.warn(
+        'Warning: "vyft secret" is deprecated. Use "vyft config" instead.',
+      );
+
       const { root, context, project, runtimeName } = await projectInfo();
+      const stage = await resolveStage(root);
       const store = createFileStore(root);
+      const stageStore = createStageStore(root);
       const passphrase = await resolvePassphrase();
 
       switch (action) {
@@ -55,19 +64,36 @@ export function registerSecret(program: Command): void {
             throw new CliError("Usage: vyft secret set <name> <value>");
           }
 
-          const unlock = await store.lock(context, project);
+          // Store in stage storage as a secret
+          const data = (await stageStore.loadStage(stage)) ?? {
+            version: 1,
+            values: {},
+            secrets: null,
+          };
+          const secrets = decryptSecrets(data.secrets, passphrase);
+          secrets[name] = value;
+          await stageStore.saveStage(stage, {
+            ...data,
+            secrets: encryptSecrets(secrets, passphrase),
+          });
+
+          // Also store in state for backward compat
+          const unlock = await store.lock(context, project, stage);
           try {
-            const state = await store.load(context, project);
-            const secrets = decryptSecrets(state?.secrets ?? null, passphrase);
-            secrets[name] = value;
+            const state = await store.load(context, project, stage);
+            const stateSecrets = decryptSecrets(
+              state?.secrets ?? null,
+              passphrase,
+            );
+            stateSecrets[name] = value;
 
             const updated: PersistedState = {
               version: state?.version ?? 1,
               manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
               resources: state?.resources ?? [],
-              secrets: encryptSecrets(secrets, passphrase),
+              secrets: encryptSecrets(stateSecrets, passphrase),
             };
-            await store.save(context, project, updated);
+            await store.save(context, project, stage, updated);
           } finally {
             await unlock();
           }
@@ -80,12 +106,27 @@ export function registerSecret(program: Command): void {
           if (!name) {
             throw new CliError("Usage: vyft secret get <name>");
           }
-          const state = await store.load(context, project);
-          const secrets = decryptSecrets(state?.secrets ?? null, passphrase);
-          if (!(name in secrets)) {
+
+          // Check stage storage first
+          const data = await stageStore.loadStage(stage);
+          if (data?.secrets) {
+            const secrets = decryptSecrets(data.secrets, passphrase);
+            if (name in secrets) {
+              console.log(secrets[name]);
+              break;
+            }
+          }
+
+          // Fallback to state
+          const state = await store.load(context, project, stage);
+          const stateSecrets = decryptSecrets(
+            state?.secrets ?? null,
+            passphrase,
+          );
+          if (!(name in stateSecrets)) {
             throw new CliError(`Secret "${name}" not found.`);
           }
-          console.log(secrets[name]);
+          console.log(stateSecrets[name]);
           break;
         }
 
@@ -95,22 +136,39 @@ export function registerSecret(program: Command): void {
             throw new CliError("Usage: vyft secret rm <name>");
           }
 
-          const unlock = await store.lock(context, project);
+          // Remove from stage storage
+          const data = await stageStore.loadStage(stage);
+          if (data?.secrets) {
+            const secrets = decryptSecrets(data.secrets, passphrase);
+            if (name in secrets) {
+              delete secrets[name];
+              await stageStore.saveStage(stage, {
+                ...data,
+                secrets: encryptSecrets(secrets, passphrase),
+              });
+            }
+          }
+
+          // Remove from state
+          const unlock = await store.lock(context, project, stage);
           try {
-            const state = await store.load(context, project);
-            const secrets = decryptSecrets(state?.secrets ?? null, passphrase);
-            if (!(name in secrets)) {
+            const state = await store.load(context, project, stage);
+            const stateSecrets = decryptSecrets(
+              state?.secrets ?? null,
+              passphrase,
+            );
+            if (!(name in stateSecrets)) {
               throw new CliError(`Secret "${name}" not found.`);
             }
-            delete secrets[name];
+            delete stateSecrets[name];
 
             const updated: PersistedState = {
               version: state?.version ?? 1,
               manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
               resources: state?.resources ?? [],
-              secrets: encryptSecrets(secrets, passphrase),
+              secrets: encryptSecrets(stateSecrets, passphrase),
             };
-            await store.save(context, project, updated);
+            await store.save(context, project, stage, updated);
           } finally {
             await unlock();
           }
@@ -119,13 +177,30 @@ export function registerSecret(program: Command): void {
         }
 
         case "ls": {
-          const state = await store.load(context, project);
-          const secrets = decryptSecrets(state?.secrets ?? null, passphrase);
-          const names = Object.keys(secrets);
-          if (names.length === 0) {
+          // Check stage storage
+          const data = await stageStore.loadStage(stage);
+          const stageSecrets = data?.secrets
+            ? decryptSecrets(data.secrets, passphrase)
+            : {};
+
+          // Check state
+          const state = await store.load(context, project, stage);
+          const stateSecrets = decryptSecrets(
+            state?.secrets ?? null,
+            passphrase,
+          );
+
+          const allNames = [
+            ...new Set([
+              ...Object.keys(stageSecrets),
+              ...Object.keys(stateSecrets),
+            ]),
+          ].sort();
+
+          if (allNames.length === 0) {
             console.log("No secrets.");
           } else {
-            for (const name of names.sort()) console.log(name);
+            for (const name of allNames) console.log(name);
           }
           break;
         }
@@ -136,11 +211,22 @@ export function registerSecret(program: Command): void {
             throw new CliError("Usage: vyft secret rotate <name>");
           }
 
-          const unlock = await store.lock(context, project);
+          const unlock = await store.lock(context, project, stage);
           try {
-            const state = await store.load(context, project);
-            const secrets = decryptSecrets(state?.secrets ?? null, passphrase);
-            if (!(name in secrets)) {
+            // Load from stage storage
+            const data = (await stageStore.loadStage(stage)) ?? {
+              version: 1,
+              values: {},
+              secrets: null,
+            };
+            const secrets = decryptSecrets(data.secrets, passphrase);
+            const state = await store.load(context, project, stage);
+            const stateSecrets = decryptSecrets(
+              state?.secrets ?? null,
+              passphrase,
+            );
+
+            if (!(name in secrets) && !(name in stateSecrets)) {
               throw new CliError(`Secret "${name}" not found.`);
             }
 
@@ -149,28 +235,39 @@ export function registerSecret(program: Command): void {
             const config = await loadConfig(configPath);
             const resources = collect(config);
 
-            const sr = resources.find(
-              (r): r is Secret => r.kind === "secret" && r.id === name,
+            const cr = resources.find(
+              (r): r is Config => r.kind === "config" && r.id === name,
             );
-            if (sr && sr.config.generated !== false) {
+            if (
+              cr &&
+              isSecretConfig(cr.config) &&
+              cr.config.generated !== false
+            ) {
               secrets[name] = generateSecret(
-                sr.config.length,
-                sr.config.alphabet,
+                cr.config.length,
+                cr.config.alphabet,
               );
             } else {
               secrets[name] = generateSecret();
             }
 
-            // Save new secret value immediately
+            // Save to stage storage
+            await stageStore.saveStage(stage, {
+              ...data,
+              secrets: encryptSecrets(secrets, passphrase),
+            });
+
+            // Save to state
+            stateSecrets[name] = secrets[name];
             if (!state) {
               throw new CliError("No state found — nothing to rotate.");
             }
             const updated: PersistedState = {
               ...state,
               manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-              secrets: encryptSecrets(secrets, passphrase),
+              secrets: encryptSecrets(stateSecrets, passphrase),
             };
-            await store.save(context, project, updated);
+            await store.save(context, project, stage, updated);
 
             // Redeploy dependent services
             const graph = buildGraph(resources);
@@ -180,7 +277,13 @@ export function registerSecret(program: Command): void {
             }
 
             if (taintedIds.size > 0) {
-              const secretMap = new Map(Object.entries(secrets));
+              const secretMap = new Map(Object.entries(stateSecrets));
+              // Also include stage plain values
+              if (data.values) {
+                for (const [k, v] of Object.entries(data.values)) {
+                  if (!secretMap.has(k)) secretMap.set(k, v);
+                }
+              }
               const runtime = createRuntime(runtimeName, {
                 project,
                 secrets: secretMap,
@@ -207,7 +310,7 @@ export function registerSecret(program: Command): void {
                   : rs;
               });
 
-              await store.save(context, project, {
+              await store.save(context, project, stage, {
                 ...updated,
                 resources: finalResources,
               });

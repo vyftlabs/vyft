@@ -68,6 +68,7 @@ export function collect(value: unknown): Resource[] {
     if (
       kind === "volume" ||
       kind === "secret" ||
+      kind === "config" ||
       kind === "service" ||
       kind === "cronjob"
     ) {
@@ -85,12 +86,12 @@ export function collect(value: unknown): Resource[] {
   return found;
 }
 
-/** Extract secret IDs referenced in an env value. */
+/** Extract config/secret IDs referenced in an env value. */
 function refsIn(value: EnvValue, out: Set<string>): void {
   if (typeof value === "string") return;
-  if (value.kind === "secret") {
+  if (value.kind === "config") {
     out.add(value.id);
-  } else {
+  } else if (value.kind === "interpolation") {
     for (const v of value.values) {
       if (typeof v !== "string") out.add(v.id);
     }

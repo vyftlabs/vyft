@@ -1,5 +1,5 @@
 import type { Change } from "@vyft/core";
-import { findConfig, loadConfig, projectInfo } from "@vyft/core";
+import { findConfig, loadConfig, projectInfo, resolveStage } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import { buildGraph, collect, order, plan, validate } from "@vyft/engine";
 import { createFileStore } from "@vyft/store";
@@ -24,8 +24,10 @@ export function registerPreview(program: Command): void {
     .description("Preview planned changes")
     .option("-v, --verbose", "Enable verbose output", false)
     .option("-c, --config <path>", "Path to config file", "vyft.config.ts")
-    .action(async () => {
+    .option("--stage <stage>", "Stage to preview")
+    .action(async (opts: { stage?: string }) => {
       const { cwd, root, context, project } = await projectInfo();
+      const stage = opts.stage ?? (await resolveStage(root));
 
       const configPath = await findConfig(cwd);
       const config = await loadConfig(configPath);
@@ -35,7 +37,7 @@ export function registerPreview(program: Command): void {
       validate(graph);
 
       const store = createFileStore(root);
-      const previous = await store.load(context, project);
+      const previous = await store.load(context, project, stage);
       const previousResources = previous?.resources ?? [];
 
       const changes = plan(order(graph), previousResources);
