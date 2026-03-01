@@ -1,4 +1,6 @@
 export type {
+  Binding,
+  BindValue,
   BuildConfig,
   CronJob,
   CronJobConfig,
@@ -15,6 +17,7 @@ export type {
   VolumeConfig,
 } from "@vyft/core";
 export {
+  bindable,
   cronjob,
   interpolate,
   secret,

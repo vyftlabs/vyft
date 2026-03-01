@@ -5,6 +5,7 @@ import { registerCancel } from "./commands/cancel.ts";
 import { registerContext } from "./commands/context.ts";
 import { registerDeploy } from "./commands/deploy.ts";
 import { registerDestroy } from "./commands/destroy.ts";
+import { registerDev } from "./commands/dev.ts";
 import { registerDiff } from "./commands/diff.ts";
 import { registerOutput } from "./commands/output.ts";
 import { registerPreview } from "./commands/preview.ts";
@@ -21,6 +22,7 @@ program
 registerContext(program);
 registerDeploy(program);
 registerDestroy(program);
+registerDev(program);
 registerSecret(program);
 registerRefresh(program);
 registerOutput(program);
