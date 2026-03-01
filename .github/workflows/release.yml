@@ -29,6 +29,7 @@ jobs:
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version-file: package.json
+          package-manager-cache: false
 
       - run: pnpm install --frozen-lockfile
 
@@ -52,6 +53,7 @@ jobs:
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version-file: package.json
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
