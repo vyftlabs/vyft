@@ -39,6 +39,15 @@ export async function buildImage(
   return tag;
 }
 
+/** Pull an image if it doesn't already exist locally. */
+export async function pullImage(image: string): Promise<void> {
+  try {
+    await exec("docker", ["image", "inspect", image]);
+  } catch {
+    await exec("docker", ["pull", image]);
+  }
+}
+
 /** Tag and push an image to a registry. */
 export async function pushImage(
   localTag: string,

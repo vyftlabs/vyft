@@ -1,5 +1,5 @@
 import type { EnvValue, HealthCheck, ServiceConfig } from "@vyft/core";
-import { buildImage, durationToNanos, resolveEnv } from "@vyft/core";
+import { buildImage, durationToNanos, pullImage, resolveEnv } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { DockerClient } from "./client.ts";
 
@@ -115,6 +115,8 @@ export async function createContainer(
   if (config.build) {
     const tag = `vyft-build-${id}:latest`;
     await buildImage(tag, config.build);
+  } else if (config.image) {
+    await pullImage(config.image);
   }
 
   const cc = buildContainerConfig(id, config, networkName, secrets, project);

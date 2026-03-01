@@ -18,7 +18,7 @@ export {
 export { CliError, ValidationError, VyftError } from "./errors.ts";
 // New exports for monorepo migration
 export { generateSecret } from "./generate.ts";
-export { buildImage, pushImage } from "./image.ts";
+export { buildImage, pullImage, pushImage } from "./image.ts";
 export type { Change, StateEntry } from "./plan.ts";
 export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
 export { cronjob, secret, service, volume } from "./primitives.ts";
