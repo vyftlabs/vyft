@@ -1,5 +1,7 @@
 # Vyft
 
+> **WIP**: This project is under active development and not yet ready for production use.
+
 Deploy apps with TypeScript. Define services, cron jobs, secrets, and volumes as code — then deploy to any runtime.
 
 [![npm version](https://img.shields.io/npm/v/vyft)](https://www.npmjs.com/package/vyft)
