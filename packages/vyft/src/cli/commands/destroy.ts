@@ -28,6 +28,7 @@ export function registerDestroy(program: Command): void {
     .command("destroy")
     .description("Tear down resources")
     .option("-v, --verbose", "Enable verbose output", false)
+    .option("-y, --yes", "Skip confirmation prompt", false)
     .option("--stage <stage>", "Stage to destroy")
     .action(
       withLifecycle<DestroyState>({
