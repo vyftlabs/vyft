@@ -401,7 +401,7 @@ describe("service modification triggers", () => {
   it("adding env var triggers recreate", async () => {
     await sim.deploy({ s: service("api", { image: "x" }) });
     await sim.deploy({
-      s: service("api", { image: "x", env: { NODE_ENV: "production" } }),
+      s: service("api", { image: "x", env: { MY_VAR: "hello" } }),
     });
     deepStrictEqual(opSummary(sim), [{ action: "recreate", id: "api" }]);
   });

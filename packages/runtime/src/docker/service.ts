@@ -150,13 +150,31 @@ export async function createContainer(
     project,
     portBindings,
   );
-  const result = (await client.post(
+  let result = (await client.post(
     `/containers/create?name=${encodeURIComponent(containerName)}`,
     cc,
-  )) as { Id: string };
+  )) as { Id?: string };
+
+  if (!result?.Id) {
+    // 409 Conflict — container already exists; try starting it
+    try {
+      await client.post(`/containers/${containerName}/start`);
+      const info = (await client.get(`/containers/${containerName}/json`)) as {
+        Id: string;
+      };
+      return info.Id;
+    } catch {
+      // Can't start — remove and recreate
+      await removeContainer(client, containerName);
+      result = (await client.post(
+        `/containers/create?name=${encodeURIComponent(containerName)}`,
+        cc,
+      )) as { Id: string };
+    }
+  }
 
   await client.post(`/containers/${result.Id}/start`);
-  return result.Id;
+  return result.Id as string;
 }
 
 /** Stop and remove a container. Ignores 404/304 (already stopped/removed). */

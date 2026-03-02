@@ -73,18 +73,21 @@ describe("bucket()", () => {
       build: "./apps/api",
       link: [uploads],
     });
-    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:3900");
-    strictEqual(api.config.env?.["UPLOADS_NAME"], "uploads");
-    strictEqual(api.config.env?.["UPLOADS_HOST"], "storage");
-    strictEqual(api.config.env?.["UPLOADS_PORT"], "3900");
+    strictEqual(
+      api.config.env?.["VYFT_BINDING_UPLOADS_URL"],
+      "http://storage:3900",
+    );
+    strictEqual(api.config.env?.["VYFT_BINDING_UPLOADS_NAME"], "uploads");
+    strictEqual(api.config.env?.["VYFT_BINDING_UPLOADS_HOST"], "storage");
+    strictEqual(api.config.env?.["VYFT_BINDING_UPLOADS_PORT"], "3900");
     // access and secret are Config references, passed through as-is
-    const accessEnv = api.config.env?.["UPLOADS_ACCESS"] as {
+    const accessEnv = api.config.env?.["VYFT_BINDING_UPLOADS_ACCESS"] as {
       kind: string;
       id: string;
     };
     strictEqual(accessEnv.kind, "config");
     strictEqual(accessEnv.id, "storage-access-key");
-    const secretEnv = api.config.env?.["UPLOADS_SECRET"] as {
+    const secretEnv = api.config.env?.["VYFT_BINDING_UPLOADS_SECRET"] as {
       kind: string;
       id: string;
     };
@@ -100,9 +103,15 @@ describe("bucket()", () => {
       build: "./apps/worker",
       link: [uploads, assets],
     });
-    strictEqual(api.config.env?.["UPLOADS_URL"], "http://storage:3900");
-    strictEqual(api.config.env?.["UPLOADS_NAME"], "uploads");
-    strictEqual(api.config.env?.["ASSETS_URL"], "http://storage:3900");
-    strictEqual(api.config.env?.["ASSETS_NAME"], "assets");
+    strictEqual(
+      api.config.env?.["VYFT_BINDING_UPLOADS_URL"],
+      "http://storage:3900",
+    );
+    strictEqual(api.config.env?.["VYFT_BINDING_UPLOADS_NAME"], "uploads");
+    strictEqual(
+      api.config.env?.["VYFT_BINDING_ASSETS_URL"],
+      "http://storage:3900",
+    );
+    strictEqual(api.config.env?.["VYFT_BINDING_ASSETS_NAME"], "assets");
   });
 });

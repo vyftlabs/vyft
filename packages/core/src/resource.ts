@@ -136,8 +136,8 @@ export type BuildConfig =
   | string
   | {
       context: string;
-      /** Path to Dockerfile relative to context. @default "Dockerfile" */
-      dockerfile?: string;
+      /** App directory or Dockerfile path relative to context. @default "." */
+      path?: string;
     };
 
 // Non-spec fields (route, replicas, dev, dependsOn) are listed in
@@ -172,20 +172,20 @@ interface BaseServiceConfig {
   replicas?: number;
   /** Local development override. Runs this command instead of the container. */
   dev?: { cwd?: string; command: string };
+  /** Bind the container port to the host. `true` = same as container port, or specify a host port number. */
+  expose?: boolean | number;
   /** Linkable services whose bindings are injected as env vars. */
   link?: Linkable[];
 }
 
 /**
- * At least one of `image` or `build` is required.
  * - `image` — pull from a registry, e.g. `"postgres:17"`
- * - `build` — build from source, e.g. `"./apps/api"`
+ * - `build` — build from source, e.g. `"./apps/api"` (defaults to `"."`)
  */
-export type ServiceConfig = BaseServiceConfig &
-  (
-    | { image: string; build?: BuildConfig }
-    | { image?: string; build: BuildConfig }
-  );
+export type ServiceConfig = BaseServiceConfig & {
+  image?: string;
+  build?: BuildConfig;
+};
 
 /** Persistent storage. */
 export interface Volume {

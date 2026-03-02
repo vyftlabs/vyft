@@ -41,6 +41,6 @@ export const error = log("error", ansi("stderr", "\x1b[31m"), "err");
 const stepColor = ansi("stdout", "\x1b[34m");
 
 export function step(label: string, msg: string, ...args: unknown[]) {
-  if (severity.info < severity[current]) return;
+  if (severity.debug < severity[current]) return;
   console.info(`${stepColor}${ts()} ${label}${reset.out} ${msg}`, ...args);
 }

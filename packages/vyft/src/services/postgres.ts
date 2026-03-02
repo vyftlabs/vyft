@@ -35,7 +35,7 @@ export function postgres(id: string, opts?: PostgresOptions): Postgres {
     mounts: [{ source: vol, path: "/var/lib/postgresql/data" }],
     health: {
       command: `pg_isready -U ${username}`,
-      interval: "5s",
+      interval: "2s",
       retries: 5,
     },
   });

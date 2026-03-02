@@ -149,7 +149,7 @@ function expandLink(linkItems: Linkable[]): {
   const deps: Service[] = [];
   for (const item of linkItems) {
     deps.push(item.service);
-    const prefix = item.id.toUpperCase().replace(/-/g, "_");
+    const prefix = `VYFT_BINDING_${item.id.toUpperCase().replace(/-/g, "_")}`;
     for (const [key, value] of Object.entries(item)) {
       if (isBinding(value)) {
         const envName = `${prefix}_${key.toUpperCase()}`;
@@ -175,8 +175,19 @@ export function service(id: string, config: ServiceConfig): Service {
     };
   }
 
-  if (finalConfig.route !== undefined) validateRoute(finalConfig.route);
+  // Default to building from current directory when neither image nor build is set
+  if (!finalConfig.image && !finalConfig.build) {
+    finalConfig = { ...finalConfig, build: "." };
+  }
+
+  // Inject PORT and NODE_ENV env vars
   const port = finalConfig.port ?? DEFAULT_PORT;
+  finalConfig = {
+    ...finalConfig,
+    env: { PORT: String(port), NODE_ENV: "production", ...finalConfig.env },
+  };
+
+  if (finalConfig.route !== undefined) validateRoute(finalConfig.route);
   if (port < 1 || port > 65535 || !Number.isInteger(port)) {
     throw new ValidationError(
       `Service "${id}" port must be an integer between 1 and 65535`,

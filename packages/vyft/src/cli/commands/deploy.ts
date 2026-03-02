@@ -1,8 +1,11 @@
-import type { Config, RuntimeName, Service } from "@vyft/core";
+import type { Config, CronJob, RuntimeName, Service } from "@vyft/core";
 import {
+  buildImage,
   CliError,
   findConfig,
+  fingerprint,
   generateSecret,
+  imageDigest,
   isSecretConfig,
   loadConfig,
   projectInfo,
@@ -218,6 +221,39 @@ export function registerDeploy(program: Command): void {
             }
           }
 
+          // Pre-build services/cronjobs whose config is unchanged but source may have changed.
+          // If the config fingerprint already differs, the engine will recreate the
+          // container (and build the image) through the normal path — no need to
+          // build here.
+          const imageDigests = new Map<string, string>();
+          const buildables = resources.filter(
+            (r): r is Service | CronJob =>
+              (r.kind === "service" || r.kind === "cronjob") &&
+              !!r.config.build,
+          );
+          for (const r of buildables) {
+            const prev = previousResources.find((rs) => rs.id === r.id);
+            // New resource or config changed → engine handles the build
+            if (!prev || prev.fingerprint !== fingerprint(r)) continue;
+
+            const build = r.config.build;
+            if (!build) continue;
+            const tag = `vyft-build-${r.id}:latest`;
+            log.info('building image for "%s"...', r.id);
+            const { digest } = await buildImage(tag, build);
+            imageDigests.set(r.id, digest);
+            const prevDigest = prev.runtime?.["imageDigest"] as
+              | string
+              | undefined;
+            if (prevDigest !== digest) {
+              log.info(
+                'image digest changed for "%s", tainting for redeploy',
+                r.id,
+              );
+              taintedIds.add(r.id);
+            }
+          }
+
           const runtime = createRuntime(runtimeName, {
             project,
             secrets: secretMap,
@@ -270,12 +306,25 @@ export function registerDeploy(program: Command): void {
           );
           await runtime.finalize(services);
 
-          // Merge runtime state into resource states
+          // Capture digests for build services that went through the normal engine path
+          for (const r of buildables) {
+            if (!imageDigests.has(r.id)) {
+              const tag = `vyft-build-${r.id}:latest`;
+              imageDigests.set(r.id, await imageDigest(tag));
+            }
+          }
+
+          // Merge runtime state and image digests into resource states
           const runtimeStateMap = runtime.runtimeState();
           const finalResources = result.state.map((rs) => {
             const extra = runtimeStateMap.get(rs.id);
-            if (extra) return { ...rs, runtime: { ...rs.runtime, ...extra } };
-            return rs;
+            const digest = imageDigests.get(rs.id);
+            const merged = {
+              ...rs.runtime,
+              ...extra,
+              ...(digest ? { imageDigest: digest } : {}),
+            };
+            return { ...rs, runtime: merged };
           });
 
           // Final compact — atomic state write + WAL cleanup

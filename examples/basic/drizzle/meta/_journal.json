@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772403621550,
+      "tag": "0000_optimal_grandmaster",
+      "breakpoints": true
+    }
+  ]
+}

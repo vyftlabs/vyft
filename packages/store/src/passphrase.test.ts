@@ -27,4 +27,8 @@ describe("resolvePassphrase", () => {
     process.env["VYFT_PASSPHRASE"] = "  spaces  ";
     strictEqual(await resolvePassphrase(), "  spaces  ");
   });
+
+  it("falls back to default when env var is not set", async () => {
+    strictEqual(await resolvePassphrase(), "vyft-local-dev");
+  });
 });

@@ -1,12 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { CliError, resolveStage } from "@vyft/core";
+import { basename, join } from "node:path";
+import { CliError, resolveStage, vyftRoot } from "@vyft/core";
 import { createStageStore, decrypt, resolvePassphrase } from "@vyft/store";
 import type { Command } from "commander";
-
-function vyftRoot(): string {
-  return join(process.cwd(), ".vyft");
-}
 
 async function readActiveStage(root: string): Promise<string> {
   return resolveStage(root);
@@ -33,7 +29,7 @@ export function registerStage(program: Command): void {
         );
       }
 
-      const root = vyftRoot();
+      const root = vyftRoot(basename(process.cwd()));
       const stageStore = createStageStore(root);
 
       switch (action) {

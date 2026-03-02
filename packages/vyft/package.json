@@ -7,10 +7,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./resource": {
-      "types": "./dist/resource.d.ts",
-      "default": "./dist/resource.js"
-    },
     "./services": {
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"

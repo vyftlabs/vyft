@@ -44,7 +44,7 @@ describe("postgres()", () => {
   it("configures health check", () => {
     const db = postgres("db");
     strictEqual(db.service.config.health?.command, "pg_isready -U postgres");
-    strictEqual(db.service.config.health?.interval, "5s");
+    strictEqual(db.service.config.health?.interval, "2s");
     strictEqual(db.service.config.health?.retries, 5);
   });
 
@@ -75,9 +75,9 @@ describe("postgres()", () => {
       build: "./apps/api",
       link: [db],
     });
-    strictEqual(typeof api.config.env?.["DB_URL"], "object");
-    strictEqual(api.config.env?.["DB_HOST"], "db");
-    strictEqual(api.config.env?.["DB_PORT"], "5432");
+    strictEqual(typeof api.config.env?.["VYFT_BINDING_DB_URL"], "object");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_HOST"], "db");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_PORT"], "5432");
     strictEqual(api.config.dependsOn?.[0]?.id, "db");
   });
 

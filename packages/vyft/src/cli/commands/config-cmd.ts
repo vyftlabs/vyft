@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import type { Config } from "@vyft/core";
 import {
   CliError,
@@ -6,6 +7,7 @@ import {
   isSecretConfig,
   loadConfig,
   resolveStage,
+  vyftRoot,
 } from "@vyft/core";
 import { collect } from "@vyft/engine";
 import type { EncryptedPayload } from "@vyft/store";
@@ -50,8 +52,7 @@ export function registerConfig(program: Command): void {
         args: string[],
         opts: { stage?: string; secret?: boolean },
       ) => {
-        const { join } = await import("node:path");
-        const root = join(process.cwd(), ".vyft");
+        const root = vyftRoot(basename(process.cwd()));
         const stageStore = createStageStore(root);
         const stage = opts.stage ?? (await resolveStage(root));
 

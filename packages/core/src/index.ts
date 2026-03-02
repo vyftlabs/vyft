@@ -8,6 +8,7 @@ export {
   resolveContext,
   resolveStage,
   saveContextConfig,
+  vyftRoot,
 } from "./config.ts";
 export { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
 export {
@@ -20,7 +21,7 @@ export { loadEnv, parseEnv } from "./env.ts";
 export { CliError, ValidationError, VyftError } from "./errors.ts";
 // New exports for monorepo migration
 export { generateSecret } from "./generate.ts";
-export { buildImage, pullImage, pushImage } from "./image.ts";
+export { buildImage, imageDigest, pullImage, pushImage } from "./image.ts";
 export type { Change, StateEntry } from "./plan.ts";
 export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
 export type {

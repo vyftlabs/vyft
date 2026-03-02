@@ -59,9 +59,12 @@ describe("redis()", () => {
       build: "./apps/api",
       link: [cache],
     });
-    strictEqual(api.config.env?.["CACHE_URL"], "redis://cache:6379");
-    strictEqual(api.config.env?.["CACHE_HOST"], "cache");
-    strictEqual(api.config.env?.["CACHE_PORT"], "6379");
+    strictEqual(
+      api.config.env?.["VYFT_BINDING_CACHE_URL"],
+      "redis://cache:6379",
+    );
+    strictEqual(api.config.env?.["VYFT_BINDING_CACHE_HOST"], "cache");
+    strictEqual(api.config.env?.["VYFT_BINDING_CACHE_PORT"], "6379");
     strictEqual(api.config.dependsOn?.[0]?.id, "cache");
   });
 

@@ -1,7 +1,5 @@
-import { randomBytes } from "node:crypto";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { createInterface } from "node:readline";
+import { basename, join } from "node:path";
 import type { RuntimeName } from "@vyft/core";
 import {
   CliError,
@@ -10,12 +8,13 @@ import {
   resolveContext,
   resolveStage,
   saveContextConfig,
+  vyftRoot,
 } from "@vyft/core";
 import { createFileStore } from "@vyft/store";
 import type { Command } from "commander";
 
-function vyftRoot(): string {
-  return join(process.cwd(), ".vyft");
+function getRoot(): string {
+  return vyftRoot(basename(process.cwd()));
 }
 
 async function readActive(root: string): Promise<string> {
@@ -34,16 +33,6 @@ async function contextExists(root: string, name: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function prompt(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
 }
 
 const ACTIONS = ["create", "use", "ls", "rm", "show"] as const;
@@ -67,7 +56,7 @@ export function registerContext(program: Command): void {
           );
         }
 
-        const root = vyftRoot();
+        const root = getRoot();
 
         switch (action) {
           case "create": {
@@ -89,32 +78,6 @@ export function registerContext(program: Command): void {
 
             const runtime = opts.runtime as RuntimeName;
 
-            // Ask user whether to generate or provide a passphrase
-            const choice = await prompt("Generate a passphrase? [Y/n] ");
-            const generate = choice === "" || /^y(es)?$/i.test(choice);
-
-            let passphrase: string;
-            if (generate) {
-              passphrase = randomBytes(32).toString("base64url");
-              console.log();
-              console.log(
-                "Your passphrase (save this — it will not be shown again):",
-              );
-              console.log();
-              console.log(`  ${passphrase}`);
-              console.log();
-              console.log("Export it before running any commands:");
-              console.log();
-              console.log(`  export VYFT_PASSPHRASE="${passphrase}"`);
-              console.log();
-            } else {
-              passphrase = await prompt("Enter passphrase: ");
-              if (!passphrase) {
-                throw new CliError("Passphrase cannot be empty.");
-              }
-            }
-
-            // Create the context directory and config — but never persist the passphrase
             await mkdir(join(root, name), { recursive: true });
             await saveContextConfig(root, name, { runtime });
             await writeActive(root, name);

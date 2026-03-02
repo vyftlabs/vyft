@@ -116,10 +116,15 @@ export function createDockerRuntime(
 
       if (resource.kind === "service") {
         warnReplicas(resource.id, resource.config);
-        const hostPort = portBindingsMap[resource.id];
-        const pb = hostPort
-          ? new Map([[resource.config.port ?? 3000, hostPort]])
-          : undefined;
+        const containerPort = resource.config.port ?? 3000;
+        let hostPort: number | undefined = portBindingsMap[resource.id];
+        if (hostPort === undefined && resource.config.expose) {
+          hostPort =
+            resource.config.expose === true
+              ? containerPort
+              : resource.config.expose;
+        }
+        const pb = hostPort ? new Map([[containerPort, hostPort]]) : undefined;
         if (op.action === "recreate") {
           const cid = await recreateContainer(
             client,
@@ -193,9 +198,10 @@ export function createDockerRuntime(
 
       if (kind === "service" || kind === "cronjob") {
         try {
-          const info = await client.get(
+          const info = (await client.get(
             `/containers/${containerName(id)}/json`,
-          );
+          )) as { State?: { Running?: boolean } };
+          if (!info.State?.Running) return null;
           return normalizeDockerContainer(info);
         } catch {
           return null;

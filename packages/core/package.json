@@ -10,6 +10,10 @@
     "./logger": {
       "types": "./dist/logger.d.ts",
       "default": "./dist/logger.js"
+    },
+    "./client-generate": {
+      "types": "./dist/client-generate.d.ts",
+      "default": "./dist/client-generate.js"
     }
   },
   "files": [
@@ -21,6 +25,7 @@
     "lint": "biome check ."
   },
   "dependencies": {
+    "@vyft/railpack": "workspace:*",
     "jiti": "^2.4.2"
   }
 }

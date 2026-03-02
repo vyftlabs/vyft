@@ -1,4 +1,5 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { createJiti } from "jiti";
 import { loadEnv } from "./env.ts";
@@ -63,7 +64,7 @@ export async function findConfig(dir: string): Promise<string> {
 /** Load and execute a config file. Returns the raw module for collect(). */
 export async function loadConfig(path: string): Promise<unknown> {
   await loadEnv(dirname(path));
-  const jiti = createJiti(import.meta.url);
+  const jiti = createJiti(import.meta.url, { requireCache: false });
   return jiti.import(path);
 }
 
@@ -111,6 +112,11 @@ export async function resolveStage(root: string): Promise<string> {
   return "local";
 }
 
+/** Resolve the vyft state root directory for a project: `~/.vyft/<project>/`. */
+export function vyftRoot(project: string): string {
+  return join(process.env["VYFT_ROOT"] ?? join(homedir(), ".vyft"), project);
+}
+
 export interface ProjectInfo {
   readonly cwd: string;
   readonly root: string;
@@ -123,16 +129,21 @@ export interface ProjectInfo {
 /** Resolve standard project identifiers from cwd. */
 export async function projectInfo(): Promise<ProjectInfo> {
   const cwd = process.cwd();
-  const root = join(cwd, ".vyft");
+  const project = basename(cwd);
+  const root = vyftRoot(project);
   const context = await resolveContext(root);
   const stage = await resolveStage(root);
-  const project = basename(cwd);
 
-  const ctxConfig = await loadContextConfig(root, context);
+  let ctxConfig = await loadContextConfig(root, context);
   if (!ctxConfig) {
-    throw new VyftError(
-      `Context "${context}" has no config. Run \`vyft context create ${context} --runtime docker\` first.`,
-    );
+    if (context === "default") {
+      ctxConfig = { runtime: "docker" };
+      await saveContextConfig(root, context, ctxConfig);
+    } else {
+      throw new VyftError(
+        `Context "${context}" has no config. Run \`vyft context create ${context} --runtime docker\` first.`,
+      );
+    }
   }
 
   return { cwd, root, context, stage, project, runtimeName: ctxConfig.runtime };

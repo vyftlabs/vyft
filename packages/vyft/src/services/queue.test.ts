@@ -67,9 +67,9 @@ describe("queue()", () => {
       build: "./apps/api",
       link: [mq],
     });
-    strictEqual(typeof api.config.env?.["MQ_URL"], "object");
-    strictEqual(api.config.env?.["MQ_HOST"], "mq");
-    strictEqual(api.config.env?.["MQ_PORT"], "5672");
+    strictEqual(typeof api.config.env?.["VYFT_BINDING_MQ_URL"], "object");
+    strictEqual(api.config.env?.["VYFT_BINDING_MQ_HOST"], "mq");
+    strictEqual(api.config.env?.["VYFT_BINDING_MQ_PORT"], "5672");
     strictEqual(api.config.dependsOn?.[0]?.id, "mq");
   });
 

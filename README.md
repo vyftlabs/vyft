@@ -30,7 +30,7 @@ export const web = site("web", { path: "./apps/web", domain: "example.com" });
 
 // index.ts
 
-import { db } from "vyft/resource";
+import { db, env } from "vyft/env";
 import { Hono } from "hono";
 import postgres from "postgres";
 

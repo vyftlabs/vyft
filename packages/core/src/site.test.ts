@@ -87,9 +87,9 @@ describe("site()", () => {
       build: "./apps/api",
       link: [web],
     });
-    strictEqual(api.config.env?.["WEB_URL"], "http://web:80");
-    strictEqual(api.config.env?.["WEB_HOST"], "web");
-    strictEqual(api.config.env?.["WEB_PORT"], "80");
+    strictEqual(api.config.env?.["VYFT_BINDING_WEB_URL"], "http://web:80");
+    strictEqual(api.config.env?.["VYFT_BINDING_WEB_HOST"], "web");
+    strictEqual(api.config.env?.["VYFT_BINDING_WEB_PORT"], "80");
     strictEqual(api.config.dependsOn?.[0]?.id, "web");
   });
 });

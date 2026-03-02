@@ -148,10 +148,8 @@ export function createFileStore(root: string): Store {
           );
         }
 
-        throw new LockError(
-          `State is locked by a non-running process (PID ${existing.pid}). ` +
-            `Run \`vyft cancel\` to clear the stale lock.`,
-        );
+        // Stale lock from a dead process — take it over
+        await writeFile(file, payload, "utf8");
       }
 
       return async () => {

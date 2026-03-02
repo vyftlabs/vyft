@@ -1,0 +1,29 @@
+{
+  "name": "@vyft/example-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "vyft deploy",
+    "dev": "vyft local dev",
+    "reset": "vyft local reset",
+    "refresh": "vyft refresh",
+    "destroy": "vyft destroy",
+    "diff": "vyft diff",
+    "vyft:generate": "vyft generate",
+    "cancel": "vyft cancel",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "@vyft/client": "workspace:*",
+    "bullmq": "^5.70.1",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.12.3",
+    "ioredis": "^5.10.0",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.9",
+    "vyft": "workspace:*"
+  }
+}

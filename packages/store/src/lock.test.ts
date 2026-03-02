@@ -39,7 +39,7 @@ describe("FileStore lock", () => {
     }
   });
 
-  it("throws LockError with vyft cancel hint for stale lock", async () => {
+  it("takes over stale lock from a dead process", async () => {
     const store = createFileStore(root);
     const dir = join(root, "ctx", "proj", "local");
     await mkdir(dir, { recursive: true });
@@ -50,15 +50,10 @@ describe("FileStore lock", () => {
       JSON.stringify({ pid: stalePid, timestamp: new Date().toISOString() }),
     );
 
-    await rejects(
-      () => store.lock("ctx", "proj", "local"),
-      (err: unknown) => {
-        if (!(err instanceof LockError)) return false;
-        if (!err.message.includes("vyft cancel")) return false;
-        if (!err.message.includes(String(stalePid))) return false;
-        return true;
-      },
-    );
+    const unlock = await store.lock("ctx", "proj", "local");
+    const content = JSON.parse(await readFile(join(dir, "lock"), "utf8"));
+    strictEqual(content.pid, process.pid);
+    await unlock();
   });
 
   it("unlock is idempotent", async () => {

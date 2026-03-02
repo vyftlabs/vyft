@@ -53,9 +53,9 @@ describe("service() link expansion", () => {
       link: [linkItem],
     });
 
-    strictEqual(api.config.env?.["DB_URL"], "postgres://db:5432");
-    strictEqual(api.config.env?.["DB_HOST"], "db");
-    strictEqual(api.config.env?.["DB_PORT"], "5432");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_URL"], "postgres://db:5432");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_HOST"], "db");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_PORT"], "5432");
   });
 
   it("adds linked services to dependsOn", () => {
@@ -86,10 +86,10 @@ describe("service() link expansion", () => {
     const api = service("api", {
       build: "./apps/api",
       link: [linkItem],
-      env: { DB_HOST: "custom-host" },
+      env: { VYFT_BINDING_DB_HOST: "custom-host" },
     });
 
-    strictEqual(api.config.env?.["DB_HOST"], "custom-host");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_HOST"], "custom-host");
   });
 
   it("merges link dependsOn with explicit dependsOn", () => {
@@ -125,7 +125,10 @@ describe("service() link expansion", () => {
       link: [linkItem],
     });
 
-    strictEqual(api.config.env?.["MY_DB_URL"], "postgres://my-db:5432");
+    strictEqual(
+      api.config.env?.["VYFT_BINDING_MY_DB_URL"],
+      "postgres://my-db:5432",
+    );
   });
 
   it("skips non-binding properties", () => {
@@ -142,8 +145,8 @@ describe("service() link expansion", () => {
       link: [linkItem],
     });
 
-    strictEqual(api.config.env?.["DB_HOST"], "db");
-    strictEqual("DB_NOTABINDING" in (api.config.env ?? {}), false);
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_HOST"], "db");
+    strictEqual("VYFT_BINDING_DB_NOTABINDING" in (api.config.env ?? {}), false);
   });
 
   it("handles multiple link items", () => {
@@ -165,8 +168,8 @@ describe("service() link expansion", () => {
       link: [dbLink, cacheLink],
     });
 
-    strictEqual(api.config.env?.["DB_HOST"], "db");
-    strictEqual(api.config.env?.["CACHE_HOST"], "cache");
+    strictEqual(api.config.env?.["VYFT_BINDING_DB_HOST"], "db");
+    strictEqual(api.config.env?.["VYFT_BINDING_CACHE_HOST"], "cache");
     strictEqual(api.config.dependsOn?.length, 2);
   });
 
@@ -189,7 +192,7 @@ describe("service() link expansion", () => {
   it("works without link field", () => {
     const api = service("api", { build: "./apps/api" });
     strictEqual(api.id, "api");
-    strictEqual(api.config.env, undefined);
+    deepStrictEqual(api.config.env, { PORT: "3000", NODE_ENV: "production" });
   });
 });
 
@@ -210,9 +213,9 @@ describe("cronjob() link expansion", () => {
       link: [linkItem],
     });
 
-    strictEqual(job.config.env?.["DB_URL"], "postgres://db:5432");
-    strictEqual(job.config.env?.["DB_HOST"], "db");
-    strictEqual(job.config.env?.["DB_PORT"], "5432");
+    strictEqual(job.config.env?.["VYFT_BINDING_DB_URL"], "postgres://db:5432");
+    strictEqual(job.config.env?.["VYFT_BINDING_DB_HOST"], "db");
+    strictEqual(job.config.env?.["VYFT_BINDING_DB_PORT"], "5432");
   });
 
   it("merges link env with explicit env (explicit wins)", () => {
@@ -227,10 +230,10 @@ describe("cronjob() link expansion", () => {
       image: "alpine",
       schedule: "0 3 * * *",
       link: [linkItem],
-      env: { DB_HOST: "custom-host" },
+      env: { VYFT_BINDING_DB_HOST: "custom-host" },
     });
 
-    strictEqual(job.config.env?.["DB_HOST"], "custom-host");
+    strictEqual(job.config.env?.["VYFT_BINDING_DB_HOST"], "custom-host");
   });
 
   it("does not include link on the final config", () => {

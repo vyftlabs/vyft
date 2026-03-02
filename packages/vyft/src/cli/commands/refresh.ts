@@ -1,13 +1,6 @@
 import type { RuntimeName } from "@vyft/core";
-import {
-  CliError,
-  findConfig,
-  loadConfig,
-  projectInfo,
-  resolveStage,
-} from "@vyft/core";
+import { CliError, projectInfo, resolveStage } from "@vyft/core";
 import * as log from "@vyft/core/logger";
-import { buildGraph, collect, fingerprint, validate } from "@vyft/engine";
 import type { PersistedState, ResourceState, Store } from "@vyft/store";
 import {
   createFileStore,
@@ -26,31 +19,23 @@ interface RefreshState {
   stage: string;
   runtimeName: RuntimeName;
   clearPending: boolean;
-  live: boolean;
   unlock: () => Promise<void>;
 }
 
 export function registerRefresh(program: Command): void {
   program
     .command("refresh")
-    .description("Reconcile state with current config")
+    .description("Inspect live infrastructure and reconcile state")
     .option("-v, --verbose", "Enable verbose output", false)
     .option(
       "--clear-pending",
       "Only clear pending operations without full refresh",
       false,
     )
-    .option(
-      "--live",
-      "Inspect live infrastructure instead of reconciling from config",
-      false,
-    )
     .option("--stage <stage>", "Stage to refresh")
     .action(
       withLifecycle<RefreshState>({
-        async setup(
-          opts: { clearPending?: boolean; live?: boolean; stage?: string } = {},
-        ) {
+        async setup(opts: { clearPending?: boolean; stage?: string } = {}) {
           const { root, context, project, runtimeName } = await projectInfo();
           const stage = opts.stage ?? (await resolveStage(root));
           const store = createFileStore(root);
@@ -62,7 +47,6 @@ export function registerRefresh(program: Command): void {
             stage,
             runtimeName,
             clearPending: !!opts.clearPending,
-            live: !!opts.live,
             unlock,
           };
         },
@@ -74,7 +58,6 @@ export function registerRefresh(program: Command): void {
           stage,
           runtimeName,
           clearPending,
-          live,
         }) {
           const previous = await store.load(context, project, stage);
 
@@ -99,170 +82,86 @@ export function registerRefresh(program: Command): void {
             log.warn("WAL exists — clearing pending operations during refresh");
           }
 
-          // --live mode: inspect live infrastructure and reconcile state
-          if (live) {
-            const passphrase = await resolvePassphrase();
-            const secretMap = new Map<string, string>();
+          // Load secrets for runtime inspection
+          const passphrase = await resolvePassphrase();
+          const secretMap = new Map<string, string>();
 
-            // Load from stage storage
-            const root = (await projectInfo()).root;
-            const stageStore = createStageStore(root);
-            const stageData = await stageStore.loadStage(stage);
-            if (stageData?.values) {
-              for (const [k, v] of Object.entries(stageData.values))
-                secretMap.set(k, v);
-            }
-            if (stageData?.secrets) {
-              const raw = JSON.parse(
-                decrypt(stageData.secrets, passphrase),
-              ) as Record<string, string>;
-              for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
-            }
-
-            // Fallback to state secrets
-            if (previous.secrets) {
-              const raw = JSON.parse(
-                decrypt(previous.secrets, passphrase),
-              ) as Record<string, string>;
-              for (const [k, v] of Object.entries(raw)) {
-                if (!secretMap.has(k)) secretMap.set(k, v);
-              }
-            }
-
-            const runtime = createRuntime(runtimeName, {
-              project,
-              secrets: secretMap,
-            });
-            if (!runtime.inspect) {
-              throw new CliError("Runtime does not support inspection.");
-            }
-
-            const now = new Date().toISOString();
-            const reconciled: ResourceState[] = [];
-            let removedCount = 0;
-            let changedCount = 0;
-
-            for (const rs of previous.resources) {
-              if (rs.kind === "secret" || rs.kind === "config") {
-                reconciled.push(rs); // Keep config/secrets as-is
-                continue;
-              }
-
-              const live = await runtime.inspect(rs.id, rs.kind);
-              if (!live) {
-                log.step("gone", rs.id);
-                removedCount++;
-                continue; // Gone from live → remove from state
-              }
-
-              const liveFingerprint = JSON.stringify(live);
-              if (liveFingerprint !== JSON.stringify(rs.inputs)) {
-                log.step("update", rs.id);
-                changedCount++;
-                reconciled.push({ ...rs, inputs: live, modified: now });
-              } else {
-                reconciled.push(rs);
-              }
-            }
-
-            const state: PersistedState = {
-              version: previous.version,
-              manifest: { timestamp: now, tool: "vyft" },
-              resources: reconciled,
-              secrets: previous.secrets,
-            };
-
-            await store.compact(context, project, stage, state);
-
-            if (removedCount === 0 && changedCount === 0) {
-              log.info("live state matches stored state");
-            } else {
-              log.info(
-                "live refresh: %d changed, %d removed",
-                changedCount,
-                removedCount,
-              );
-            }
-            return;
+          const root = (await projectInfo()).root;
+          const stageStore = createStageStore(root);
+          const stageData = await stageStore.loadStage(stage);
+          if (stageData?.values) {
+            for (const [k, v] of Object.entries(stageData.values))
+              secretMap.set(k, v);
+          }
+          if (stageData?.secrets) {
+            const raw = JSON.parse(
+              decrypt(stageData.secrets, passphrase),
+            ) as Record<string, string>;
+            for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
           }
 
-          const configPath = await findConfig(process.cwd());
-          const config = await loadConfig(configPath);
+          if (previous.secrets) {
+            const raw = JSON.parse(
+              decrypt(previous.secrets, passphrase),
+            ) as Record<string, string>;
+            for (const [k, v] of Object.entries(raw)) {
+              if (!secretMap.has(k)) secretMap.set(k, v);
+            }
+          }
 
-          const resources = collect(config);
-          const graph = buildGraph(resources);
-          validate(graph);
-
-          const previousMap = new Map<string, ResourceState>();
-          for (const entry of previous.resources) {
-            previousMap.set(entry.id, entry);
+          const runtime = createRuntime(runtimeName, {
+            project,
+            secrets: secretMap,
+          });
+          if (!runtime.inspect) {
+            throw new CliError("Runtime does not support inspection.");
           }
 
           const now = new Date().toISOString();
-          let updated = 0;
-          let added = 0;
-          let removed = 0;
+          const reconciled: ResourceState[] = [];
+          let removedCount = 0;
+          let changedCount = 0;
 
-          const refreshed: ResourceState[] = resources.map((r) => {
-            const prev = previousMap.get(r.id);
-            const fp = fingerprint(r);
-            const deps = graph.dependencies.get(r.id);
-
-            if (!prev) {
-              added++;
-              log.step("add", r.id);
-            } else if (prev.fingerprint !== fp) {
-              updated++;
-              log.step("update", r.id);
+          for (const rs of previous.resources) {
+            if (rs.kind === "secret" || rs.kind === "config") {
+              reconciled.push(rs);
+              continue;
             }
 
-            return {
-              id: r.id,
-              kind: r.kind,
-              fingerprint: fp,
-              inputs: JSON.parse(JSON.stringify(r.config)) as Record<
-                string,
-                unknown
-              >,
-              outputs: prev?.outputs ?? {},
-              dependencies: deps ? [...deps] : [],
-              runtime: prev?.runtime ?? {},
-              created: prev?.created ?? now,
-              modified: prev
-                ? prev.fingerprint !== fp
-                  ? now
-                  : prev.modified
-                : now,
-              taint: false,
-            };
-          });
+            const live = await runtime.inspect(rs.id, rs.kind);
+            if (!live) {
+              log.step("gone", rs.id);
+              removedCount++;
+              continue;
+            }
 
-          // Count resources in state but not in config
-          const refreshedIds = new Set(refreshed.map((r) => r.id));
-          for (const prev of previous.resources) {
-            if (!refreshedIds.has(prev.id)) {
-              removed++;
-              log.step("remove", prev.id);
+            const liveFingerprint = JSON.stringify(live);
+            if (liveFingerprint !== JSON.stringify(rs.inputs)) {
+              log.step("update", rs.id);
+              changedCount++;
+              reconciled.push({ ...rs, inputs: live, modified: now });
+            } else {
+              reconciled.push(rs);
             }
           }
 
           const state: PersistedState = {
             version: previous.version,
             manifest: { timestamp: now, tool: "vyft" },
-            resources: refreshed,
+            resources: reconciled,
             secrets: previous.secrets,
+            secretOutputs: previous.secretOutputs ?? null,
           };
 
           await store.compact(context, project, stage, state);
 
-          if (added === 0 && updated === 0 && removed === 0) {
-            log.info("state is up to date");
+          if (removedCount === 0 && changedCount === 0) {
+            log.info("live state matches stored state");
           } else {
             log.info(
-              "refreshed: %d added, %d updated, %d removed",
-              added,
-              updated,
-              removed,
+              "refreshed: %d changed, %d gone",
+              changedCount,
+              removedCount,
             );
           }
         },
