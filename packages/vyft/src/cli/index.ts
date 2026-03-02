@@ -12,7 +12,6 @@ import { registerLocal } from "./commands/local.ts";
 import { registerOutput } from "./commands/output.ts";
 import { registerPreview } from "./commands/preview.ts";
 import { registerRefresh } from "./commands/refresh.ts";
-import { registerSecret } from "./commands/secret.ts";
 import { registerStage } from "./commands/stage.ts";
 
 const program = new Command();
@@ -28,7 +27,6 @@ registerDeploy(program);
 registerDestroy(program);
 registerLocal(program);
 registerConfig(program);
-registerSecret(program);
 registerRefresh(program);
 registerOutput(program);
 registerPreview(program);

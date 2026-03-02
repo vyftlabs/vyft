@@ -18,6 +18,7 @@ import {
   resolvePassphrase,
 } from "@vyft/store";
 import type { Command } from "commander";
+import { createPrinter, type OutputFormat } from "../printer.ts";
 
 type SecretMap = Record<string, string>;
 
@@ -46,12 +47,14 @@ export function registerConfig(program: Command): void {
     .argument("[args...]", "Action arguments")
     .option("--stage <stage>", "Stage to operate on (default: active stage)")
     .option("--secret", "Encrypt the value as a secret", false)
+    .option("-o, --output <format>", "Output format (text|json)", "text")
     .action(
       async (
         action: string,
         args: string[],
-        opts: { stage?: string; secret?: boolean },
+        opts: { stage?: string; secret?: boolean; output: OutputFormat },
       ) => {
+        const print = createPrinter({ format: opts.output });
         const root = vyftRoot(basename(process.cwd()));
         const stageStore = createStageStore(root);
         const stage = opts.stage ?? (await resolveStage(root));
@@ -100,7 +103,10 @@ export function registerConfig(program: Command): void {
                 secrets: updatedSecrets,
               });
             }
-            console.log(`Config "${name}" saved to stage "${stage}".`);
+            print.message(`Config "${name}" saved to stage "${stage}".`, {
+              name,
+              stage,
+            });
             break;
           }
 
@@ -117,8 +123,9 @@ export function registerConfig(program: Command): void {
             }
 
             // Check plain values first
-            if (name in data.values) {
-              console.log(data.values[name]);
+            const plainValue = data.values[name];
+            if (plainValue !== undefined) {
+              print.message(plainValue, { name, value: plainValue });
               break;
             }
 
@@ -126,8 +133,13 @@ export function registerConfig(program: Command): void {
             if (data.secrets) {
               const passphrase = await resolvePassphrase();
               const secrets = decryptSecrets(data.secrets, passphrase);
-              if (name in secrets) {
-                console.log(secrets[name]);
+              const secretValue = secrets[name];
+              if (secretValue !== undefined) {
+                print.message(secretValue, {
+                  name,
+                  value: secretValue,
+                  secret: true,
+                });
                 break;
               }
             }
@@ -185,7 +197,10 @@ export function registerConfig(program: Command): void {
                 `Config "${name}" not found in stage "${stage}".`,
               );
             }
-            console.log(`Config "${name}" removed from stage "${stage}".`);
+            print.message(`Config "${name}" removed from stage "${stage}".`, {
+              name,
+              stage,
+            });
             break;
           }
 
@@ -209,14 +224,22 @@ export function registerConfig(program: Command): void {
               ...new Set([...valueNames, ...secretNames]),
             ].sort();
 
-            if (allNames.length === 0) {
-              console.log(`No config values in stage "${stage}".`);
+            if (opts.output === "json") {
+              const items = allNames.map((name) => ({
+                name,
+                secret: secretNames.includes(name),
+              }));
+              print.object({ stage, items });
             } else {
-              for (const name of allNames) {
-                if (secretNames.includes(name)) {
-                  console.log(`${name} [secret]`);
-                } else {
-                  console.log(name);
+              if (allNames.length === 0) {
+                console.log(`No config values in stage "${stage}".`);
+              } else {
+                for (const name of allNames) {
+                  if (secretNames.includes(name)) {
+                    console.log(`${name} [secret]`);
+                  } else {
+                    console.log(name);
+                  }
                 }
               }
             }
@@ -274,7 +297,10 @@ export function registerConfig(program: Command): void {
               ...data,
               secrets: encryptSecrets(secrets, passphrase),
             });
-            console.log(`Config "${name}" rotated in stage "${stage}".`);
+            print.message(`Config "${name}" rotated in stage "${stage}".`, {
+              name,
+              stage,
+            });
             break;
           }
 

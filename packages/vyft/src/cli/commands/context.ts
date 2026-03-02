@@ -12,6 +12,7 @@ import {
 } from "@vyft/core";
 import { createFileStore } from "@vyft/store";
 import type { Command } from "commander";
+import { createPrinter, type OutputFormat } from "../printer.ts";
 
 function getRoot(): string {
   return vyftRoot(basename(process.cwd()));
@@ -44,12 +45,14 @@ export function registerContext(program: Command): void {
     .argument("<action>", `Action to perform (${ACTIONS.join("|")})`)
     .argument("[name]", "Context name")
     .option(`--runtime <runtime>`, `Runtime target (${RUNTIMES.join("|")})`)
+    .option("-o, --output <format>", "Output format (text|json)", "text")
     .action(
       async (
         action: string,
         name: string | undefined,
-        opts: { runtime?: string },
+        opts: { runtime?: string; output: OutputFormat },
       ) => {
+        const print = createPrinter({ format: opts.output });
         if (!ACTIONS.includes(action as (typeof ACTIONS)[number])) {
           throw new CliError(
             `Unknown action: ${action}. Expected one of: ${ACTIONS.join(", ")}`,
@@ -81,8 +84,9 @@ export function registerContext(program: Command): void {
             await mkdir(join(root, name), { recursive: true });
             await saveContextConfig(root, name, { runtime });
             await writeActive(root, name);
-            console.log(
+            print.message(
               `Context "${name}" created (runtime: ${runtime}) and set as active.`,
+              { name, runtime },
             );
             break;
           }
@@ -95,7 +99,7 @@ export function registerContext(program: Command): void {
               );
             }
             await writeActive(root, name);
-            console.log(`Switched to context "${name}".`);
+            print.message(`Switched to context "${name}".`, { name });
             break;
           }
 
@@ -112,7 +116,7 @@ export function registerContext(program: Command): void {
               await writeActive(root, "default");
             }
 
-            console.log(`Context "${name}" removed.`);
+            print.message(`Context "${name}" removed.`, { name });
             break;
           }
 
@@ -131,33 +135,49 @@ export function registerContext(program: Command): void {
             // List all projects in this context
             const contextDir = join(root, name);
             const entries = await readdir(contextDir);
-            const projects: string[] = [];
+            const projectsInfo: Array<{ name: string; resources: number }> = [];
+            const stage = await resolveStage(root);
+
             for (const entry of entries) {
               if (entry === "lock" || entry === "config.json") continue;
               const s = await stat(join(contextDir, entry));
-              if (s.isDirectory()) projects.push(entry);
+              if (s.isDirectory()) {
+                const state = await store.load(name, entry, stage);
+                projectsInfo.push({
+                  name: entry,
+                  resources: state?.resources.length ?? 0,
+                });
+              }
             }
 
-            console.log(
-              `Context: ${name}${active === name ? " (active)" : ""}`,
-            );
-            console.log(`  Runtime: ${ctxConfig?.runtime ?? "not configured"}`);
-            console.log(
-              `  Passphrase: ${hasPassphrase ? "set (via VYFT_PASSPHRASE)" : "not set"}`,
-            );
-
-            const stage = await resolveStage(root);
-
-            if (projects.length === 0) {
-              console.log("  Projects: none");
+            if (opts.output === "json") {
+              print.object({
+                name,
+                active: active === name,
+                runtime: ctxConfig?.runtime ?? null,
+                hasPassphrase,
+                projects: projectsInfo,
+              });
             } else {
-              console.log("  Projects:");
-              for (const p of projects) {
-                const state = await store.load(name, p, stage);
-                const count = state?.resources.length ?? 0;
-                console.log(
-                  `    ${p}: ${count} resource${count !== 1 ? "s" : ""}`,
-                );
+              console.log(
+                `Context: ${name}${active === name ? " (active)" : ""}`,
+              );
+              console.log(
+                `  Runtime: ${ctxConfig?.runtime ?? "not configured"}`,
+              );
+              console.log(
+                `  Passphrase: ${hasPassphrase ? "set (via VYFT_PASSPHRASE)" : "not set"}`,
+              );
+
+              if (projectsInfo.length === 0) {
+                console.log("  Projects: none");
+              } else {
+                console.log("  Projects:");
+                for (const p of projectsInfo) {
+                  console.log(
+                    `    ${p.name}: ${p.resources} resource${p.resources !== 1 ? "s" : ""}`,
+                  );
+                }
               }
             }
             break;
@@ -170,9 +190,7 @@ export function registerContext(program: Command): void {
               entries = await readdir(root);
             } catch (err: unknown) {
               if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-                console.log(
-                  "No contexts. Run `vyft context create <name>` to get started.",
-                );
+                print.list([], { active });
                 return;
               }
               throw err;
@@ -185,17 +203,7 @@ export function registerContext(program: Command): void {
               if (s.isDirectory()) contexts.push(entry);
             }
 
-            if (contexts.length === 0) {
-              console.log(
-                "No contexts. Run `vyft context create <name>` to get started.",
-              );
-              return;
-            }
-
-            for (const ctx of contexts.sort()) {
-              const marker = ctx === active ? " *" : "";
-              console.log(`${ctx}${marker}`);
-            }
+            print.list(contexts, { active });
             break;
           }
         }
