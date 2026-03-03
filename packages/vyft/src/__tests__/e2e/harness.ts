@@ -73,21 +73,22 @@ function createTestContext(
   runtime: RuntimeName,
   state: ResourceState[],
   project: string,
+  stage: string,
   docker: DockerClient | null,
   k8s: K8sClient | null,
 ): TestContext {
   switch (runtime) {
     case "docker": {
       if (!docker) throw new Error("docker client required for docker runtime");
-      return new DockerTestContext(state, project, docker);
+      return new DockerTestContext(state, project, stage, docker);
     }
     case "swarm": {
       if (!docker) throw new Error("docker client required for swarm runtime");
-      return new SwarmTestContext(state, project, docker);
+      return new SwarmTestContext(state, project, stage, docker);
     }
     case "k8s": {
       if (!k8s) throw new Error("k8s client required for k8s runtime");
-      return new K8sTestContext(state, project, k8s);
+      return new K8sTestContext(state, project, stage, k8s);
     }
   }
 }
@@ -119,7 +120,7 @@ export async function runCase(
     const result = await deploy(mod.config, [], rt);
     state = result.state;
 
-    const ctx = createTestContext(runtime, state, project, docker, k8s);
+    const ctx = createTestContext(runtime, state, project, stage, docker, k8s);
     await mod.check(ctx);
   } finally {
     // Destroy all resources
@@ -137,8 +138,9 @@ export async function runCase(
     }
 
     // Force-cleanup strays
-    if (docker) await forceDockerCleanup(docker, project, runtime === "swarm");
-    if (k8s) await forceK8sCleanup(k8s, project);
+    if (docker)
+      await forceDockerCleanup(docker, project, stage, runtime === "swarm");
+    if (k8s) await forceK8sCleanup(k8s, project, stage);
   }
 }
 
@@ -163,9 +165,10 @@ function autoSecrets(config: unknown): Map<string, string> {
 async function forceDockerCleanup(
   client: DockerClient,
   project: string,
+  stage: string,
   swarm: boolean,
 ): Promise<void> {
-  const prefix = `vyft-${project}`;
+  const prefix = `vyft-${project}-${stage}`;
 
   // Remove swarm services first (they recreate containers)
   if (swarm) {
@@ -235,8 +238,9 @@ async function forceDockerCleanup(
 async function forceK8sCleanup(
   client: K8sClient,
   project: string,
+  stage: string,
 ): Promise<void> {
-  const namespace = `vyft-${project}`;
+  const namespace = `vyft-${project}-${stage}`;
   try {
     await client.deleteNamespace({ name: namespace });
   } catch {

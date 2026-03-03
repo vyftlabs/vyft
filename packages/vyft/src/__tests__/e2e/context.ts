@@ -16,10 +16,12 @@ interface ContainerInspect {
 export abstract class TestContext {
   readonly state: ResourceState[];
   protected readonly project: string;
+  protected readonly stage: string;
 
-  constructor(state: ResourceState[], project: string) {
+  constructor(state: ResourceState[], project: string, stage: string) {
     this.state = state;
     this.project = project;
+    this.stage = stage;
   }
 
   resourceCount(n: number): void {
@@ -67,13 +69,18 @@ export abstract class TestContext {
 export class DockerTestContext extends TestContext {
   readonly docker: DockerClient;
 
-  constructor(state: ResourceState[], project: string, docker: DockerClient) {
-    super(state, project);
+  constructor(
+    state: ResourceState[],
+    project: string,
+    stage: string,
+    docker: DockerClient,
+  ) {
+    super(state, project, stage);
     this.docker = docker;
   }
 
   protected containerName(id: string): string {
-    return `vyft-${this.project}-${id}`;
+    return `vyft-${this.project}-${this.stage}-${id}`;
   }
 
   protected async inspect(id: string): Promise<ContainerInspect> {
@@ -129,7 +136,7 @@ export class DockerTestContext extends TestContext {
     destination: string,
   ): Promise<void> {
     const info = await this.inspect(id);
-    const volName = `vyft-${this.project}-${volumeId}`;
+    const volName = `vyft-${this.project}-${this.stage}-${volumeId}`;
     const mount = info.Mounts.find((m) => m.Name === volName);
     assert.ok(
       mount,
@@ -178,10 +185,15 @@ export class K8sTestContext extends TestContext {
   readonly k8s: K8sClient;
   private readonly namespace: string;
 
-  constructor(state: ResourceState[], project: string, k8s: K8sClient) {
-    super(state, project);
+  constructor(
+    state: ResourceState[],
+    project: string,
+    stage: string,
+    k8s: K8sClient,
+  ) {
+    super(state, project, stage);
     this.k8s = k8s;
-    this.namespace = `vyft-${project}`;
+    this.namespace = `vyft-${project}-${stage}`;
   }
 
   async serviceReady(id: string, timeoutMs = 60_000): Promise<void> {
