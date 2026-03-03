@@ -88,16 +88,6 @@ importers:
         specifier: ^2.4.2
         version: 2.6.1
 
-  packages/crypto:
-    dependencies:
-      '@vyft/provider':
-        specifier: workspace:*
-        version: link:../provider
-    devDependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-
   packages/e2e:
     dependencies:
       vyft:
@@ -109,25 +99,9 @@ importers:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
-
-  packages/fs:
-    dependencies:
-      '@vyft/provider':
+      '@vyft/platform':
         specifier: workspace:*
-        version: link:../provider
-      handlebars:
-        specifier: ^4.7.8
-        version: 4.7.8
-      tar:
-        specifier: ^7
-        version: 7.5.9
-      tinyglobby:
-        specifier: ^0.2.15
-        version: 0.2.15
-    devDependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        version: link:../platform
 
   packages/hcloud:
     dependencies:
@@ -147,13 +121,15 @@ importers:
 
   packages/platform:
     dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
       '@vyft/provider':
         specifier: workspace:*
         version: link:../provider
-    devDependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+      '@vyft/std':
+        specifier: workspace:*
+        version: link:../std
 
   packages/provider:
     dependencies:
@@ -172,10 +148,32 @@ importers:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
+      '@vyft/provider':
+        specifier: workspace:*
+        version: link:../provider
     devDependencies:
       '@kubernetes/client-node':
         specifier: ^1.4.0
         version: 1.4.0
+
+  packages/std:
+    dependencies:
+      '@vyft/provider':
+        specifier: workspace:*
+        version: link:../provider
+      handlebars:
+        specifier: ^4.7.8
+        version: 4.7.8
+      tar:
+        specifier: ^7
+        version: 7.5.9
+      tinyglobby:
+        specifier: ^0.2.15
+        version: 0.2.15
+    devDependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   packages/store:
     dependencies:
@@ -191,15 +189,25 @@ importers:
       '@vyft/engine':
         specifier: workspace:*
         version: link:../engine
+      '@vyft/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@vyft/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@vyft/std':
+        specifier: workspace:*
+        version: link:../std
       '@vyft/store':
         specifier: workspace:*
         version: link:../store
       commander:
         specifier: ^13.0.0
         version: 13.1.0
+    devDependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
 packages:
 

@@ -1,5 +1,5 @@
 import type { Change } from "./plan.ts";
-import type { Resource, Service } from "./resource.ts";
+import type { Job, Resource, Service } from "./resource.ts";
 
 /** A concrete operation the runtime will perform. */
 export type Operation =
@@ -23,6 +23,11 @@ export interface Runtime {
   execute(op: Operation): Promise<void>;
   /** Poll until a service is healthy. Resolves immediately if no health check configured. */
   waitForHealthy?(resourceId: string, timeout: number): Promise<void>;
+  /**
+   * Wait until a job completes successfully (exit 0).
+   * Throws if the job fails (non-zero exit) or times out.
+   */
+  waitForCompletion?(job: Job, timeout: number): Promise<void>;
   /** Inspect a live resource. Returns null if not found; normalized config otherwise. */
   inspect?(
     id: string,

@@ -1,50 +1,89 @@
-import type { ProviderContext } from "./context.ts";
-import type { Module } from "./module.ts";
-import type { ResourceDefinition } from "./resource.ts";
+import {
+  createNamedResourceBuilder,
+  createReusableResourceBuilder,
+  type NamedResourceBuilder,
+  type ResourceBuilder,
+} from "./builder.ts";
 
-export type ResolvedResource = {
-  readonly urn: string;
-  readonly definition: ResourceDefinition;
-};
+// ── Provider Builder ────────────────────────────────────────────────────
+
+export interface ProviderBuilder<Ctx, Secrets extends Record<string, string>> {
+  /**
+   * Create a resource builder with a name.
+   */
+  resource(name: string): NamedResourceBuilder<Ctx, Secrets>;
+
+  /**
+   * Create a reusable resource builder (without name).
+   */
+  createBuilder(): ResourceBuilder<Ctx, Secrets>;
+}
+
+// ── Options ─────────────────────────────────────────────────────────────
+
+interface InitProviderOptionsSimple {
+  name: string;
+}
+
+interface InitProviderOptionsWithSecrets<S extends string[], Ctx> {
+  name: string;
+  secrets: [...S];
+  setup: (args: { secrets: { [K in S[number]]: string } }) => Ctx;
+}
+
+// ── initProvider ────────────────────────────────────────────────────────
 
 /**
- * Assemble a provider from a context, modules, and standalone resources.
- *
- * URNs are derived automatically:
- * - Module resources: `vyft:{namespace}:{key}:{provider}`
- * - Standalone resources: `vyft:{provider}:{name}`
+ * Initialize a provider with the builder pattern.
  *
  * @example
  * ```ts
- * export default defineProvider({
- *   context,
- *   modules: [platform],
- * });
+ * // Simple provider (no secrets)
+ * const t = initProvider({ name: "primitives" })
+ *
+ * // Provider with secrets
+ * const t = initProvider({
+ *   name: "hcloud",
+ *   secrets: ["apiToken"],
+ *   setup: ({ secrets }) => ({ client: createClient(secrets.apiToken) })
+ * })
+ *
+ * // Define resources
+ * const exec = t.resource("exec")
+ *   .input(z.object({ command: z.array(z.string()) }))
+ *   .handle({
+ *     async create({ input, ctx }) {
+ *       return { stdout: "..." }
+ *     },
+ *     async read() { return null; }
+ *   })
  * ```
  */
-export function defineProvider(options: {
-  context: ProviderContext;
-  modules?: Module[];
-  resources?: ResourceDefinition[];
-}) {
-  const providerName = options.context.name;
-  const resolved: ResolvedResource[] = [];
+export function initProvider(
+  options: InitProviderOptionsSimple,
+): ProviderBuilder<Record<string, never>, Record<string, never>>;
 
-  if (options.modules) {
-    for (const mod of options.modules) {
-      for (const [key, definition] of Object.entries(mod.resources)) {
-        const urn = `vyft:${mod.namespace}:${key}:${providerName}`;
-        resolved.push({ urn, definition: definition as ResourceDefinition });
-      }
-    }
-  }
+export function initProvider<S extends string[], Ctx>(
+  options: InitProviderOptionsWithSecrets<S, Ctx>,
+): ProviderBuilder<Ctx, { [K in S[number]]: string }>;
 
-  if (options.resources) {
-    for (const res of options.resources) {
-      const urn = `vyft:${providerName}:${res.name}`;
-      resolved.push({ urn, definition: res });
-    }
-  }
+export function initProvider(
+  options:
+    | InitProviderOptionsSimple
+    | InitProviderOptionsWithSecrets<string[], unknown>,
+): ProviderBuilder<unknown, Record<string, string>> {
+  const providerName = options.name;
+  // Provider metadata stored for framework use
+  void ("secrets" in options ? options.secrets : []);
+  void ("setup" in options ? options.setup : () => ({}));
 
-  return { ...options, resolved };
+  return {
+    resource(resourceName: string) {
+      return createNamedResourceBuilder(providerName, resourceName, []);
+    },
+
+    createBuilder() {
+      return createReusableResourceBuilder(providerName, []);
+    },
+  };
 }

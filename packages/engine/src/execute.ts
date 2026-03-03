@@ -1,5 +1,5 @@
-import type { Change, HealthCheck, Operation, Runtime } from "@vyft/core";
-import { durationToMs } from "@vyft/core";
+import type { Change, Operation, Runtime } from "@vyft/core";
+import { INTERNAL } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { Graph } from "./graph.ts";
 import { order } from "./order.ts";
@@ -141,15 +141,13 @@ export async function execute(
           log.step(op.action, opId(op));
           await runtime.execute(op);
         }
-        // Health-check waiting for services
-        if (
-          runtime.waitForHealthy &&
-          resource.kind === "service" &&
-          resource.config.health
-        ) {
-          await runtime.waitForHealthy(
-            resource.id,
-            computeHealthTimeout(resource.config.health),
+        // Wait for resource to be ready via [INTERNAL].ready
+        const internal = (resource as { [INTERNAL]?: { ready?: unknown } })[
+          INTERNAL
+        ];
+        if (internal?.ready) {
+          await (internal.ready as (r: typeof runtime) => Promise<void>)(
+            runtime,
           );
         }
         if (onEvent) await onEvent({ phase: "after", id: resource.id });
@@ -191,11 +189,4 @@ export async function execute(
 
   if (firstError) throw firstError.reason;
   return operations;
-}
-
-function computeHealthTimeout(health: HealthCheck): number {
-  const startPeriod = health.startPeriod ? durationToMs(health.startPeriod) : 0;
-  const interval = health.interval ? durationToMs(health.interval) : 30_000;
-  const retries = health.retries ?? 3;
-  return startPeriod + interval * retries * 2; // 2x safety margin
 }

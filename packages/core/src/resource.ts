@@ -3,6 +3,54 @@ import type { EnvValue } from "./ref.ts";
 
 export const MOUNTABLE: unique symbol = Symbol.for("vyft:mountable");
 
+/** Symbol for internal resource properties (hidden from IDE autocomplete). */
+export const INTERNAL: unique symbol = Symbol.for("vyft:internal");
+
+/**
+ * Minimal runtime interface for ready functions.
+ * Avoids circular imports with the full Runtime type.
+ */
+export interface ReadyRuntime {
+  waitForHealthy?(resourceId: string, timeout: number): Promise<void>;
+  waitForCompletion?(job: Job, timeout: number): Promise<void>;
+}
+
+/**
+ * Function that waits for a resource to be ready.
+ * Called by the engine during deployment with the runtime context.
+ */
+export type ReadyFn = (runtime: ReadyRuntime) => Promise<void>;
+
+/**
+ * A resource that can be depended on.
+ * Resources with `[INTERNAL].ready` will be awaited before dependents start.
+ * The symbol hides internal properties from IDE autocomplete.
+ */
+export interface Dependable {
+  /** Resource ID for dependency tracking. */
+  readonly id: string;
+  /** Internal properties including optional ready function. */
+  readonly [INTERNAL]: { readonly ready?: ReadyFn };
+}
+
+/**
+ * Options for resource creation that control system behavior.
+ * Separate from config which defines what the resource IS.
+ */
+export interface ResourceOptions {
+  /**
+   * Override the default project namespace.
+   * Resources with explicit namespace are never auto-destroyed and are
+   * deduped by ID (first wins) instead of erroring on duplicates.
+   */
+  namespace?: string;
+  /**
+   * Parent resource for scoping. The resource ID becomes `{parent}:{id}`.
+   * Can be a string ID or a resource object with an `id` property.
+   */
+  parent?: string | { id: string };
+}
+
 export interface Mountable {
   readonly [MOUNTABLE]: true;
   readonly kind: string;
@@ -159,8 +207,8 @@ interface BaseServiceConfig {
   command?: string | string[];
   /** Volume mounts into the container. */
   mounts?: { source: Mountable; path: string }[];
-  /** Services that must be healthy before this one starts. */
-  dependsOn?: Service[];
+  /** Resources that must be ready before this one starts. Services wait for healthy; jobs wait for completion. */
+  dependsOn?: Dependable[];
   health?: HealthCheck;
   /** @default "always" */
   restart?: "none" | "on-failure" | "always";
@@ -192,20 +240,40 @@ export interface Volume {
   readonly kind: "volume";
   readonly id: string;
   readonly config: VolumeConfig;
+  readonly options?: ResourceOptions;
   readonly [MOUNTABLE]: true;
 }
 
 /** A long-running container. */
-export interface Service {
+export interface Service extends Dependable {
   readonly kind: "service";
   readonly id: string;
   readonly config: ServiceConfig;
+  readonly options?: ResourceOptions;
   /** Internal DNS hostname (equals `id`). */
   readonly host: string;
   /** Resolved listening port. */
   readonly port: number;
   /** Internal URL, e.g. `http://api:3000`. */
   readonly url: string;
+}
+
+interface BaseJobConfig {
+  /** Environment variables. Values can be strings, secrets, or interpolations. */
+  env?: Record<string, EnvValue>;
+  /** Override the container entrypoint. Array form bypasses shell interpretation. */
+  command?: string | string[];
+  /** Volume mounts into the container. */
+  mounts?: { source: Mountable; path: string }[];
+  /** Resources that must be ready before this job runs. */
+  dependsOn?: Dependable[];
+  /**
+   * Number of retry attempts on failure.
+   * @default 0
+   */
+  retries?: number;
+  /** Linkable services whose bindings are injected as env vars. Can also accept raw Service objects for simple dependencies. */
+  link?: (Linkable | Service)[];
 }
 
 interface BaseCronJobConfig {
@@ -229,6 +297,25 @@ interface BaseCronJobConfig {
  * - `image` — pull from a registry, e.g. `"alpine:latest"`
  * - `build` — build from source, e.g. `"./apps/worker"`
  */
+export type JobConfig = BaseJobConfig &
+  (
+    | { image: string; build?: BuildConfig }
+    | { image?: string; build: BuildConfig }
+  );
+
+/** A one-time container that runs to completion. */
+export interface Job extends Dependable {
+  readonly kind: "job";
+  readonly id: string;
+  readonly config: JobConfig;
+  readonly options?: ResourceOptions;
+}
+
+/**
+ * At least one of `image` or `build` is required.
+ * - `image` — pull from a registry, e.g. `"alpine:latest"`
+ * - `build` — build from source, e.g. `"./apps/worker"`
+ */
 export type CronJobConfig = BaseCronJobConfig &
   (
     | { image: string; build?: BuildConfig }
@@ -240,6 +327,7 @@ export interface CronJob {
   readonly kind: "cronjob";
   readonly id: string;
   readonly config: CronJobConfig;
+  readonly options?: ResourceOptions;
 }
 
 export interface Linkable {
@@ -248,4 +336,27 @@ export interface Linkable {
   readonly [key: string]: unknown;
 }
 
-export type Resource = Volume | Config | Service | CronJob;
+/**
+ * A resource managed by a provider (e.g., std.crypto.randomString).
+ * Created when calling provider resource functions within a collection context.
+ */
+export interface ProviderResource<O = unknown> {
+  readonly kind: "provider";
+  readonly id: string;
+  /** Provider name (e.g., "std") */
+  readonly provider: string;
+  /** Resource type within the provider (e.g., "randomString") */
+  readonly type: string;
+  /** Input passed when creating the resource */
+  readonly input: unknown;
+  /** Output accessor - values resolved at deploy time */
+  readonly output: O;
+}
+
+export type Resource =
+  | Volume
+  | Config
+  | Service
+  | Job
+  | CronJob
+  | ProviderResource;

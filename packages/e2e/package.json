@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --import ./src/setup.ts --test 'cases/*.test.ts'",
+    "test": "node --import ./src/setup.ts --test 'cases/**/*.test.ts'",
     "lint": "biome check ."
   },
   "dependencies": {

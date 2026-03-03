@@ -1,5 +1,6 @@
 import type { Resource, ResourceState, Runtime } from "@vyft/core";
-import { fingerprint, isSecretOutput, serializeConfig } from "@vyft/core";
+import { fingerprint, serializeConfig } from "@vyft/core";
+import { isSecretOutput } from "@vyft/platform";
 import type { ExecuteHook } from "./execute.ts";
 import { execute } from "./execute.ts";
 import type { Graph } from "./graph.ts";
@@ -26,6 +27,9 @@ export interface DeployResult {
 
 /** Extract the config portion (inputs) from a resource, replacing nested resources with IDs. */
 function buildInputs(resource: Resource): Record<string, unknown> {
+  if (resource.kind === "provider") {
+    return serializeConfig(resource.input as Record<string, unknown>);
+  }
   return serializeConfig(resource.config);
 }
 
@@ -33,6 +37,9 @@ function buildInputs(resource: Resource): Record<string, unknown> {
 function buildOutputs(resource: Resource): Record<string, unknown> {
   if (resource.kind === "service") {
     return { host: resource.host, port: resource.port, url: resource.url };
+  }
+  if (resource.kind === "provider") {
+    return resource.output as Record<string, unknown>;
   }
   return {};
 }

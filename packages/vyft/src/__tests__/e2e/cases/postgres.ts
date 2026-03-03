@@ -1,4 +1,4 @@
-import { config as cfg, service, volume } from "@vyft/core";
+import { config as cfg, service, volume } from "@vyft/platform";
 import type { TestContext } from "../context.ts";
 
 const data = volume("data");

@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./defaults": {
+      "types": "./dist/defaults/index.d.ts",
+      "default": "./dist/defaults/index.js"
     }
   },
   "files": [
@@ -17,12 +21,8 @@
     "lint": "biome check ."
   },
   "dependencies": {
-    "@vyft/provider": "workspace:*"
-  },
-  "peerDependencies": {
-    "zod": ">=3.0.0"
-  },
-  "devDependencies": {
-    "zod": "^4.3.6"
+    "@vyft/core": "workspace:*",
+    "@vyft/provider": "workspace:*",
+    "@vyft/std": "workspace:*"
   }
 }

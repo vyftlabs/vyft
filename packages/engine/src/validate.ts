@@ -8,18 +8,36 @@ export function validate(graph: Graph): void {
   checkCycles(graph);
 }
 
-/** Check for duplicate resource IDs before building the graph. */
-export function checkDuplicateIds(resources: Resource[]): void {
+/** Resources with explicit namespace are implicitly shared (dedupe by ID). */
+function isSharedResource(r: Resource): boolean {
+  return "options" in r && r.options?.namespace !== undefined;
+}
+
+/**
+ * Check for duplicate resource IDs before building the graph.
+ * Shared services are deduped (first wins) instead of erroring.
+ * Returns the deduplicated resource list.
+ */
+export function checkDuplicateIds(resources: Resource[]): Resource[] {
   const seen = new Map<string, Resource>();
+  const result: Resource[] = [];
+
   for (const r of resources) {
     const existing = seen.get(r.id);
     if (existing) {
+      // Shared resources dedupe silently (first wins)
+      if (isSharedResource(r) && isSharedResource(existing)) {
+        continue;
+      }
       throw new ValidationError(
         `Duplicate resource ID "${r.id}" (used by ${existing.kind} and ${r.kind})`,
       );
     }
     seen.set(r.id, r);
+    result.push(r);
   }
+
+  return result;
 }
 
 function checkDanglingRefs(graph: Graph): void {

@@ -1,4 +1,5 @@
-import { config as cfg, interpolate, service, volume } from "@vyft/core";
+import { interpolate } from "@vyft/core";
+import { config as cfg, service, volume } from "@vyft/platform";
 import type { TestContext } from "../context.ts";
 
 const data = volume("data");

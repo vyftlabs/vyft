@@ -53,7 +53,8 @@
     "lint": "biome check ."
   },
   "dependencies": {
-    "@vyft/core": "workspace:*"
+    "@vyft/core": "workspace:*",
+    "@vyft/provider": "workspace:*"
   },
   "peerDependencies": {
     "@kubernetes/client-node": ">=1.0.0"

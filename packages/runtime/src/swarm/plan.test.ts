@@ -1,8 +1,24 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Change } from "@vyft/core";
-import { MOUNTABLE } from "@vyft/core";
+import type { Change, Service } from "@vyft/core";
+import { INTERNAL, MOUNTABLE } from "@vyft/core";
 import { createSwarmRuntime } from "./index.ts";
+
+function svc(
+  id: string,
+  config: Service["config"] = { image: "test" },
+): Service {
+  const port = config.port ?? 3000;
+  return {
+    kind: "service",
+    id,
+    config,
+    host: id,
+    port,
+    url: `http://${id}:${port}`,
+    [INTERNAL]: { ready: async () => {} },
+  };
+}
 
 const opts = {
   project: "test",
@@ -31,17 +47,9 @@ describe("Swarm runtime plan()", () => {
 
   it("returns update for service modify with spec change", () => {
     const runtime = createSwarmRuntime(opts);
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: svc("api"),
       previous: { image: "old" },
     };
     const ops = runtime.plan(change);
@@ -51,17 +59,9 @@ describe("Swarm runtime plan()", () => {
 
   it("returns update for service modify with replicas-only change (scale)", () => {
     const runtime = createSwarmRuntime(opts);
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test", replicas: 3 },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: svc("api", { image: "test", replicas: 3 }),
       previous: { image: "test", replicas: 1 },
     };
     const ops = runtime.plan(change);
@@ -71,17 +71,9 @@ describe("Swarm runtime plan()", () => {
 
   it("returns empty for service modify with route-only change", () => {
     const runtime = createSwarmRuntime(opts);
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test", route: "new.example.com" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: svc("api", { image: "test", route: "new.example.com" }),
       previous: { image: "test", route: "old.example.com" },
     };
     deepStrictEqual(runtime.plan(change), []);
@@ -89,15 +81,7 @@ describe("Swarm runtime plan()", () => {
 
   it("returns create for service create", () => {
     const runtime = createSwarmRuntime(opts);
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
-    const change: Change = { status: "create", resource: svc };
+    const change: Change = { status: "create", resource: svc("api") };
     const ops = runtime.plan(change);
     strictEqual(ops.length, 1);
     strictEqual(ops[0]?.action, "create");

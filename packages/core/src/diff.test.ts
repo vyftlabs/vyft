@@ -2,7 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
 import type { Config, Service, Volume } from "./resource.ts";
-import { MOUNTABLE } from "./resource.ts";
+import { INTERNAL, MOUNTABLE } from "./resource.ts";
 
 function vol(id: string): Volume {
   return { kind: "volume", id, config: {}, [MOUNTABLE]: true };
@@ -20,6 +20,7 @@ function svc(id: string): Service {
     host: id,
     port: 3000,
     url: `http://${id}:3000`,
+    [INTERNAL]: { ready: async () => {} }, // no-op for tests
   };
 }
 

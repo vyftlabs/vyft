@@ -6,14 +6,8 @@ import {
   strictEqual,
 } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
-import {
-  config,
-  cronjob,
-  interpolate,
-  service,
-  ValidationError,
-  volume,
-} from "@vyft/core";
+import { interpolate, ValidationError } from "@vyft/core";
+import { config, cronjob, service, volume } from "@vyft/platform";
 import type { ResourceState } from "@vyft/store";
 import { Simulation } from "./simulation.ts";
 

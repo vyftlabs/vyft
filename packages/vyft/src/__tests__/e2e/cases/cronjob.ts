@@ -1,4 +1,4 @@
-import { cronjob } from "@vyft/core";
+import { cronjob } from "@vyft/platform";
 import type { TestContext } from "../context.ts";
 
 const tick = cronjob("tick", {

@@ -71,14 +71,23 @@ function stableReplacer(key: string, value: unknown): unknown {
 }
 
 /**
- * Stable fingerprint of a resource. Only serializes kind, id, and config —
+ * Stable fingerprint of a resource. Only serializes kind, id, and config/input —
  * derived fields (host, port, url) are excluded. Keys are sorted for stability.
  */
 export function fingerprint(resource: Resource): string {
-  const minimal = {
-    kind: resource.kind,
-    id: resource.id,
-    config: resource.config,
-  };
+  const minimal =
+    resource.kind === "provider"
+      ? {
+          kind: resource.kind,
+          id: resource.id,
+          provider: resource.provider,
+          type: resource.type,
+          input: resource.input,
+        }
+      : {
+          kind: resource.kind,
+          id: resource.id,
+          config: resource.config,
+        };
   return JSON.stringify(minimal, stableReplacer);
 }

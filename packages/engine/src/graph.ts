@@ -2,11 +2,18 @@ import type {
   Binding,
   BindValue,
   CronJob,
+  Dependable,
   EnvValue,
+  Job,
   Resource,
   Service,
 } from "@vyft/core";
 import { MOUNTABLE } from "@vyft/core";
+
+/** Resolve a Dependable to the underlying resource ID. */
+function resolveDep(dep: Dependable): string {
+  return dep.id;
+}
 
 export type BindingLeaf = { kind: "leaf"; value: BindValue };
 export type BindingTree =
@@ -74,6 +81,7 @@ export function collect(value: unknown): Resource[] {
       kind === "secret" ||
       kind === "config" ||
       kind === "service" ||
+      kind === "job" ||
       kind === "cronjob"
     ) {
       found.push(v as Resource);
@@ -98,9 +106,16 @@ function refsIn(value: EnvValue, out: Set<string>): void {
   if (typeof value === "string") return;
   if (value.kind === "config") {
     out.add(value.id);
+  } else if (value.kind === "provider-output") {
+    out.add(value.resourceId);
   } else if (value.kind === "interpolation") {
     for (const v of value.values) {
-      if (typeof v !== "string") out.add(v.id);
+      if (typeof v === "string") continue;
+      if (v.kind === "config") {
+        out.add(v.id);
+      } else if (v.kind === "provider-output") {
+        out.add(v.resourceId);
+      }
     }
   }
 }
@@ -109,7 +124,7 @@ function refsIn(value: EnvValue, out: Set<string>): void {
 function depsOf(svc: Service): Set<string> {
   const deps = new Set<string>();
   if (svc.config.dependsOn) {
-    for (const s of svc.config.dependsOn) deps.add(s.id);
+    for (const dep of svc.config.dependsOn) deps.add(resolveDep(dep));
   }
   if (svc.config.mounts) {
     for (const m of svc.config.mounts) {
@@ -119,6 +134,24 @@ function depsOf(svc: Service): Set<string> {
   }
   if (svc.config.env) {
     for (const v of Object.values(svc.config.env)) refsIn(v, deps);
+  }
+  return deps;
+}
+
+/** Extract all resource IDs a job depends on. */
+function jobDepsOf(job: Job): Set<string> {
+  const deps = new Set<string>();
+  if (job.config.dependsOn) {
+    for (const dep of job.config.dependsOn) deps.add(resolveDep(dep));
+  }
+  if (job.config.mounts) {
+    for (const m of job.config.mounts) {
+      // Skip bind mounts - they're not managed resources
+      if (m.source.kind !== "bind") deps.add(m.source.id);
+    }
+  }
+  if (job.config.env) {
+    for (const v of Object.values(job.config.env)) refsIn(v, deps);
   }
   return deps;
 }
@@ -145,12 +178,20 @@ export function buildGraph(resources: Resource[]): Graph {
 
   for (const r of resources) {
     resourceMap.set(r.id, r);
-    const deps =
-      r.kind === "service"
-        ? depsOf(r)
-        : r.kind === "cronjob"
-          ? cronDepsOf(r)
-          : new Set<string>();
+    let deps: Set<string>;
+    switch (r.kind) {
+      case "service":
+        deps = depsOf(r);
+        break;
+      case "job":
+        deps = jobDepsOf(r);
+        break;
+      case "cronjob":
+        deps = cronDepsOf(r);
+        break;
+      default:
+        deps = new Set<string>();
+    }
     dependencies.set(r.id, deps);
   }
 

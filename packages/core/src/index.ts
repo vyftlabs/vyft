@@ -1,3 +1,4 @@
+export { collect, currentCollector, currentParent } from "./collector.ts";
 export type { ContextConfig, ProjectInfo, RuntimeName } from "./config.ts";
 export {
   findConfig,
@@ -29,24 +30,12 @@ export type {
   BindValue,
   ConfigOptions,
   SecretOutput,
-  Site,
-  SiteOptions,
-} from "./primitives.ts";
-export {
-  bind,
-  bindable,
-  config,
-  cronjob,
-  isSecretOutput,
-  secret,
-  service,
-  site,
-  volume,
 } from "./primitives.ts";
 export type {
   ConfigRef,
   EnvValue,
   Interpolation,
+  OutputRef,
   Reference,
   SecretRef,
 } from "./ref.ts";
@@ -59,13 +48,20 @@ export type {
   ConfigConfig,
   CronJob,
   CronJobConfig,
+  Dependable,
   GeneratedSecretConfig,
   HealthCheck,
+  Job,
+  JobConfig,
   Linkable,
   Mountable,
   PlainConfigConfig,
   ProvidedSecretConfig,
+  ProviderResource,
+  ReadyFn,
+  ReadyRuntime,
   Resource,
+  ResourceOptions,
   Secret,
   Service,
   ServiceConfig,
@@ -73,6 +69,7 @@ export type {
   VolumeConfig,
 } from "./resource.ts";
 export {
+  INTERNAL,
   isSecretConfig,
   MOUNTABLE,
   validateCron,

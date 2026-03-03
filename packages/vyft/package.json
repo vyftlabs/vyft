@@ -6,17 +6,13 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./services": {
-      "types": "./dist/services/index.d.ts",
-      "default": "./dist/services/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "bin": {
-    "vyft": "dist/cli/index.js"
+    "vyft": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -26,8 +22,16 @@
   "dependencies": {
     "@vyft/core": "workspace:*",
     "@vyft/engine": "workspace:*",
-    "@vyft/store": "workspace:*",
+    "@vyft/platform": "workspace:*",
     "@vyft/runtime": "workspace:*",
+    "@vyft/std": "workspace:*",
+    "@vyft/store": "workspace:*",
     "commander": "^13.0.0"
+  },
+  "peerDependencies": {
+    "zod": ">=3.0.0"
+  },
+  "devDependencies": {
+    "zod": "^4.3.6"
   }
 }

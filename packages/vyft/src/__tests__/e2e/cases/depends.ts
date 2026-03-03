@@ -1,4 +1,5 @@
-import { interpolate, service } from "@vyft/core";
+import { interpolate } from "@vyft/core";
+import { service } from "@vyft/platform";
 import type { TestContext } from "../context.ts";
 
 const redis = service("redis", {

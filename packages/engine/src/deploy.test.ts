@@ -1,7 +1,7 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Change, Operation, ResourceState, Runtime } from "@vyft/core";
-import { secret } from "@vyft/core";
+import { secret } from "@vyft/platform";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
 import type { StateEvent } from "./index.ts";
 import { deploy, separateSecretOutputs } from "./index.ts";

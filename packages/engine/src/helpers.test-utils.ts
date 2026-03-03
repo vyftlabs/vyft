@@ -1,12 +1,14 @@
 import type {
   CronJob,
   CronJobConfig,
+  Job,
+  JobConfig,
   Secret,
   Service,
   ServiceConfig,
   Volume,
 } from "@vyft/core";
-import { MOUNTABLE } from "@vyft/core";
+import { INTERNAL, MOUNTABLE } from "@vyft/core";
 
 export function vol(id: string): Volume {
   return { kind: "volume", id, config: {}, [MOUNTABLE]: true };
@@ -28,6 +30,16 @@ export function svc(
     host: id,
     port,
     url: `http://${id}:${port}`,
+    [INTERNAL]: { ready: async () => {} }, // no-op for tests
+  };
+}
+
+export function job(id: string, config: JobConfig = { image: "test" }): Job {
+  return {
+    kind: "job",
+    id,
+    config,
+    [INTERNAL]: { ready: async () => {} }, // no-op for tests
   };
 }
 

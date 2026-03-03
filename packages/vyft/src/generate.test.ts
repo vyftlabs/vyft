@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { bindable, service } from "@vyft/core";
+import { bindable, service } from "@vyft/platform";
 import {
   collectLinkables,
   generateEnvDts,

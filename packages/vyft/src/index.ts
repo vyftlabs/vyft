@@ -1,11 +1,10 @@
+// Standard library
+
+// Core types
 export type {
-  Binding,
   BindMount,
-  BindValue,
-  BuildConfig,
   Config,
   ConfigConfig,
-  ConfigOptions,
   ConfigRef,
   CronJob,
   CronJobConfig,
@@ -13,24 +12,47 @@ export type {
   HealthCheck,
   Interpolation,
   Linkable,
-  PlainConfigConfig,
+  Mountable,
   Reference,
-  Resource,
-  Secret,
-  SecretOutput,
+  SecretRef,
   Service,
   ServiceConfig,
   Volume,
   VolumeConfig,
 } from "@vyft/core";
+// Core utilities
+export {
+  interpolate,
+  isInterpolation,
+  isReference,
+} from "@vyft/core";
+export type {
+  Binding,
+  BindValue,
+  CompositeResource,
+  ConfigOptions,
+  ResourceDefinition,
+  SecretOutput,
+} from "@vyft/platform";
+// Platform primitives
 export {
   bind,
   bindable,
   config,
   cronjob,
-  interpolate,
   isSecretOutput,
+  resource,
   secret,
   service,
   volume,
-} from "@vyft/core";
+} from "@vyft/platform";
+export type {
+  BucketOptions,
+  BucketResult,
+  PostgresOptions,
+  PostgresResult,
+  QueueOptions,
+  QueueResult,
+} from "@vyft/platform/defaults";
+export { bucket, postgres, queue } from "@vyft/platform/defaults";
+export * as std from "@vyft/std";

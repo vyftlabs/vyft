@@ -1,14 +1,19 @@
-import { Platform } from "@vyft/platform";
-import { defineModule, defineProvider } from "@vyft/provider";
+/**
+ * Hetzner Cloud platform.
+ *
+ * @example
+ * ```ts
+ * import hcloud from "@vyft/hcloud";
+ *
+ * const target = { platform: hcloud, runtime: docker };
+ * ```
+ */
 
-import { context } from "./context.ts";
-import { network } from "./platform/network.ts";
-import { server } from "./platform/server.ts";
-import { volume } from "./platform/volume.ts";
+import { t } from "./mod.ts";
+import { server } from "./server.ts";
+import { volume } from "./volume.ts";
 
-const platform = defineModule(Platform, { network, server, volume });
+export default t.define({ server, volume });
 
-export default defineProvider({
-  context,
-  modules: [platform],
-});
+export { createClient } from "./client.ts";
+export type { HcloudContext } from "./mod.ts";

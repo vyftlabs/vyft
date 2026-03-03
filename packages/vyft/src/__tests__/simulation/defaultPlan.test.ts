@@ -1,8 +1,24 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Change } from "@vyft/core";
-import { MOUNTABLE } from "@vyft/core";
+import type { Change, Service } from "@vyft/core";
+import { INTERNAL, MOUNTABLE } from "@vyft/core";
 import { defaultPlan } from "../simulation.ts";
+
+function svc(
+  id: string,
+  config: Service["config"] = { image: "test" },
+): Service {
+  const port = config.port ?? 3000;
+  return {
+    kind: "service",
+    id,
+    config,
+    host: id,
+    port,
+    url: `http://${id}:${port}`,
+    [INTERNAL]: { ready: async () => {} },
+  };
+}
 
 describe("defaultPlan", () => {
   it("remove change returns remove operation", () => {
@@ -38,71 +54,37 @@ describe("defaultPlan", () => {
   });
 
   it("service modify with previous and spec change returns recreate", () => {
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "new" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
+    const s = svc("api", { image: "new" });
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: s,
       previous: { image: "old" },
     };
-    deepStrictEqual(defaultPlan(change), [
-      { action: "recreate", resource: svc },
-    ]);
+    deepStrictEqual(defaultPlan(change), [{ action: "recreate", resource: s }]);
   });
 
   it("service modify with previous and only non-spec changes returns empty", () => {
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test", route: "new.example.com" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: svc("api", { image: "test", route: "new.example.com" }),
       previous: { image: "test", route: "old.example.com" },
     };
     deepStrictEqual(defaultPlan(change), []);
   });
 
   it("service modify with previous and dev-only change returns empty", () => {
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test", dev: { command: "npm dev" } },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
     const change: Change = {
       status: "modify",
-      resource: svc,
+      resource: svc("api", { image: "test", dev: { command: "npm dev" } }),
       previous: { image: "test" },
     };
     deepStrictEqual(defaultPlan(change), []);
   });
 
   it("service modify without previous returns recreate (fallback)", () => {
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
-    const change: Change = { status: "modify", resource: svc };
-    deepStrictEqual(defaultPlan(change), [
-      { action: "recreate", resource: svc },
-    ]);
+    const s = svc("api");
+    const change: Change = { status: "modify", resource: s };
+    deepStrictEqual(defaultPlan(change), [{ action: "recreate", resource: s }]);
   });
 
   it("cronjob modify with previous and spec change returns recreate", () => {
@@ -134,16 +116,9 @@ describe("defaultPlan", () => {
   });
 
   it("service create returns create", () => {
-    const svc = {
-      kind: "service" as const,
-      id: "api",
-      config: { image: "test" },
-      host: "api",
-      port: 3000,
-      url: "http://api:3000",
-    };
-    const change: Change = { status: "create", resource: svc };
-    deepStrictEqual(defaultPlan(change), [{ action: "create", resource: svc }]);
+    const s = svc("api");
+    const change: Change = { status: "create", resource: s };
+    deepStrictEqual(defaultPlan(change), [{ action: "create", resource: s }]);
   });
 
   it("volume create returns create", () => {
