@@ -111,6 +111,7 @@ export function registerRefresh(program: Command): void {
 
           const runtime = createRuntime(runtimeName, {
             project,
+            stage,
             secrets: secretMap,
           });
           if (!runtime.inspect) {

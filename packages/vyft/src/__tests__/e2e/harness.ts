@@ -103,9 +103,10 @@ export async function runCase(
 ): Promise<void> {
   const suffix = randomBytes(3).toString("hex");
   const project = `e2e-${caseName}-${suffix}`;
+  const stage = "test";
   const secrets = autoSecrets(mod.config);
 
-  const rt = createRuntime(runtime, { project, secrets });
+  const rt = createRuntime(runtime, { project, stage, secrets });
 
   // Eagerly create clients for context building + cleanup
   const docker =

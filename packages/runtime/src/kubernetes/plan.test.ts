@@ -4,7 +4,11 @@ import type { Change } from "@vyft/core";
 import { MOUNTABLE } from "@vyft/core";
 import { createK8sRuntime } from "./index.ts";
 
-const opts = { project: "test", secrets: new Map<string, string>() };
+const opts = {
+  project: "test",
+  stage: "local",
+  secrets: new Map<string, string>(),
+};
 
 describe("K8s runtime plan()", () => {
   it("returns empty for config create", () => {

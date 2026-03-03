@@ -175,6 +175,7 @@ export class Simulation {
     } else if (runtimeType === "k8s") {
       const rt = kubernetes({
         project: "test",
+        stage: "local",
         secrets: new Map(),
         client: createMockK8sClient(),
       });
@@ -183,6 +184,7 @@ export class Simulation {
       const factory = runtimeType === "swarm" ? swarm : docker;
       const rt = factory({
         project: "test",
+        stage: "local",
         secrets: new Map(),
         client: createMockDockerClient(),
       });

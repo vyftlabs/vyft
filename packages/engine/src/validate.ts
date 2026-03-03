@@ -1,3 +1,4 @@
+import type { Resource } from "@vyft/core";
 import { ValidationError } from "@vyft/core";
 import type { Graph } from "./graph.ts";
 
@@ -5,6 +6,20 @@ import type { Graph } from "./graph.ts";
 export function validate(graph: Graph): void {
   checkDanglingRefs(graph);
   checkCycles(graph);
+}
+
+/** Check for duplicate resource IDs before building the graph. */
+export function checkDuplicateIds(resources: Resource[]): void {
+  const seen = new Map<string, Resource>();
+  for (const r of resources) {
+    const existing = seen.get(r.id);
+    if (existing) {
+      throw new ValidationError(
+        `Duplicate resource ID "${r.id}" (used by ${existing.kind} and ${r.kind})`,
+      );
+    }
+    seen.set(r.id, r);
+  }
 }
 
 function checkDanglingRefs(graph: Graph): void {

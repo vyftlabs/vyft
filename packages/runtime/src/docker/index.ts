@@ -31,11 +31,11 @@ export type DockerRuntimeOptions = RuntimeOptions & {
 export function createDockerRuntime(
   opts: DockerRuntimeOptions,
 ): ExtendedRuntime {
-  const { project, secrets } = opts;
+  const { project, stage, secrets } = opts;
   const client = opts.client ?? createDockerClient();
   const portBindingsMap = opts.portBindings ?? {};
-  const networkName = `vyft-${project}`;
-  const proxyName = `vyft-${project}-proxy`;
+  const networkName = `vyft-${project}-${stage}`;
+  const proxyName = `vyft-${project}-${stage}-proxy`;
 
   const composeLabels = { "com.docker.compose.project": networkName };
   let networkReady = false;
@@ -48,11 +48,11 @@ export function createDockerRuntime(
   }
 
   function volumeName(id: string): string {
-    return `vyft-${project}-${id}`;
+    return `vyft-${project}-${stage}-${id}`;
   }
 
   function containerName(id: string): string {
-    return `vyft-${project}-${id}`;
+    return `vyft-${project}-${stage}-${id}`;
   }
 
   return {

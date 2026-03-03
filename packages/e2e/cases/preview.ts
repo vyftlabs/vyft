@@ -50,7 +50,10 @@ export const previewCreateMultiple = test({
     const changes = await vyft.preview();
 
     assert.strictEqual(changes.length, 3, "should have 3 changes");
-    assert(changes.every((c) => c.action === "create"), "all should be create");
+    assert(
+      changes.every((c) => c.action === "create"),
+      "all should be create",
+    );
   },
 });
 
@@ -387,8 +390,14 @@ export const previewWithDependencies = test({
     const changes = await vyft.preview();
 
     assert.strictEqual(changes.length, 2, "should have 2 changes");
-    assert(changes.find((c) => c.resource === "db"), "should have db");
-    assert(changes.find((c) => c.resource === "app"), "should have app");
+    assert(
+      changes.find((c) => c.resource === "db"),
+      "should have db",
+    );
+    assert(
+      changes.find((c) => c.resource === "app"),
+      "should have app",
+    );
   },
 });
 

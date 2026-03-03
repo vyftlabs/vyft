@@ -1,5 +1,5 @@
 import type { RuntimeName } from "@vyft/core";
-import { CliError, projectInfo, resolveStage } from "@vyft/core";
+import { projectInfo, resolveStage } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { StateHook } from "@vyft/engine";
 import { deploy as engineDeploy } from "@vyft/engine";
@@ -41,24 +41,13 @@ export function registerDestroy(program: Command): void {
         },
 
         async run({ store, context, project, stage, runtimeName }) {
+          // Load state - this replays any WAL entries to get full picture
           const previous = await store.load(context, project, stage);
-          if (!previous || previous.resources.length === 0) {
-            log.info("nothing to destroy");
-            return;
-          }
-
-          if (await store.hasWAL(context, project, stage)) {
-            throw new CliError(
-              `Previous operation did not complete cleanly. ` +
-                `Run \`vyft cancel\` to clear, or \`vyft refresh\` to reconcile before destroying.`,
-            );
-          }
 
           // Resolve secrets for runtime
           const passphrase = await resolvePassphrase();
           const secretMap = new Map<string, string>();
 
-          // Load from stage storage first
           const root = (await projectInfo()).root;
           const stageStore = createStageStore(root);
           const stageData = await stageStore.loadStage(stage);
@@ -73,8 +62,7 @@ export function registerDestroy(program: Command): void {
             for (const [k, v] of Object.entries(raw)) secretMap.set(k, v);
           }
 
-          // Fallback to state secrets
-          if (previous.secrets) {
+          if (previous?.secrets) {
             const raw = JSON.parse(
               decrypt(previous.secrets, passphrase),
             ) as Record<string, string>;
@@ -85,38 +73,43 @@ export function registerDestroy(program: Command): void {
 
           const runtime = createRuntime(runtimeName, {
             project,
+            stage,
             secrets: secretMap,
           });
 
-          const onState: StateHook = async (event) => {
-            if (event.type === "pending") {
-              await store.appendLog(context, project, stage, {
-                type: "pending",
-                id: event.id,
-                operation: event.operation,
-              });
-            } else if (event.type === "committed") {
-              await store.appendLog(context, project, stage, {
-                type: "committed",
-                id: event.id,
-                state: event.state,
-              });
-            } else {
-              await store.appendLog(context, project, stage, {
-                type: "removed",
-                id: event.id,
-              });
-            }
-          };
+          const previousResources = previous?.resources ?? [];
+          if (previousResources.length > 0) {
+            const onState: StateHook = async (event) => {
+              if (event.type === "pending") {
+                await store.appendLog(context, project, stage, {
+                  type: "pending",
+                  id: event.id,
+                  operation: event.operation,
+                });
+              } else if (event.type === "committed") {
+                await store.appendLog(context, project, stage, {
+                  type: "committed",
+                  id: event.id,
+                  state: event.state,
+                });
+              } else {
+                await store.appendLog(context, project, stage, {
+                  type: "removed",
+                  id: event.id,
+                });
+              }
+            };
 
-          await engineDeploy([], previous.resources, runtime, onState);
+            await engineDeploy([], previousResources, runtime, onState);
+            await store.delete(context, project, stage);
+            log.info("destroyed %d resources", previousResources.length);
+          } else {
+            log.info("no resources to destroy");
+          }
 
-          // Post-deploy: finalize with no services, then full teardown
+          // Always teardown infrastructure (networks, etc.) even if no resources
           await runtime.finalize([]);
           await runtime.teardown();
-
-          await store.delete(context, project, stage);
-          log.info("destroyed %d resources", previous.resources.length);
         },
 
         async cleanup(state) {

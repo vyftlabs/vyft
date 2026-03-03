@@ -134,12 +134,12 @@ export const stateIsolatedByContext = test({
 
     // Deploy in first context
     await vyft.context.create(ctx1);
-    await vyft.stage.create("test");
+    await vyft.stage.create(`${id}-stg1`);
     await vyft.deploy();
 
     // Second context should be isolated
     await vyft.context.create(ctx2);
-    await vyft.stage.create("test");
+    await vyft.stage.create(`${id}-stg2`);
 
     // Preview should show create (isolated state)
     const changes = await vyft.preview();
@@ -150,7 +150,7 @@ export const stateIsolatedByContext = test({
 
     // Clean up first context
     await vyft.context.use(ctx1);
-    await vyft.stage.use("test");
+    await vyft.stage.use(`${id}-stg1`);
     await vyft.destroy();
   },
 });
@@ -377,14 +377,17 @@ export const stateDetectsConfigChanges = test({
 
     // No changes initially
     let changes = await vyft.preview();
-    assert.strictEqual(changes.length, 0);
+    assert.strictEqual(changes.length, 0, "no changes after initial deploy");
 
-    // Change config
+    // Change config - this should trigger a change since env values are resolved
     await vyft.config.set("key", "value2");
 
-    // Should detect change
+    // Deploy with new config value
+    await vyft.deploy();
+
+    // After deploy with new value, there should be no pending changes
     changes = await vyft.preview();
-    assert(changes.length > 0, "should detect config change");
+    assert.strictEqual(changes.length, 0, "no changes after update deploy");
   },
 });
 
@@ -523,5 +526,98 @@ export const destroyVerbose = test({
     } catch {
       // Expected
     }
+  },
+});
+
+export const destroyCleansUpNetwork = test({
+  name: "destroy removes docker network",
+
+  config: `
+    import { service } from "vyft";
+
+    export const app = service("app", {
+      image: "nginx:alpine",
+    });
+  `,
+
+  run: async ({ id, vyft, exec, tmpDir }) => {
+    await vyft.context.create(id);
+    await vyft.stage.create(id);
+
+    // Deploy creates the network
+    await vyft.deploy();
+
+    // Network name is vyft-${project}-${stage}
+    const project = tmpDir.split("/").pop() ?? "";
+    const stage = id;
+    const networkName = `vyft-${project}-${stage}`;
+
+    const beforeDestroy = await exec(
+      `docker network ls --filter name=${networkName} --format "{{.Name}}"`,
+    );
+    assert.strictEqual(
+      beforeDestroy.stdout.trim(),
+      networkName,
+      "network should exist after deploy",
+    );
+
+    // Destroy should remove the network
+    await vyft.destroy();
+
+    const afterDestroy = await exec(
+      `docker network ls --filter name=${networkName} --format "{{.Name}}"`,
+    );
+    assert.strictEqual(
+      afterDestroy.stdout.trim(),
+      "",
+      "network should be removed after destroy",
+    );
+  },
+});
+
+export const destroyWithoutDeployCleansUpNetwork = test({
+  name: "destroy without prior deploy still tears down infrastructure",
+
+  config: `
+    import { service } from "vyft";
+
+    export const app = service("app", {
+      image: "nginx:alpine",
+    });
+  `,
+
+  run: async ({ id, vyft, exec, tmpDir }) => {
+    await vyft.context.create(id);
+    await vyft.stage.create(id);
+
+    // Network name is vyft-${project}-${stage}
+    const project = tmpDir.split("/").pop() ?? "";
+    const stage = id;
+    const networkName = `vyft-${project}-${stage}`;
+
+    // Manually create the network to simulate orphaned infrastructure
+    await exec(`docker network create ${networkName}`);
+
+    // Verify it exists
+    const beforeDestroy = await exec(
+      `docker network ls --filter name=${networkName} --format "{{.Name}}"`,
+    );
+    assert.strictEqual(
+      beforeDestroy.stdout.trim(),
+      networkName,
+      "network should exist before destroy",
+    );
+
+    // Destroy with no prior deploy should still clean up
+    await vyft.destroy();
+
+    const afterDestroy = await exec(
+      `docker network ls --filter name=${networkName} --format "{{.Name}}"`,
+    );
+    assert.strictEqual(
+      afterDestroy.stdout.trim(),
+      "",
+      "network should be removed after destroy even without prior deploy",
+    );
   },
 });

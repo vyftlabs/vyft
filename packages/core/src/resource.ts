@@ -174,8 +174,8 @@ interface BaseServiceConfig {
   dev?: { cwd?: string; command: string };
   /** Bind the container port to the host. `true` = same as container port, or specify a host port number. */
   expose?: boolean | number;
-  /** Linkable services whose bindings are injected as env vars. */
-  link?: Linkable[];
+  /** Linkable services whose bindings are injected as env vars. Can also accept raw Service objects for simple dependencies. */
+  link?: (Linkable | Service)[];
 }
 
 /**
@@ -220,8 +220,8 @@ interface BaseCronJobConfig {
   health?: HealthCheck;
   /** @default "on-failure" */
   restart?: "none" | "on-failure";
-  /** Linkable services whose bindings are injected as env vars. */
-  link?: Linkable[];
+  /** Linkable services whose bindings are injected as env vars. Can also accept raw Service objects for simple dependencies. */
+  link?: (Linkable | Service)[];
 }
 
 /**

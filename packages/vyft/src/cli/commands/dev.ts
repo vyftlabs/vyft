@@ -253,6 +253,7 @@ export function registerDev(program: Command): void {
 
           const runtimeOpts: DockerRuntimeOptions = {
             project,
+            stage,
             secrets: secretMap,
             portBindings: portBindingsMap,
           };

@@ -11,6 +11,7 @@ export type Operation =
 /** Options passed to runtime factories. */
 export interface RuntimeOptions {
   project: string;
+  stage: string;
   secrets: ReadonlyMap<string, string>;
 }
 

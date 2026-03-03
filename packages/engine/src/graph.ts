@@ -66,16 +66,19 @@ export function collect(value: unknown): Resource[] {
 
     const obj = v as Record<string, unknown>;
     const kind = obj["kind"];
-    if (
+    // Bind mounts are not deployable resources, just references in service mounts
+    if (kind === "bind") {
+      // Skip - bind mounts don't have config and aren't managed
+    } else if (
       kind === "volume" ||
       kind === "secret" ||
       kind === "config" ||
       kind === "service" ||
-      kind === "cronjob" ||
-      kind === "bind"
+      kind === "cronjob"
     ) {
       found.push(v as Resource);
     } else if (typeof v === "object" && v !== null && MOUNTABLE in v) {
+      // Catch-all for other MOUNTABLE resources (e.g. Archive from @vyft/fs)
       found.push(v as Resource);
     }
 
@@ -109,7 +112,10 @@ function depsOf(svc: Service): Set<string> {
     for (const s of svc.config.dependsOn) deps.add(s.id);
   }
   if (svc.config.mounts) {
-    for (const m of svc.config.mounts) deps.add(m.source.id);
+    for (const m of svc.config.mounts) {
+      // Skip bind mounts - they're not managed resources
+      if (m.source.kind !== "bind") deps.add(m.source.id);
+    }
   }
   if (svc.config.env) {
     for (const v of Object.values(svc.config.env)) refsIn(v, deps);
@@ -121,7 +127,10 @@ function depsOf(svc: Service): Set<string> {
 function cronDepsOf(cron: CronJob): Set<string> {
   const deps = new Set<string>();
   if (cron.config.mounts) {
-    for (const m of cron.config.mounts) deps.add(m.source.id);
+    for (const m of cron.config.mounts) {
+      // Skip bind mounts - they're not managed resources
+      if (m.source.kind !== "bind") deps.add(m.source.id);
+    }
   }
   if (cron.config.env) {
     for (const v of Object.values(cron.config.env)) refsIn(v, deps);

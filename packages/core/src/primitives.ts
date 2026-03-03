@@ -141,13 +141,27 @@ function bindingToEnvValue(value: BindValue): EnvValue {
   return value; // string | Reference | Interpolation are already EnvValue
 }
 
-function expandLink(linkItems: Linkable[]): {
+function isService(value: unknown): value is Service {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Service).kind === "service"
+  );
+}
+
+function expandLink(linkItems: (Linkable | Service)[]): {
   env: Record<string, EnvValue>;
   deps: Service[];
 } {
   const env: Record<string, EnvValue> = {};
   const deps: Service[] = [];
   for (const item of linkItems) {
+    // Handle raw Service objects (simple dependency)
+    if (isService(item)) {
+      deps.push(item);
+      continue;
+    }
+    // Handle Linkable objects (with bindings)
     deps.push(item.service);
     const prefix = `VYFT_BINDING_${item.id.toUpperCase().replace(/-/g, "_")}`;
     for (const [key, value] of Object.entries(item)) {

@@ -391,33 +391,7 @@ export const serviceHealthCheckMinimal = test({
   },
 });
 
-// =============================================================================
-// SERVICE REPLICAS
-// =============================================================================
-
-export const serviceReplicas = test({
-  name: "service with replicas",
-  skip: true, // Replicas may require swarm mode
-
-  config: `
-    import { service } from "vyft";
-
-    export const app = service("app", {
-      image: "nginx:alpine",
-      replicas: 3,
-    });
-  `,
-
-  run: async ({ id, vyft }) => {
-    await vyft.context.create(id);
-    await vyft.stage.create(id);
-
-    await vyft.deploy();
-
-    const outputs = await vyft.output("app");
-    assert(outputs.host, "should deploy successfully");
-  },
-});
+// Note: Replicas test is not included as it may require swarm mode.
 
 // =============================================================================
 // SERVICE EXPOSE

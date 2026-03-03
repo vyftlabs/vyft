@@ -63,7 +63,7 @@ export function registerConfig(program: Command): void {
           case "set": {
             const name = args[0];
             const value = args[1];
-            if (!name || !value) {
+            if (!name || value === undefined) {
               throw new CliError(
                 "Usage: vyft config set <name> <value> [--stage <stage>] [--secret]",
               );

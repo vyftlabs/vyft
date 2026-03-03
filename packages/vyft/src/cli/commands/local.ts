@@ -48,6 +48,7 @@ export function registerLocal(program: Command): void {
 
       const runtime = createRuntime(runtimeName, {
         project,
+        stage,
         secrets: secretMap,
       });
 

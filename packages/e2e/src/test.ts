@@ -5,7 +5,6 @@ export const DEFAULT_TIMEOUT = 120_000;
 
 export interface TestDefinition {
   name: string;
-  skip?: boolean;
   timeout?: number;
   env?: Record<string, string>;
   config?: string;

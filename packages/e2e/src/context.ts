@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { access, mkdtemp, readFile as fsReadFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  readFile as fsReadFile,
+  mkdtemp,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,7 +94,10 @@ export interface TestContext {
         value: string,
         opts?: { secret?: boolean; stage?: string },
       ) => Promise<void>;
-      get: (key: string, opts?: { stage?: string }) => Promise<string | undefined>;
+      get: (
+        key: string,
+        opts?: { stage?: string },
+      ) => Promise<string | undefined>;
       rm: (key: string, opts?: { stage?: string }) => Promise<void>;
       ls: (opts?: { stage?: string }) => Promise<ConfigListResult>;
       rotate: (key: string, opts?: { stage?: string }) => Promise<void>;
@@ -245,12 +254,18 @@ export async function createContext(options: ContextOptions): Promise<{
       },
 
       async preview(opts?: { verbose?: boolean }) {
-        const flags = opts?.verbose ? "--verbose " : "";
-        const result = await vyftExec(`preview --json ${flags}`);
+        const flags: string[] = ["-o json"];
+        if (opts?.verbose) flags.push("--verbose");
+        const result = await vyftExec(`preview ${flags.join(" ")}`);
         if (result.code !== 0) {
           throw new Error(`preview failed: ${result.stderr}`);
         }
-        return JSON.parse(result.stdout) as Change[];
+        const parsed = JSON.parse(result.stdout) as Array<{
+          resource: string;
+          kind: string;
+          action: "create" | "update" | "delete";
+        }>;
+        return parsed.map((p) => ({ resource: p.resource, action: p.action }));
       },
 
       async refresh(opts?: { clearPending?: boolean }) {
@@ -298,8 +313,14 @@ export async function createContext(options: ContextOptions): Promise<{
           const flags: string[] = [];
           if (opts?.secret) flags.push("--secret");
           if (opts?.stage) flags.push(`--stage ${opts.stage}`);
+          // Use double quotes with proper escaping of shell metacharacters
+          const escapedValue = value
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/`/g, "\\`")
+            .replace(/\$/g, "\\$");
           const result = await vyftExec(
-            `config set ${key} "${value}" ${flags.join(" ")}`,
+            `config set ${key} "${escapedValue}" ${flags.join(" ")}`,
           );
           if (result.code !== 0) {
             throw new Error(`config set failed: ${result.stderr}`);
@@ -308,7 +329,9 @@ export async function createContext(options: ContextOptions): Promise<{
 
         async get(key: string, opts?: { stage?: string }) {
           const stageFlag = opts?.stage ? ` --stage ${opts.stage}` : "";
-          const result = await vyftExec(`config get ${key} -o json${stageFlag}`);
+          const result = await vyftExec(
+            `config get ${key} -o json${stageFlag}`,
+          );
           if (result.code !== 0) {
             return undefined;
           }
@@ -374,23 +397,16 @@ export async function createContext(options: ContextOptions): Promise<{
   };
 
   const cleanup = async () => {
-    // Destroy resources
-    try {
-      await ctx.vyft.destroy();
-    } catch {
-      // Ignore destroy errors during cleanup
-    }
+    await ctx.vyft.destroy();
 
-    // Delete created contexts
     for (const name of createdContexts) {
       try {
-        await vyftExec(`context rm ${name}`);
+        await ctx.vyft.context.rm(name);
       } catch {
-        // Ignore cleanup errors
+        // Context may have been removed by the test
       }
     }
 
-    // Remove temp directory
     await rm(tmpDir, { recursive: true, force: true });
   };
 

@@ -22,6 +22,10 @@ export function registerOutput(program: Command): void {
         const state = await store.load(context, project, stage);
 
         if (!state || state.resources.length === 0) {
+          if (opts.json) {
+            console.log(JSON.stringify({}));
+            return;
+          }
           throw new CliError("No deployed resources. Run `vyft deploy` first.");
         }
 

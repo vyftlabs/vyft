@@ -15,4 +15,4 @@ export type { BindingLeaf, BindingTree, Graph } from "./graph.ts";
 export { buildGraph, collect, collectBindings } from "./graph.ts";
 export { levels, order } from "./order.ts";
 export { plan } from "./plan.ts";
-export { validate } from "./validate.ts";
+export { checkDuplicateIds, validate } from "./validate.ts";

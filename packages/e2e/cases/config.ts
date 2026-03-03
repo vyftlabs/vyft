@@ -558,17 +558,17 @@ export const configPersistsAfterContextSwitch = test({
     const ctx2 = `${id}-b`;
 
     await vyft.context.create(ctx1);
-    await vyft.stage.create("test");
+    await vyft.stage.create(`${id}-stg1`);
     await vyft.config.set("CTX_TEST", "original-value");
 
     // Switch to another context
     await vyft.context.create(ctx2);
-    await vyft.stage.create("test");
+    await vyft.stage.create(`${id}-stg2`);
     await vyft.config.set("CTX_TEST", "other-value");
 
     // Switch back and verify
     await vyft.context.use(ctx1);
-    await vyft.stage.use("test");
+    await vyft.stage.use(`${id}-stg1`);
     const value = await vyft.config.get("CTX_TEST");
     assert.strictEqual(value, "original-value");
   },

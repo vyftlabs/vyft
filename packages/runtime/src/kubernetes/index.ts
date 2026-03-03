@@ -26,8 +26,8 @@ export type K8sRuntimeOptions = RuntimeOptions & { client?: K8sClient };
 
 /** Kubernetes-based runtime — Deployments, Services, Ingress. */
 export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
-  const { project, secrets } = opts;
-  const namespace = `vyft-${project}`;
+  const { project, stage, secrets } = opts;
+  const namespace = `vyft-${project}-${stage}`;
 
   let client: K8sClient | null = opts.client ?? null;
   let namespaceReady = false;

@@ -19,5 +19,9 @@ export async function removeNetwork(
   client: DockerClient,
   name: string,
 ): Promise<void> {
-  await client.del(`/networks/${name}`);
+  try {
+    await client.del(`/networks/${name}`);
+  } catch {
+    // Ignore 404 if network doesn't exist
+  }
 }

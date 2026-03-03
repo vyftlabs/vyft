@@ -32,10 +32,10 @@ export type SwarmRuntimeOptions = RuntimeOptions & { client?: DockerClient };
 
 /** Swarm-based runtime — multi-node with in-place rolling updates. */
 export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
-  const { project, secrets } = opts;
+  const { project, stage, secrets } = opts;
   const client = opts.client ?? createDockerClient();
-  const networkName = `vyft-${project}`;
-  const proxyName = `vyft-${project}-proxy`;
+  const networkName = `vyft-${project}-${stage}`;
+  const proxyName = `vyft-${project}-${stage}-proxy`;
 
   let networkReady = false;
   let registryAddr: string | null = null;

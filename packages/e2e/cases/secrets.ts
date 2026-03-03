@@ -159,7 +159,10 @@ export const secretAlphanumericOnly = test({
     const code = await vyft.config.get("code");
     assert(code, "should have code");
     assert.strictEqual(code.length, 8);
-    assert(/^[A-Z0-9]+$/.test(code), "should only contain uppercase and digits");
+    assert(
+      /^[A-Z0-9]+$/.test(code),
+      "should only contain uppercase and digits",
+    );
   },
 });
 
@@ -299,7 +302,9 @@ export const secretManualOverridesGenerated = test({
     const generated = await vyft.config.get("override-secret");
 
     // Override with manual value
-    await vyft.config.set("override-secret", "manual-override", { secret: true });
+    await vyft.config.set("override-secret", "manual-override", {
+      secret: true,
+    });
     await vyft.deploy();
 
     const override = await vyft.config.get("override-secret");
@@ -343,7 +348,9 @@ export const secretNonGenerated = test({
     }
 
     // Set and deploy should succeed
-    await vyft.config.set("required-secret", "provided-value", { secret: true });
+    await vyft.config.set("required-secret", "provided-value", {
+      secret: true,
+    });
     await vyft.deploy();
 
     const value = await vyft.config.get("required-secret");
@@ -382,7 +389,11 @@ export const secretIsolatedByStage = test({
     const prodKey = await vyft.config.get("api-key");
 
     // Should be different
-    assert.notStrictEqual(stagingKey, prodKey, "secrets should differ by stage");
+    assert.notStrictEqual(
+      stagingKey,
+      prodKey,
+      "secrets should differ by stage",
+    );
 
     // Clean up
     await vyft.stage.use("staging");

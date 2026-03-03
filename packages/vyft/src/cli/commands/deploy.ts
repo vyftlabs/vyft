@@ -13,7 +13,12 @@ import {
 } from "@vyft/core";
 import * as log from "@vyft/core/logger";
 import type { StateHook } from "@vyft/engine";
-import { buildGraph, collect, deploy as engineDeploy } from "@vyft/engine";
+import {
+  buildGraph,
+  checkDuplicateIds,
+  collect,
+  deploy as engineDeploy,
+} from "@vyft/engine";
 import type { PersistedState, ResourceState, Store } from "@vyft/store";
 import {
   createFileStore,
@@ -67,15 +72,8 @@ export function registerDeploy(program: Command): void {
           const config = await loadConfig(configPath);
           log.info("loaded config from %s", configPath);
 
+          // Load state - this replays any WAL entries to get full picture
           const previous = await store.load(context, project, stage);
-
-          if (await store.hasWAL(context, project, stage)) {
-            throw new CliError(
-              `Previous deploy did not complete cleanly. ` +
-                `Run \`vyft cancel\` to clear, or \`vyft refresh\` to reconcile before deploying.`,
-            );
-          }
-
           const previousResources = previous?.resources ?? [];
 
           // Load config values from stage storage
@@ -134,6 +132,7 @@ export function registerDeploy(program: Command): void {
           };
 
           const resources = collect(config);
+          checkDuplicateIds(resources);
           const graph = buildGraph(resources);
 
           // Auto-generate missing secret values for config({ secret: true })
@@ -256,6 +255,7 @@ export function registerDeploy(program: Command): void {
 
           const runtime = createRuntime(runtimeName, {
             project,
+            stage,
             secrets: secretMap,
           });
 
