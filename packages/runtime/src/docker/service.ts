@@ -33,6 +33,7 @@ export function buildContainerConfig(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  stage?: string,
   portBindings?: Map<number, number>,
 ): ContainerConfig {
   const image = config.image ?? `vyft-build-${id}:latest`;
@@ -47,7 +48,13 @@ export function buildContainerConfig(
       if (m.source.kind === "bind") {
         binds.push(`${(m.source as BindMount).hostPath}:${m.path}`);
       } else {
-        const src = project ? `vyft-${project}-${m.source.id}` : m.source.id;
+        // Volume name must match the runtime's volumeName() function
+        const src =
+          project && stage
+            ? `vyft-${project}-${stage}-${m.source.id}`
+            : project
+              ? `vyft-${project}-${m.source.id}`
+              : m.source.id;
         binds.push(`${src}:${m.path}`);
       }
     }
@@ -133,6 +140,7 @@ export async function createContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  stage?: string,
   portBindings?: Map<number, number>,
 ): Promise<string> {
   if (config.build) {
@@ -148,6 +156,7 @@ export async function createContainer(
     networkName,
     secrets,
     project,
+    stage,
     portBindings,
   );
   let result = (await client.post(
@@ -199,6 +208,7 @@ export async function recreateContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  stage?: string,
   portBindings?: Map<number, number>,
 ): Promise<string> {
   await removeContainer(client, containerName);
@@ -210,6 +220,7 @@ export async function recreateContainer(
     networkName,
     secrets,
     project,
+    stage,
     portBindings,
   );
 }

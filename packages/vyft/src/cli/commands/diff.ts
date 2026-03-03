@@ -84,7 +84,14 @@ export function registerDiff(program: Command): void {
           let missingCount = 0;
 
           for (const rs of previous.resources) {
-            if (rs.kind === "secret" || rs.kind === "config") continue;
+            // Skip non-inspectable resource kinds
+            // Cronjobs use a wrapper container, so live state doesn't match stored config
+            if (
+              rs.kind === "secret" ||
+              rs.kind === "config" ||
+              rs.kind === "cronjob"
+            )
+              continue;
 
             const live = await runtime.inspect(rs.id, rs.kind);
             if (!live) {
@@ -94,14 +101,108 @@ export function registerDiff(program: Command): void {
             }
 
             // Compare stored inputs against live state
+            // Only check keys that were explicitly set in the stored inputs
+            // Live state may have additional keys (from image defaults, etc.)
             const storedKeys = Object.keys(rs.inputs).sort();
-            const liveKeys = Object.keys(live).sort();
-            const allKeys = [...new Set([...storedKeys, ...liveKeys])].sort();
+
+            // Volume name prefix for normalizing mount sources
+            const volumePrefix = `vyft-${project}-${stage}-`;
 
             let hasDrift = false;
-            for (const key of allKeys) {
-              const storedVal = JSON.stringify(rs.inputs[key]);
-              const liveVal = JSON.stringify(live[key]);
+            for (const key of storedKeys) {
+              const storedInput = rs.inputs[key];
+              const liveInput = live[key];
+
+              // Special handling for env: do subset comparison with config resolution
+              // Stored env values may be config key references that need resolution
+              if (
+                key === "env" &&
+                typeof storedInput === "object" &&
+                storedInput !== null &&
+                typeof liveInput === "object" &&
+                liveInput !== null
+              ) {
+                const storedEnv = storedInput as Record<string, string>;
+                const liveEnv = liveInput as Record<string, string>;
+                for (const envKey of Object.keys(storedEnv)) {
+                  // Resolve config references: if the stored value is a config key, get its value
+                  const rawStoredValue = storedEnv[envKey] ?? "";
+                  const storedValue =
+                    secretMap.get(rawStoredValue) ?? rawStoredValue;
+                  if (storedValue !== liveEnv[envKey]) {
+                    if (!hasDrift) {
+                      log.step("drift", rs.id);
+                      hasDrift = true;
+                      driftCount++;
+                    }
+                    log.debug(
+                      "  env.%s: %s → %s",
+                      envKey,
+                      JSON.stringify(storedValue) ?? "undefined",
+                      JSON.stringify(liveEnv[envKey]) ?? "undefined",
+                    );
+                  }
+                }
+                continue;
+              }
+
+              // Special handling for mounts: normalize volume names
+              if (
+                key === "mounts" &&
+                Array.isArray(storedInput) &&
+                Array.isArray(liveInput)
+              ) {
+                const storedMounts = storedInput as Array<{
+                  source: string;
+                  path: string;
+                }>;
+                const liveMounts = liveInput as Array<{
+                  source: string;
+                  path: string;
+                }>;
+
+                for (const storedMount of storedMounts) {
+                  // Find matching mount by path
+                  const liveMount = liveMounts.find(
+                    (m) => m.path === storedMount.path,
+                  );
+                  if (!liveMount) {
+                    if (!hasDrift) {
+                      log.step("drift", rs.id);
+                      hasDrift = true;
+                      driftCount++;
+                    }
+                    log.debug(
+                      "  mounts: missing mount at %s",
+                      storedMount.path,
+                    );
+                    continue;
+                  }
+
+                  // Compare source - live has full name, stored has logical name
+                  const expectedSource = volumePrefix + storedMount.source;
+                  if (
+                    liveMount.source !== expectedSource &&
+                    liveMount.source !== storedMount.source
+                  ) {
+                    if (!hasDrift) {
+                      log.step("drift", rs.id);
+                      hasDrift = true;
+                      driftCount++;
+                    }
+                    log.debug(
+                      "  mounts[%s]: %s → %s",
+                      storedMount.path,
+                      expectedSource,
+                      liveMount.source,
+                    );
+                  }
+                }
+                continue;
+              }
+
+              const storedVal = JSON.stringify(storedInput);
+              const liveVal = JSON.stringify(liveInput);
               if (storedVal !== liveVal) {
                 if (!hasDrift) {
                   log.step("drift", rs.id);

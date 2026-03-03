@@ -134,6 +134,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            stage,
             pb,
           );
           containerIds.set(resource.id, cid);
@@ -146,6 +147,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            stage,
             pb,
           );
           containerIds.set(resource.id, cid);
