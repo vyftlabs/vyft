@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const VYFT_CLI = join(__dirname, "../../vyft/dist/cli/index.js");
+export const VYFT_CLI = join(__dirname, "../../vyft/dist/cli.js");
 const PACKAGES_DIR = join(__dirname, "../..");
 
 /**
