@@ -140,7 +140,10 @@ console.log(dbHost, dbPort, nodeEnv);
         }
         await setTimeout(500);
       }
-      assert(containerRunning, "db container should be running within 10 seconds");
+      assert(
+        containerRunning,
+        "db container should be running within 10 seconds",
+      );
     } finally {
       // =========================================================================
       // STEP 5: Cleanup - kill the dev process
@@ -238,7 +241,10 @@ export const db = service("db", {
         break;
       }
     }
-    assert(containerRunning, "container should be running before killing dev process");
+    assert(
+      containerRunning,
+      "container should be running before killing dev process",
+    );
 
     // Kill dev process
     await box.exec(`kill ${pid} 2>/dev/null || true`);

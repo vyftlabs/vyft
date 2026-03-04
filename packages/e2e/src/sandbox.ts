@@ -158,11 +158,16 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
   // Use box.id in the temp dir name so project name (from directory basename) is consistent
   // Container naming: vyft-{project}-{stage}-{resource} where project = "vyft-e2e-{id}", stage = "{id}"
   // This makes the filter "name=vyft-vyft-e2e-{id}" work correctly
-  const tmpDir = await mkdir(join(tmpdir(), `vyft-e2e-${id}`), { recursive: true }).then(() => join(tmpdir(), `vyft-e2e-${id}`));
+  const tmpDir = await mkdir(join(tmpdir(), `vyft-e2e-${id}`), {
+    recursive: true,
+  }).then(() => join(tmpdir(), `vyft-e2e-${id}`));
   const vyftRoot = join(tmpDir, ".vyft");
 
   // Clean up any orphan containers from previous runs that might be using our ports
-  await exec('docker ps -aq --filter "name=vyft-vyft-e2e" | xargs -r docker rm -f', { cwd: tmpDir }).catch(() => {});
+  await exec(
+    'docker ps -aq --filter "name=vyft-vyft-e2e" | xargs -r docker rm -f',
+    { cwd: tmpDir },
+  ).catch(() => {});
 
   // Create node_modules symlinks so config files can import from "vyft"
   // Also link typescript for type checking in tests
@@ -172,8 +177,14 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
   await symlink(join(PACKAGES_DIR, "vyft"), join(nodeModules, "vyft"));
   // Link typescript from the monorepo's node_modules
   const rootNodeModules = join(PACKAGES_DIR, "..", "node_modules");
-  await symlink(join(rootNodeModules, "typescript"), join(nodeModules, "typescript"));
-  await symlink(join(rootNodeModules, ".bin", "tsc"), join(nodeModulesBin, "tsc"));
+  await symlink(
+    join(rootNodeModules, "typescript"),
+    join(nodeModules, "typescript"),
+  );
+  await symlink(
+    join(rootNodeModules, ".bin", "tsc"),
+    join(nodeModulesBin, "tsc"),
+  );
 
   const env: Record<string, string> = {
     VYFT_PASSPHRASE: "test-passphrase",
@@ -313,7 +324,9 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
         const lines = result.stdout.split("\n");
         for (const line of lines) {
           // Match step output: timestamp + "missing" + resource-id
-          const missingMatch = line.match(/\d{2}:\d{2}:\d{2}\.\d+ missing (\S+)/);
+          const missingMatch = line.match(
+            /\d{2}:\d{2}:\d{2}\.\d+ missing (\S+)/,
+          );
           if (missingMatch?.[1]) {
             resources.push({ id: missingMatch[1], status: "missing" });
           }
