@@ -186,7 +186,7 @@ export async function createContainer(
   return result.Id as string;
 }
 
-/** Stop and remove a container. Ignores 404/304 (already stopped/removed). */
+/** Stop and remove a container. Ignores 404/304/409 (already stopped/removed/in progress). */
 export async function removeContainer(
   client: DockerClient,
   containerName: string,
@@ -196,7 +196,15 @@ export async function removeContainer(
   } catch {
     // Already stopped or doesn't exist
   }
-  await client.del(`/containers/${containerName}?force=true`);
+  try {
+    await client.del(`/containers/${containerName}?force=true`);
+  } catch (err) {
+    // Ignore 404 (not found) and 409 (removal already in progress)
+    const msg = String(err);
+    if (!msg.includes("404") && !msg.includes("409")) {
+      throw err;
+    }
+  }
 }
 
 /** Recreate a container: stop, remove, create new one. */

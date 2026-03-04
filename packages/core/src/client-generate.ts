@@ -86,6 +86,30 @@ export function collectLinkables(config: unknown): LinkableEntry[] {
   return entries;
 }
 
+/** Walk config exports and collect all services (for type generation). */
+export function collectServices(config: unknown): LinkableEntry[] {
+  const entries: LinkableEntry[] = [];
+  if (typeof config !== "object" || config === null) return entries;
+
+  for (const [exportName, value] of Object.entries(
+    config as Record<string, unknown>,
+  )) {
+    if (isService(value)) {
+      entries.push({
+        exportName,
+        id: value.id,
+        bindings: [
+          { key: "host", type: "string" },
+          { key: "port", type: "number" },
+          { key: "url", type: "string" },
+        ],
+      });
+    }
+  }
+
+  return entries;
+}
+
 /** Compute the set of env var names that come from link bindings. */
 function bindingEnvNames(config: unknown): Set<string> {
   const names = new Set<string>();
@@ -198,7 +222,12 @@ export async function writeEnv(
   config: unknown,
   outputDir: string,
 ): Promise<LinkableEntry[]> {
-  const entries = collectLinkables(config);
+  // Collect both explicit linkables and services for type generation
+  const linkables = collectLinkables(config);
+  const services = collectServices(config);
+  // Merge entries, preferring linkables (which have explicit bindings)
+  const seenIds = new Set(linkables.map((e) => e.id));
+  const entries = [...linkables, ...services.filter((e) => !seenIds.has(e.id))];
   const envKeys = collectEnvKeys(config);
 
   await mkdir(outputDir, { recursive: true });

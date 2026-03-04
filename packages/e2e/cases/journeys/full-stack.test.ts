@@ -31,12 +31,17 @@ import { service, volume, config } from "vyft";
 // Database with persistent storage
 export const dbVolume = volume("db-data");
 
+// Shared secrets - define once, reference multiple times
+const dbPassword = config("DB_PASSWORD", { secret: true }); // Auto-generated
+const appSecret = config("APP_SECRET", { secret: true }); // Auto-generated
+const logLevel = config("LOG_LEVEL"); // Plain config, user must set
+
 export const db = service("db", {
   image: "postgres:16-alpine",
   port: 5432,
   env: {
     POSTGRES_USER: "app",
-    POSTGRES_PASSWORD: config("DB_PASSWORD", { secret: true }), // Auto-generated
+    POSTGRES_PASSWORD: dbPassword,
     POSTGRES_DB: "appdb",
   },
   mounts: [{ source: dbVolume, path: "/var/lib/postgresql/data" }],
@@ -53,10 +58,10 @@ export const web = service("web", {
   image: "nginx:alpine",
   port: 80,
   env: {
-    // Use the same auto-generated password via config reference
-    DB_PASSWORD: config("DB_PASSWORD", { secret: true }),
-    APP_SECRET: config("APP_SECRET", { secret: true }), // Auto-generated
-    LOG_LEVEL: config("LOG_LEVEL"), // Plain config, user must set
+    // Reference the same config objects
+    DB_PASSWORD: dbPassword,
+    APP_SECRET: appSecret,
+    LOG_LEVEL: logLevel,
   },
   dependsOn: [db, cache],
   link: [db, cache],
@@ -134,12 +139,17 @@ import { service, volume, config } from "vyft";
 
 export const dbVolume = volume("db-data");
 
+// Shared secrets
+const dbPassword = config("DB_PASSWORD", { secret: true });
+const appSecret = config("APP_SECRET", { secret: true });
+const logLevel = config("LOG_LEVEL");
+
 export const db = service("db", {
   image: "postgres:16-alpine",
   port: 5432,
   env: {
     POSTGRES_USER: "app",
-    POSTGRES_PASSWORD: config("DB_PASSWORD", { secret: true }),
+    POSTGRES_PASSWORD: dbPassword,
     POSTGRES_DB: "appdb",
   },
   mounts: [{ source: dbVolume, path: "/var/lib/postgresql/data" }],
@@ -155,9 +165,9 @@ export const web = service("web", {
   image: "nginx:1.25-alpine",
   port: 80,
   env: {
-    DB_PASSWORD: config("DB_PASSWORD", { secret: true }),
-    APP_SECRET: config("APP_SECRET", { secret: true }),
-    LOG_LEVEL: config("LOG_LEVEL"),
+    DB_PASSWORD: dbPassword,
+    APP_SECRET: appSecret,
+    LOG_LEVEL: logLevel,
   },
   dependsOn: [db, cache],
   link: [db, cache],
@@ -196,12 +206,17 @@ import { service, volume, config, cronjob } from "vyft";
 
 export const dbVolume = volume("db-data");
 
+// Shared secrets
+const dbPassword = config("DB_PASSWORD", { secret: true });
+const appSecret = config("APP_SECRET", { secret: true });
+const logLevel = config("LOG_LEVEL");
+
 export const db = service("db", {
   image: "postgres:16-alpine",
   port: 5432,
   env: {
     POSTGRES_USER: "app",
-    POSTGRES_PASSWORD: config("DB_PASSWORD", { secret: true }),
+    POSTGRES_PASSWORD: dbPassword,
     POSTGRES_DB: "appdb",
   },
   mounts: [{ source: dbVolume, path: "/var/lib/postgresql/data" }],
@@ -216,9 +231,9 @@ export const web = service("web", {
   image: "nginx:1.25-alpine",
   port: 80,
   env: {
-    DB_PASSWORD: config("DB_PASSWORD", { secret: true }),
-    APP_SECRET: config("APP_SECRET", { secret: true }),
-    LOG_LEVEL: config("LOG_LEVEL"),
+    DB_PASSWORD: dbPassword,
+    APP_SECRET: appSecret,
+    LOG_LEVEL: logLevel,
   },
   dependsOn: [db, cache],
   link: [db, cache],

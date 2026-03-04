@@ -3,9 +3,9 @@ import { randomUUID } from "node:crypto";
 import {
   access,
   mkdir,
-  mkdtemp,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -155,8 +155,25 @@ export interface SandboxOptions {
 
 export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
   const id = randomUUID().slice(0, 8);
-  const tmpDir = await mkdtemp(join(tmpdir(), "vyft-e2e-"));
+  // Use box.id in the temp dir name so project name (from directory basename) is consistent
+  // Container naming: vyft-{project}-{stage}-{resource} where project = "vyft-e2e-{id}", stage = "{id}"
+  // This makes the filter "name=vyft-vyft-e2e-{id}" work correctly
+  const tmpDir = await mkdir(join(tmpdir(), `vyft-e2e-${id}`), { recursive: true }).then(() => join(tmpdir(), `vyft-e2e-${id}`));
   const vyftRoot = join(tmpDir, ".vyft");
+
+  // Clean up any orphan containers from previous runs that might be using our ports
+  await exec('docker ps -aq --filter "name=vyft-vyft-e2e" | xargs -r docker rm -f', { cwd: tmpDir }).catch(() => {});
+
+  // Create node_modules symlinks so config files can import from "vyft"
+  // Also link typescript for type checking in tests
+  const nodeModules = join(tmpDir, "node_modules");
+  const nodeModulesBin = join(nodeModules, ".bin");
+  await mkdir(nodeModulesBin, { recursive: true });
+  await symlink(join(PACKAGES_DIR, "vyft"), join(nodeModules, "vyft"));
+  // Link typescript from the monorepo's node_modules
+  const rootNodeModules = join(PACKAGES_DIR, "..", "node_modules");
+  await symlink(join(rootNodeModules, "typescript"), join(nodeModules, "typescript"));
+  await symlink(join(rootNodeModules, ".bin", "tsc"), join(nodeModulesBin, "tsc"));
 
   const env: Record<string, string> = {
     VYFT_PASSPHRASE: "test-passphrase",
@@ -290,14 +307,18 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
         }
 
         // Parse output for resource status
+        // Log format: "HH:MM:SS.ms missing|drift resource-id"
+        // Must not match "no drift detected"
         const resources: DiffResult["resources"] = [];
         const lines = result.stdout.split("\n");
         for (const line of lines) {
-          const missingMatch = line.match(/missing\s+(\S+)/);
+          // Match step output: timestamp + "missing" + resource-id
+          const missingMatch = line.match(/\d{2}:\d{2}:\d{2}\.\d+ missing (\S+)/);
           if (missingMatch?.[1]) {
             resources.push({ id: missingMatch[1], status: "missing" });
           }
-          const driftMatch = line.match(/drift\s+(\S+)/);
+          // Match step output: timestamp + "drift" + resource-id
+          const driftMatch = line.match(/\d{2}:\d{2}:\d{2}\.\d+ drift (\S+)/);
           if (driftMatch?.[1]) {
             resources.push({ id: driftMatch[1], status: "drifted" });
           }

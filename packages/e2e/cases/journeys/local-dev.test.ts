@@ -114,7 +114,8 @@ console.log(dbHost, dbPort, nodeEnv);
       // STEP 3: Verify types compile
       // =========================================================================
 
-      const tscResult = await box.exec("npx tsc --noEmit 2>&1");
+      // TypeScript is symlinked in node_modules by sandbox
+      const tscResult = await box.exec("./node_modules/.bin/tsc --noEmit 2>&1");
 
       // tsc should succeed (exit code 0)
       assert.strictEqual(
@@ -127,10 +128,19 @@ console.log(dbHost, dbPort, nodeEnv);
       // STEP 4: Verify infra service is running
       // =========================================================================
 
-      const dockerPs = await box.exec(
-        `docker ps --filter "name=vyft-vyft-e2e-${box.id}" --format "{{.Names}}"`,
-      );
-      assert(dockerPs.stdout.includes("db"), "db container should be running");
+      // Wait for container to start (infra deployment happens after type generation)
+      let containerRunning = false;
+      for (let i = 0; i < 20; i++) {
+        const dockerPs = await box.exec(
+          `docker ps --filter "name=vyft-vyft-e2e-${box.id}" --format "{{.Names}}"`,
+        );
+        if (dockerPs.stdout.includes("db")) {
+          containerRunning = true;
+          break;
+        }
+        await setTimeout(500);
+      }
+      assert(containerRunning, "db container should be running within 10 seconds");
     } finally {
       // =========================================================================
       // STEP 5: Cleanup - kill the dev process
@@ -216,8 +226,19 @@ export const db = service("db", {
     );
     const pid = startResult.stdout.trim();
 
-    // Wait for container to start
-    await setTimeout(3000);
+    // Wait for container to actually be running (state is saved after container starts)
+    let containerRunning = false;
+    for (let i = 0; i < 20; i++) {
+      await setTimeout(500);
+      const ps = await box.exec(
+        `docker ps --filter "name=vyft-vyft-e2e-${box.id}" --format "{{.Names}}"`,
+      );
+      if (ps.stdout.includes("db")) {
+        containerRunning = true;
+        break;
+      }
+    }
+    assert(containerRunning, "container should be running before killing dev process");
 
     // Kill dev process
     await box.exec(`kill ${pid} 2>/dev/null || true`);

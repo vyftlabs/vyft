@@ -72,7 +72,8 @@ export const app = service("app", {
       // STEP 4: Recover by redeploying
       // =========================================================================
 
-      await box.vyft.deploy();
+      // Use refresh flag to detect and recover from drift
+      await box.vyft.deploy({ refresh: true });
 
       // Verify drift is resolved
       const recoveredDiff = await box.vyft.diff();
@@ -105,23 +106,23 @@ export const api = service("api", {
 
       await box.vyft.deploy();
 
-      // Remove one container
+      // Remove one container (container name: vyft-{project}-{stage}-{resource})
+      // Project = vyft-e2e-{box.id}, Stage = {box.id}, Resource = web
       await box.exec(
-        `docker ps -aq --filter "name=vyft-vyft-e2e-${box.id}-web" | xargs -r docker rm -f`,
+        `docker ps -aq --filter "name=vyft-vyft-e2e-${box.id}-${box.id}-web" | xargs -r docker rm -f`,
       );
 
-      // Refresh to sync state
+      // Refresh to sync state - removes missing resources from state
       await box.vyft.refresh();
 
-      // Now diff should show drift (refresh updates state but doesn't fix infrastructure)
-      const diff = await box.vyft.diff();
-      assert.strictEqual(
-        diff.hasDrift,
-        true,
-        "should detect missing container after refresh",
+      // Preview should show web needs to be created (config says it should exist, state says it's gone)
+      const preview = await box.vyft.preview();
+      assert(
+        preview.some((c) => c.resource === "web" && c.action === "create"),
+        "should show web needs to be created after refresh",
       );
 
-      // Deploy to recover
+      // Deploy to recover (refresh updated state, so deploy will recreate web)
       await box.vyft.deploy();
 
       // Now should be clean

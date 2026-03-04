@@ -103,7 +103,21 @@ export function registerDiff(program: Command): void {
             // Compare stored inputs against live state
             // Only check keys that were explicitly set in the stored inputs
             // Live state may have additional keys (from image defaults, etc.)
-            const storedKeys = Object.keys(rs.inputs).sort();
+            // Skip fields that aren't inspectable from the runtime (metadata, not container state)
+            const nonInspectableFields = new Set([
+              "port",
+              "dependsOn",
+              "link",
+              "route",
+              "dev",
+              "replicas",
+              "expose",
+              "build",
+              "schedule", // cronjob schedule is in wrapper, not inspectable
+            ]);
+            const storedKeys = Object.keys(rs.inputs)
+              .filter((k) => !nonInspectableFields.has(k))
+              .sort();
 
             // Volume name prefix for normalizing mount sources
             const volumePrefix = `vyft-${project}-${stage}-`;
