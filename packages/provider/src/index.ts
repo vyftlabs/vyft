@@ -1,3 +1,5 @@
+export { INTERNAL } from "@vyft/core";
+
 export type {
   ArtifactRef,
   ArtifactStore,

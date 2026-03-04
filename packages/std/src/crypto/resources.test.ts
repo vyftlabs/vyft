@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { INTERNAL } from "@vyft/provider";
 
 import {
   randomBytes,
@@ -12,13 +13,17 @@ import {
 const id = { internal: "test-id" };
 const ctx = {} as never;
 
+// biome-ignore lint/suspicious/noExplicitAny: test helper to access internal definition
+const def = (r: unknown) => (r as any)[INTERNAL];
+
 // ── randomString ────────────────────────────────────────────────────────
 
 describe("randomString", () => {
   test("generates string of requested length with default alphabet", async () => {
-    const result = await randomString.handler.create({
+    const input = { length: 32 };
+    const result = await def(randomString(input)).handler.create({
       id,
-      input: { length: 32 },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -27,9 +32,10 @@ describe("randomString", () => {
   });
 
   test("generates string with custom alphabet", async () => {
-    const result = await randomString.handler.create({
+    const input = { length: 16, alphabet: "abc" };
+    const result = await def(randomString(input)).handler.create({
       id,
-      input: { length: 16, alphabet: "abc" },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -38,9 +44,15 @@ describe("randomString", () => {
   });
 
   test("respects boolean flags", async () => {
-    const result = await randomString.handler.create({
+    const input = {
+      length: 64,
+      lowercase: true,
+      numbers: false,
+      uppercase: false,
+    };
+    const result = await def(randomString(input)).handler.create({
       id,
-      input: { length: 64, lowercase: true, numbers: false, uppercase: false },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -49,9 +61,10 @@ describe("randomString", () => {
   });
 
   test("includes special characters when requested", async () => {
-    const result = await randomString.handler.create({
+    const input = { length: 200, special: true, lowercase: true };
+    const result = await def(randomString(input)).handler.create({
       id,
-      input: { length: 200, special: true, lowercase: true },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -64,9 +77,10 @@ describe("randomString", () => {
 
 describe("sshKeyPair", () => {
   test("generates ed25519 key pair", async () => {
-    const result = await sshKeyPair.handler.create({
+    const input = { type: "ed25519" } as const;
+    const result = await def(sshKeyPair(input)).handler.create({
       id,
-      input: { type: "ed25519" },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -76,9 +90,10 @@ describe("sshKeyPair", () => {
   });
 
   test("generates RSA key pair", async () => {
-    const result = await sshKeyPair.handler.create({
+    const input = { type: "rsa", rsaBits: 2048 } as const;
+    const result = await def(sshKeyPair(input)).handler.create({
       id,
-      input: { type: "rsa", rsaBits: 2048 },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -92,7 +107,12 @@ describe("sshKeyPair", () => {
 
 describe("randomUuid", () => {
   test("generates a valid UUID v4", async () => {
-    const result = await randomUuid.handler.create({ id, input: {}, ctx });
+    const input = {};
+    const result = await def(randomUuid(input)).handler.create({
+      id,
+      input,
+      ctx,
+    });
     const output = "output" in result ? result.output : result;
     assert.match(
       output.result,
@@ -101,8 +121,9 @@ describe("randomUuid", () => {
   });
 
   test("generates unique values", async () => {
-    const a = await randomUuid.handler.create({ id, input: {}, ctx });
-    const b = await randomUuid.handler.create({ id, input: {}, ctx });
+    const input = {};
+    const a = await def(randomUuid(input)).handler.create({ id, input, ctx });
+    const b = await def(randomUuid(input)).handler.create({ id, input, ctx });
     const outputA = "output" in a ? a.output : a;
     const outputB = "output" in b ? b.output : b;
     assert.notEqual(outputA.result, outputB.result);
@@ -113,9 +134,10 @@ describe("randomUuid", () => {
 
 describe("randomInteger", () => {
   test("generates integer within range", async () => {
-    const result = await randomInteger.handler.create({
+    const input = { min: 10, max: 20 };
+    const result = await def(randomInteger(input)).handler.create({
       id,
-      input: { min: 10, max: 20 },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -129,9 +151,10 @@ describe("randomInteger", () => {
 
 describe("randomBytes", () => {
   test("generates hex-encoded bytes by default", async () => {
-    const result = await randomBytes.handler.create({
+    const input = { length: 16 };
+    const result = await def(randomBytes(input)).handler.create({
       id,
-      input: { length: 16 },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;
@@ -140,9 +163,10 @@ describe("randomBytes", () => {
   });
 
   test("generates base64-encoded bytes", async () => {
-    const result = await randomBytes.handler.create({
+    const input = { length: 16, encoding: "base64" } as const;
+    const result = await def(randomBytes(input)).handler.create({
       id,
-      input: { length: 16, encoding: "base64" },
+      input,
       ctx,
     });
     const output = "output" in result ? result.output : result;

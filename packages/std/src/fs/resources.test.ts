@@ -3,11 +3,14 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
-import type { ArtifactRef, ArtifactStore } from "@vyft/provider";
+import { type ArtifactRef, type ArtifactStore, INTERNAL } from "@vyft/provider";
 
 import { file, glob, template } from "./index.ts";
 
 const id = { internal: "test-id" };
+
+// biome-ignore lint/suspicious/noExplicitAny: test helper to access internal definition
+const def = (r: unknown) => (r as any)[INTERNAL];
 
 function createMockArtifactStore(): ArtifactStore {
   const artifacts = new Map<string, Buffer>();
@@ -72,9 +75,10 @@ describe("file", () => {
     const filePath = path.join(tmpDir, "hello.txt");
     await fs.writeFile(filePath, "hello world");
 
-    const result = await file.handler.create({
+    const input = { source: filePath };
+    const result = await def(file(input)).handler.create({
       id,
-      input: { source: filePath },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -89,9 +93,10 @@ describe("file", () => {
     const buf = Buffer.from([0x00, 0xff, 0x42]);
     await fs.writeFile(filePath, buf);
 
-    const result = await file.handler.create({
+    const input = { source: filePath, encoding: "base64" } as const;
+    const result = await def(file(input)).handler.create({
       id,
-      input: { source: filePath, encoding: "base64" },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -105,14 +110,16 @@ describe("file", () => {
     await fs.writeFile(a, "same content");
     await fs.writeFile(b, "same content");
 
-    const resA = await file.handler.create({
+    const inputA = { source: a };
+    const inputB = { source: b };
+    const resA = await def(file(inputA)).handler.create({
       id,
-      input: { source: a },
+      input: inputA,
       ctx: createCtx(),
     });
-    const resB = await file.handler.create({
+    const resB = await def(file(inputB)).handler.create({
       id,
-      input: { source: b },
+      input: inputB,
       ctx: createCtx(),
     });
     const outputA = "output" in resA ? resA.output : resA;
@@ -125,9 +132,10 @@ describe("file", () => {
 
 describe("template", () => {
   test("interpolates inline content", async () => {
-    const result = await template.handler.create({
+    const input = { content: "Hello, {{name}}!", vars: { name: "World" } };
+    const result = await def(template(input)).handler.create({
       id,
-      input: { content: "Hello, {{name}}!", vars: { name: "World" } },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -140,9 +148,13 @@ describe("template", () => {
     const tplPath = path.join(tmpDir, "tpl.txt");
     await fs.writeFile(tplPath, "Hi {{user}}, welcome to {{place}}.");
 
-    const result = await template.handler.create({
+    const input = {
+      source: tplPath,
+      vars: { user: "Alice", place: "Wonderland" },
+    };
+    const result = await def(template(input)).handler.create({
       id,
-      input: { source: tplPath, vars: { user: "Alice", place: "Wonderland" } },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -150,11 +162,12 @@ describe("template", () => {
   });
 
   test("throws on undefined variable", async () => {
+    const input = { content: "{{missing}}", vars: {} };
     await assert.rejects(
       async () => {
-        await template.handler.create({
+        await def(template(input)).handler.create({
           id,
-          input: { content: "{{missing}}", vars: {} },
+          input,
           ctx: createCtx(),
         });
       },
@@ -183,9 +196,10 @@ describe("glob", () => {
   });
 
   test("matches files by pattern", async () => {
-    const result = await glob.handler.create({
+    const input = { cwd: globDir, include: ["*.txt"] };
+    const result = await def(glob(input)).handler.create({
       id,
-      input: { cwd: globDir, include: ["*.txt"] },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -196,9 +210,10 @@ describe("glob", () => {
   });
 
   test("excludes files by pattern", async () => {
-    const result = await glob.handler.create({
+    const input = { cwd: globDir, include: ["**/*"], exclude: ["*.log"] };
+    const result = await def(glob(input)).handler.create({
       id,
-      input: { cwd: globDir, include: ["**/*"], exclude: ["*.log"] },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -208,9 +223,10 @@ describe("glob", () => {
   });
 
   test("includes nested files with ** pattern", async () => {
-    const result = await glob.handler.create({
+    const input = { cwd: globDir, include: ["**/*.txt"] };
+    const result = await def(glob(input)).handler.create({
       id,
-      input: { cwd: globDir, include: ["**/*.txt"] },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -220,9 +236,10 @@ describe("glob", () => {
   });
 
   test("per-file sha256 is correct", async () => {
-    const result = await glob.handler.create({
+    const input = { cwd: globDir, include: ["a.txt"] };
+    const result = await def(glob(input)).handler.create({
       id,
-      input: { cwd: globDir, include: ["a.txt"] },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;
@@ -235,9 +252,10 @@ describe("glob", () => {
   });
 
   test("returns archive artifact ref", async () => {
-    const result = await glob.handler.create({
+    const input = { cwd: globDir, include: ["*.txt"] };
+    const result = await def(glob(input)).handler.create({
       id,
-      input: { cwd: globDir, include: ["*.txt"] },
+      input,
       ctx: createCtx(),
     });
     const output = "output" in result ? result.output : result;

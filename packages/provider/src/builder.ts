@@ -1,5 +1,5 @@
 import type { OutputRef, ProviderResource } from "@vyft/core";
-import { currentCollector } from "@vyft/core";
+import { currentCollector, INTERNAL } from "@vyft/core";
 import type { z } from "zod";
 
 import type { ArtifactStore } from "./artifact.ts";
@@ -91,12 +91,9 @@ export interface ResourceDefinition<I = unknown, O = unknown, Ctx = unknown> {
 
 /**
  * A callable resource that creates instances when invoked.
- * Combines the call signature with ResourceDefinition properties.
+ * Returns output properties. Definition is available at runtime under [INTERNAL].
  */
-export interface ResourceInstance<I, O, Ctx>
-  extends ResourceDefinition<I, O, Ctx> {
-  (input: I): O;
-}
+export type ResourceInstance<I, O, _Ctx> = (input: I) => O;
 
 // ── Builder Interfaces ──────────────────────────────────────────────────
 
@@ -197,15 +194,28 @@ export function createResourceBuilderWithInput<
       };
 
       // Create the callable function
-      const callable = (input: I): O => {
+      type Result = O & {
+        readonly [INTERNAL]: ResourceDefinition<I, O, Ctx & FrameworkContext>;
+      };
+      const callable = (input: I): Result => {
         const id = nextId(provider, name);
 
         // Create output proxy - property access creates OutputRef references
         // that get resolved at deploy time
         const outputCache = new Map<string, OutputRef>();
-        const output = new Proxy({} as Record<string, OutputRef>, {
+
+        // Return a proxy: output properties at top level, definition under [INTERNAL]
+        const result = new Proxy({} as Result, {
           get(_target, prop) {
+            // Definition under [INTERNAL] symbol
+            if (prop === INTERNAL) {
+              return definition;
+            }
+
+            // Ignore other symbols
             if (typeof prop === "symbol") return undefined;
+
+            // Output properties - create OutputRef on demand
             let ref = outputCache.get(prop);
             if (!ref) {
               ref = {
@@ -217,7 +227,7 @@ export function createResourceBuilderWithInput<
             }
             return ref;
           },
-        }) as unknown as O;
+        });
 
         // Create the provider resource and push to collector
         const resource: ProviderResource<O> = {
@@ -226,16 +236,15 @@ export function createResourceBuilderWithInput<
           provider,
           type: name,
           input,
-          output,
+          output: result as unknown as O,
         };
 
         currentCollector()?.push(resource);
 
-        return output;
+        return result;
       };
 
-      // Attach definition properties to the callable
-      return Object.assign(callable, definition);
+      return callable;
     },
   };
 }

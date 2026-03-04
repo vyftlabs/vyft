@@ -1,10 +1,17 @@
+import { INTERNAL } from "@vyft/core";
 import type { ArtifactRef, ArtifactStore } from "./artifact.ts";
 import type {
   FrameworkContext,
   HandlerResult,
   ResourceDefinition,
   ResourceId,
+  ResourceInstance,
 } from "./builder.ts";
+
+/** Type for accessing definition at runtime (for testing) */
+export type WithInternal<I, O, Ctx> = O & {
+  readonly [INTERNAL]: ResourceDefinition<I, O, Ctx>;
+};
 
 /**
  * Creates an in-memory artifact store for testing.
@@ -164,9 +171,7 @@ function buildResult<O>(result: HandlerResult<O> | O): TestResourceResult<O> {
  * });
  * ```
  */
-export function testResource<I, O, Ctx>(
-  resource: ResourceDefinition<I, O, Ctx>,
-) {
+export function testResource<I, O, Ctx>(resource: ResourceInstance<I, O, Ctx>) {
   return {
     /**
      * Call the create handler and return the output.
@@ -174,11 +179,13 @@ export function testResource<I, O, Ctx>(
     async create(
       options: TestResourceOptions<I, Ctx>,
     ): Promise<TestResourceResult<O>> {
+      const instance = resource(options.input) as WithInternal<I, O, Ctx>;
+      const definition = instance[INTERNAL];
       const ctx = createTestContext(
         options.ctx !== undefined ? { ctx: options.ctx } : {},
       ) as FrameworkContext & Ctx;
       const id = buildResourceId(options.id, options.externalId);
-      const result = await resource.handler.create({
+      const result = await definition.handler.create({
         id,
         input: options.input,
         ctx,
@@ -190,17 +197,21 @@ export function testResource<I, O, Ctx>(
      * Call the read handler and return the output (or null if not found).
      */
     async read(
-      options: Omit<TestResourceOptions<I, Ctx>, "input"> & { input?: never },
+      options: Omit<TestResourceOptions<I, Ctx>, "input"> & { input: I },
     ): Promise<TestResourceResult<O> | null> {
-      if (!resource.handler.read) {
-        throw new Error(`Resource "${resource.name}" does not implement read`);
+      const instance = resource(options.input) as WithInternal<I, O, Ctx>;
+      const definition = instance[INTERNAL];
+      if (!definition.handler.read) {
+        throw new Error(
+          `Resource "${definition.name}" does not implement read`,
+        );
       }
 
       const ctx = createTestContext(
         options.ctx !== undefined ? { ctx: options.ctx } : {},
       ) as FrameworkContext & Ctx;
       const id = buildResourceId(options.id, options.externalId);
-      const result = await resource.handler.read({ id, ctx });
+      const result = await definition.handler.read({ id, ctx });
 
       if (result === null) return null;
       return buildResult(result);
@@ -212,9 +223,11 @@ export function testResource<I, O, Ctx>(
     async update(
       options: TestResourceOptions<I, Ctx>,
     ): Promise<TestResourceResult<O>> {
-      if (!resource.handler.update) {
+      const instance = resource(options.input) as WithInternal<I, O, Ctx>;
+      const definition = instance[INTERNAL];
+      if (!definition.handler.update) {
         throw new Error(
-          `Resource "${resource.name}" does not implement update`,
+          `Resource "${definition.name}" does not implement update`,
         );
       }
 
@@ -222,7 +235,7 @@ export function testResource<I, O, Ctx>(
         options.ctx !== undefined ? { ctx: options.ctx } : {},
       ) as FrameworkContext & Ctx;
       const id = buildResourceId(options.id, options.externalId);
-      const result = await resource.handler.update({
+      const result = await definition.handler.update({
         id,
         input: options.input,
         ctx,
@@ -234,11 +247,13 @@ export function testResource<I, O, Ctx>(
      * Call the delete handler.
      */
     async delete(
-      options: Omit<TestResourceOptions<I, Ctx>, "input"> & { input?: never },
+      options: Omit<TestResourceOptions<I, Ctx>, "input"> & { input: I },
     ): Promise<void> {
-      if (!resource.handler.delete) {
+      const instance = resource(options.input) as WithInternal<I, O, Ctx>;
+      const definition = instance[INTERNAL];
+      if (!definition.handler.delete) {
         throw new Error(
-          `Resource "${resource.name}" does not implement delete`,
+          `Resource "${definition.name}" does not implement delete`,
         );
       }
 
@@ -246,7 +261,7 @@ export function testResource<I, O, Ctx>(
         options.ctx !== undefined ? { ctx: options.ctx } : {},
       ) as FrameworkContext & Ctx;
       const id = buildResourceId(options.id, options.externalId);
-      await resource.handler.delete({ id, ctx });
+      await definition.handler.delete({ id, ctx });
     },
   };
 }
