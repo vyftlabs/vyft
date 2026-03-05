@@ -47,14 +47,22 @@ export function createDockerRuntime(
     const idx = image.lastIndexOf(":");
     const repo = idx > 0 ? image.slice(0, idx) : image;
     const tag = idx > 0 ? image.slice(idx + 1) : "latest";
-    await client.post(
-      `/images/create?fromImage=${encodeURIComponent(repo)}&tag=${encodeURIComponent(tag)}`,
-    );
+    try {
+      await client.post(
+        `/images/create?fromImage=${encodeURIComponent(repo)}&tag=${encodeURIComponent(tag)}`,
+      );
+    } catch (err) {
+      // Docker image pull returns NDJSON progress stream, not valid JSON.
+      // client.post() fails to parse it — if it's a SyntaxError the pull succeeded.
+      if (!(err instanceof SyntaxError)) throw err;
+    }
   }
 
   const imageUtils = Object.assign(
     { pullImage },
-    opts.imageUtils?.buildImage ? { buildImage: opts.imageUtils.buildImage } : {},
+    opts.imageUtils?.buildImage
+      ? { buildImage: opts.imageUtils.buildImage }
+      : {},
   );
 
   async function initNetwork(): Promise<void> {
