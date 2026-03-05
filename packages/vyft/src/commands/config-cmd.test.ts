@@ -215,7 +215,8 @@ describe("variable rm", () => {
     const store3 = await Store.open(dir);
     strictEqual(store3.state.size, 1);
     const entry = [...store3.state.values()][0];
-    strictEqual(parseURN(entry!.urn).id, "B");
+    ok(entry);
+    strictEqual(parseURN(entry.urn).id, "B");
     await store3.dispose();
   });
 
@@ -237,7 +238,8 @@ describe("variable rm", () => {
     const store3 = await Store.open(dir);
     strictEqual(store3.state.size, 1);
     const entry = [...store3.state.values()][0];
-    strictEqual(parseURN(entry!.urn).id, "Y");
+    ok(entry);
+    strictEqual(parseURN(entry.urn).id, "Y");
     await store3.dispose();
   });
 });

@@ -289,11 +289,19 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
           throw new Error(`preview failed: ${result.stderr}`);
         }
         const parsed = JSON.parse(result.stdout) as Array<{
-          resource: string;
+          id: string;
           kind: string;
-          action: "create" | "update" | "delete";
+          status: "create" | "modify" | "remove";
         }>;
-        return parsed.map((p) => ({ resource: p.resource, action: p.action }));
+        const statusToAction = {
+          create: "create",
+          modify: "update",
+          remove: "delete",
+        } as const;
+        return parsed.map((p) => ({
+          resource: p.id,
+          action: statusToAction[p.status],
+        }));
       },
 
       async refresh(refreshOpts) {
@@ -318,21 +326,21 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
         }
 
         // Parse output for resource status
-        // Log format: "HH:MM:SS.ms missing|drift resource-id"
-        // Must not match "no drift detected"
+        // Log format includes ANSI codes: "{ansi}HH:MM:SS.ms tag{ansi} {scope} missing resource-id"
+        // Strip ANSI codes before matching
         const resources: DiffResult["resources"] = [];
-        const lines = result.stdout.split("\n");
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escape sequences
+        const stripped = result.stdout.replace(/\x1b\[[0-9;]*m/g, "");
+        const lines = stripped.split("\n");
         for (const line of lines) {
-          // Match step output: timestamp + "missing" + resource-id
-          const missingMatch = line.match(
-            /\d{2}:\d{2}:\d{2}\.\d+ missing (\S+)/,
-          );
+          // Match "missing <id>" but not "no drift detected" or similar
+          const missingMatch = line.match(/\bmissing (\S+)/);
           if (missingMatch?.[1]) {
             resources.push({ id: missingMatch[1], status: "missing" });
           }
-          // Match step output: timestamp + "drift" + resource-id
-          const driftMatch = line.match(/\d{2}:\d{2}:\d{2}\.\d+ drift (\S+)/);
-          if (driftMatch?.[1]) {
+          // Match "drift <id>" but not "no drift detected"
+          const driftMatch = line.match(/\bdrift (\S+)/);
+          if (driftMatch?.[1] && !line.includes("no drift")) {
             resources.push({ id: driftMatch[1], status: "drifted" });
           }
         }

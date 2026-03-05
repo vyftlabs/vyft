@@ -135,7 +135,9 @@ describe("integration: transform → build → apply", () => {
     await run(removeOps, stateRef, dispatcher, resolve);
 
     strictEqual(stateRef.current.size, 1);
-    strictEqual(parseURN([...stateRef.current.values()][0]!.urn).id, "api");
+    const entry = [...stateRef.current.values()][0];
+    ok(entry);
+    strictEqual(parseURN(entry.urn).id, "api");
   });
 
   it("updates resources with changed config", async () => {

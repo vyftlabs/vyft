@@ -179,8 +179,9 @@ describe("Store + Engine orchestration", () => {
 
     const store2 = await Store.open(dir);
     const urn = [...store2.state.values()][0]?.urn;
+    ok(urn);
     const ops = transform(store2.state)
-      .update(urn!, (cfg) => ({ ...cfg, size: "10Gi" }))
+      .update(urn, (cfg) => ({ ...cfg, size: "10Gi" }))
       .build();
     ok(ops.flat().some((op) => op.action === "update"));
 
@@ -213,8 +214,9 @@ describe("Store + Engine orchestration", () => {
     const aUrn = [...store2.state.values()].find(
       (r) => parseURN(r.urn).id === "a",
     )?.urn;
+    ok(aUrn);
     await runOps(
-      transform(store2.state).remove(aUrn!).build(),
+      transform(store2.state).remove(aUrn).build(),
       store2,
       dispatcher,
     );
@@ -224,7 +226,8 @@ describe("Store + Engine orchestration", () => {
     const store3 = await Store.open(dir);
     strictEqual(store3.state.size, 1);
     const entry = [...store3.state.values()][0];
-    strictEqual(parseURN(entry!.urn).id, "b");
+    ok(entry);
+    strictEqual(parseURN(entry.urn).id, "b");
     await store3.dispose();
   });
 
@@ -273,13 +276,14 @@ describe("Store + Engine orchestration", () => {
     const first = [...s1.state.values()][0];
     const created = first?.created;
     const urn = first?.urn;
+    ok(urn);
     await s1.dispose();
 
     // Update
     const s2 = await Store.open(dir);
     await runOps(
       transform(s2.state)
-        .update(urn!, () => ({ size: "50Gi" }))
+        .update(urn, () => ({ size: "50Gi" }))
         .build(),
       s2,
       dispatcher,
@@ -292,7 +296,7 @@ describe("Store + Engine orchestration", () => {
 
     // Delete
     const s3 = await Store.open(dir);
-    await runOps(transform(s3.state).remove(urn!).build(), s3, dispatcher);
+    await runOps(transform(s3.state).remove(urn).build(), s3, dispatcher);
     await s3.checkpoint();
     strictEqual(s3.state.size, 0);
     await s3.dispose();

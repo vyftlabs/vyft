@@ -43,3 +43,13 @@ export {
   secret,
 } from "@vyft/primitives";
 export * as std from "@vyft/std";
+export type { CompositeResource, ResourceDefinition } from "./builders.ts";
+export {
+  bind,
+  config,
+  cronjob,
+  job,
+  resource,
+  service,
+  volume,
+} from "./builders.ts";

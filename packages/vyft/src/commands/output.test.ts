@@ -86,7 +86,8 @@ describe("output logic", () => {
       (r) => parseURN(r.urn).id === "api",
     );
     strictEqual(filtered.length, 1);
-    strictEqual(parseURN(filtered[0]!.urn).id, "api");
+    ok(filtered[0]);
+    strictEqual(parseURN(filtered[0].urn).id, "api");
     await store2.dispose();
   });
 

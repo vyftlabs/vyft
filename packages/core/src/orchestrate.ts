@@ -73,14 +73,15 @@ function makeVariableState(
   name: string,
   value: string,
   passphrase: string,
+  variable: Variable,
   existing?: ResourceState,
 ): ResourceState {
   const now = new Date().toISOString();
   const encrypted = encrypt(value, passphrase);
   return {
     urn: buildURN("platform", "default", "variable", name),
-    fingerprint: JSON.stringify({ value: encrypted }),
-    inputs: {},
+    fingerprint: fingerprint(variable),
+    inputs: serializeConfig(variable.config as object),
     outputs: { value: encrypted },
     dependencies: [],
     created: existing?.created ?? now,
@@ -133,6 +134,11 @@ async function executePlan(
           await store.append({ type: "removed", urn });
         } else {
           const id = change.resource.id;
+          // Variables are state-only — preserve their outputs from the store
+          const outputs =
+            change.resource.kind === "variable"
+              ? (store.state.get(urn)?.outputs ?? {})
+              : (runtime.runtimeState().get(id) ?? {});
           await store.append({
             type: "committed",
             urn,
@@ -142,7 +148,7 @@ async function executePlan(
                 ? (change.resource.input as object)
                 : (change.resource.config as object),
             ),
-            outputs: runtime.runtimeState().get(id) ?? {},
+            outputs,
           });
         }
       }),
@@ -254,6 +260,7 @@ export async function deploy(options?: {
               v.id,
               generated,
               passphrase,
+              v,
               store.state.get(varUrn),
             ),
           );
@@ -370,7 +377,30 @@ export async function destroy(options?: {
 
     const current: StateEntry[] = [...store.state.values()];
     const changes = plan([], current);
-    await executePlan(changes, store, runtime);
+
+    // Order removals: services/cronjobs first, then volumes/variables
+    // This prevents "volume in use" errors.
+    const ordered: Change[][] = [];
+    for (const level of changes) {
+      const runtime_: Change[] = [];
+      const platform: Change[] = [];
+      for (const c of level) {
+        if (c.status !== "remove") {
+          runtime_.push(c);
+          continue;
+        }
+        const kind = parseURN(c.urn).resource;
+        if (kind === "volume" || kind === "variable" || kind === "config") {
+          platform.push(c);
+        } else {
+          runtime_.push(c);
+        }
+      }
+      if (runtime_.length > 0) ordered.push(runtime_);
+      if (platform.length > 0) ordered.push(platform);
+    }
+
+    await executePlan(ordered, store, runtime);
     await store.checkpoint();
     await store.delete();
 
