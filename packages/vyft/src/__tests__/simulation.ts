@@ -47,7 +47,8 @@ function removeOp(change: Change & { status: "remove" }): Operation[] {
 export function defaultPlan(change: Change): Operation[] {
   if (change.status === "remove") return removeOp(change);
   if (change.resource.kind === "variable") return [];
-  if (change.resource.kind === "volume" && change.status === "modify") return [];
+  if (change.resource.kind === "volume" && change.status === "modify")
+    return [];
 
   if (change.resource.kind === "service" && change.status === "modify") {
     if (!change.previous)
@@ -80,10 +81,12 @@ export function defaultPlan(change: Change): Operation[] {
 export function k8sPlan(change: Change): Operation[] {
   if (change.status === "remove") return removeOp(change);
   if (change.resource.kind === "variable") return [];
-  if (change.resource.kind === "volume" && change.status === "modify") return [];
+  if (change.resource.kind === "volume" && change.status === "modify")
+    return [];
 
   if (
-    (change.resource.kind === "service" || change.resource.kind === "cronjob") &&
+    (change.resource.kind === "service" ||
+      change.resource.kind === "cronjob") &&
     change.status === "modify"
   ) {
     if (!change.previous)

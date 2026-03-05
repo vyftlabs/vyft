@@ -12,7 +12,6 @@ import type {
 } from "@vyft/core";
 import { buildURN, INTERNAL, MOUNTABLE, parseURN } from "@vyft/core";
 import type { Change } from "@vyft/engine";
-import type { Operation } from "@vyft/runtime";
 import {
   buildGraph,
   collect,
@@ -22,6 +21,7 @@ import {
   serializeConfig,
   validate,
 } from "@vyft/engine";
+import type { Operation } from "@vyft/runtime";
 
 // ── Resource constructors ────────────────────────────────────────────
 
@@ -141,7 +141,9 @@ export async function deploy(
     const prev = prevMap.get(urn);
     const fp = fingerprint(r);
     const rawInputs =
-      r.kind === "provider" ? (r as Resource & { input: unknown }).input : r.config;
+      r.kind === "provider"
+        ? (r as Resource & { input: unknown }).input
+        : r.config;
 
     // Derive outputs from resource properties
     let outputs: Record<string, unknown> = prev?.outputs ?? {};
@@ -159,9 +161,10 @@ export async function deploy(
     return {
       urn,
       fingerprint: fp,
-      inputs: rawInputs && typeof rawInputs === "object"
-        ? serializeConfig(rawInputs as object)
-        : {},
+      inputs:
+        rawInputs && typeof rawInputs === "object"
+          ? serializeConfig(rawInputs as object)
+          : {},
       outputs,
       dependencies: depUrns,
       created: prev?.created ?? now,

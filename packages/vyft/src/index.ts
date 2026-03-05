@@ -42,13 +42,4 @@ export {
   isSecretOutput,
   secret,
 } from "@vyft/primitives";
-export type {
-  BucketOptions,
-  BucketResult,
-  PostgresOptions,
-  PostgresResult,
-  QueueOptions,
-  QueueResult,
-} from "@vyft/recipes";
-export { bucket, postgres, queue } from "@vyft/recipes";
 export * as std from "@vyft/std";

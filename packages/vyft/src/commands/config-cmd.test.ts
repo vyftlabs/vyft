@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { ResourceState } from "@vyft/core";
-import type { URN } from "@vyft/primitives";
 import { buildURN, parseURN } from "@vyft/core";
+import type { URN } from "@vyft/primitives";
 import type { EncryptedPayload } from "@vyft/store";
 import { decrypt, encrypt, Store } from "@vyft/store";
 

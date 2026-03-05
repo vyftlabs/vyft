@@ -134,9 +134,7 @@ describe("Store + Engine orchestration", () => {
 
     const store2 = await Store.open(dir);
     strictEqual(store2.state.size, 2);
-    ok(
-      [...store2.state.values()].some((r) => parseURN(r.urn).id === "data"),
-    );
+    ok([...store2.state.values()].some((r) => parseURN(r.urn).id === "data"));
     const api = [...store2.state.values()].find(
       (r) => parseURN(r.urn).id === "api",
     );
@@ -258,12 +256,8 @@ describe("Store + Engine orchestration", () => {
     // Reopen: WAL replayed, both resources present
     const store3 = await Store.open(dir);
     strictEqual(store3.state.size, 2);
-    ok(
-      [...store3.state.values()].some((r) => parseURN(r.urn).id === "data"),
-    );
-    ok(
-      [...store3.state.values()].some((r) => parseURN(r.urn).id === "cache"),
-    );
+    ok([...store3.state.values()].some((r) => parseURN(r.urn).id === "data"));
+    ok([...store3.state.values()].some((r) => parseURN(r.urn).id === "cache"));
     await store3.checkpoint();
     await store3.dispose();
   });
@@ -274,11 +268,7 @@ describe("Store + Engine orchestration", () => {
 
     // Create
     const s1 = await Store.open(dir);
-    await runOps(
-      transform(s1.state).add(vol("data")).build(),
-      s1,
-      dispatcher,
-    );
+    await runOps(transform(s1.state).add(vol("data")).build(), s1, dispatcher);
     await s1.checkpoint();
     const first = [...s1.state.values()][0];
     const created = first?.created;
@@ -302,11 +292,7 @@ describe("Store + Engine orchestration", () => {
 
     // Delete
     const s3 = await Store.open(dir);
-    await runOps(
-      transform(s3.state).remove(urn!).build(),
-      s3,
-      dispatcher,
-    );
+    await runOps(transform(s3.state).remove(urn!).build(), s3, dispatcher);
     await s3.checkpoint();
     strictEqual(s3.state.size, 0);
     await s3.dispose();

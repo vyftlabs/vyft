@@ -13,11 +13,11 @@ import {
   resolve,
 } from "@vyft/core";
 import { collect } from "@vyft/engine";
-import { engineDeploy } from "../engine-compat.ts";
 import { logger } from "@vyft/logger";
 import type { DockerRuntimeOptions } from "@vyft/runtime";
 import { Store } from "@vyft/store";
 import type { Command } from "commander";
+import { engineDeploy } from "../engine-compat.ts";
 import {
   collectLinkables,
   linkEnvVarName,

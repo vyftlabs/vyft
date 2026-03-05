@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { ResourceState } from "@vyft/core";
-import type { URN } from "@vyft/primitives";
 import { buildURN, MOUNTABLE, parseURN } from "@vyft/core";
 import {
   buildGraph,
@@ -13,6 +12,7 @@ import {
   resourceURN,
   validate,
 } from "@vyft/engine";
+import type { URN } from "@vyft/primitives";
 import { Store } from "@vyft/store";
 
 /** Build initial state from config, simulating what deploy would produce. */

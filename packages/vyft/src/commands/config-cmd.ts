@@ -179,15 +179,13 @@ export function registerVariable(program: Command): void {
           case "ls": {
             const store = await Store.open(dir);
             try {
-              const variables = [...store.state.values()].filter(
-                (r) => {
-                  try {
-                    return parseURN(r.urn).resource === "variable";
-                  } catch {
-                    return false;
-                  }
-                },
-              );
+              const variables = [...store.state.values()].filter((r) => {
+                try {
+                  return parseURN(r.urn).resource === "variable";
+                } catch {
+                  return false;
+                }
+              });
 
               const items = variables
                 .map((r) => ({

@@ -28,6 +28,8 @@ jobs:
           node-version-file: package.json
           cache: pnpm
 
+      - run: docker swarm init
+
       - run: pnpm install --frozen-lockfile
 
       - uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0

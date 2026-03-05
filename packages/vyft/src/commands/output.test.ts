@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { ResourceState } from "@vyft/core";
-import type { URN } from "@vyft/primitives";
 import { buildURN, parseURN } from "@vyft/core";
+import type { URN } from "@vyft/primitives";
 import { Store } from "@vyft/store";
 
 function makeResource(
@@ -119,8 +119,7 @@ describe("output logic", () => {
 
     const store2 = await Store.open(dir);
     const obj: Record<string, unknown> = {};
-    for (const r of store2.state.values())
-      obj[parseURN(r.urn).id] = r.outputs;
+    for (const r of store2.state.values()) obj[parseURN(r.urn).id] = r.outputs;
 
     deepStrictEqual(obj, {
       api: { host: "api", port: 3000 },

@@ -3,7 +3,8 @@
  * Provides the old deploy(desired, current, runtime) interface
  * used by dev and local commands.
  */
-import type { Resource } from "@vyft/primitives";
+
+import { parseURN } from "@vyft/core";
 import type { Change } from "@vyft/engine";
 import {
   execute,
@@ -12,10 +13,9 @@ import {
   resourceURN,
   serializeConfig,
 } from "@vyft/engine";
+import type { Resource } from "@vyft/primitives";
 import type { ExtendedRuntime, Operation } from "@vyft/runtime";
-import type { ResourceState } from "@vyft/store";
-import { Store } from "@vyft/store";
-import { parseURN } from "@vyft/core";
+import type { ResourceState, Store } from "@vyft/store";
 
 function toOperation(change: Change): Operation {
   if (change.status === "remove") {
@@ -75,8 +75,7 @@ export async function engineDeploy(
                 ? (change.resource.input as object)
                 : (change.resource.config as object),
             ),
-            outputs:
-              runtime.runtimeState().get(change.resource.id) ?? {},
+            outputs: runtime.runtimeState().get(change.resource.id) ?? {},
           });
         }
       }),

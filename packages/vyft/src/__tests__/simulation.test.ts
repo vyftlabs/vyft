@@ -8,8 +8,8 @@ import {
 import { beforeEach, describe, it } from "node:test";
 import type { ResourceState } from "@vyft/core";
 import { interpolate, parseURN, ValidationError } from "@vyft/core";
-import { cronjob, service, variable, volume } from "./test-utils.ts";
 import { Simulation } from "./simulation.ts";
+import { cronjob, service, variable, volume } from "./test-utils.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

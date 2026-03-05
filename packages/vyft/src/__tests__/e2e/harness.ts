@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import type { ResourceState, RuntimeName } from "@vyft/core";
 import { collect } from "@vyft/engine";
-import { deploy } from "../test-utils.ts";
 import type { DockerClient } from "@vyft/runtime/docker/client";
 import { createDockerClient } from "@vyft/runtime/docker/client";
 import type { K8sClient } from "@vyft/runtime/kubernetes/client";
 import { loadK8sClient } from "@vyft/runtime/kubernetes/client";
 import { createRuntime } from "../../runtime-factory.ts";
+import { deploy } from "../test-utils.ts";
 import {
   DockerTestContext,
   K8sTestContext,

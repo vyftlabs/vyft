@@ -37,6 +37,26 @@ export function createDockerRuntime(
   let networkReady = false;
   const containerIds = new Map<string, string>();
 
+  async function pullImage(image: string): Promise<void> {
+    try {
+      await client.get(`/images/${encodeURIComponent(image)}/json`);
+      return;
+    } catch {
+      // Not found locally — pull it
+    }
+    const idx = image.lastIndexOf(":");
+    const repo = idx > 0 ? image.slice(0, idx) : image;
+    const tag = idx > 0 ? image.slice(idx + 1) : "latest";
+    await client.post(
+      `/images/create?fromImage=${encodeURIComponent(repo)}&tag=${encodeURIComponent(tag)}`,
+    );
+  }
+
+  const imageUtils = Object.assign(
+    { pullImage },
+    opts.imageUtils?.buildImage ? { buildImage: opts.imageUtils.buildImage } : {},
+  );
+
   async function initNetwork(): Promise<void> {
     if (networkReady) return;
     await ensureNetwork(client, networkName, composeLabels);
@@ -99,6 +119,7 @@ export function createDockerRuntime(
             project,
             stage,
             pb,
+            imageUtils,
           );
           containerIds.set(resource.id, cid);
         } else {
@@ -112,6 +133,7 @@ export function createDockerRuntime(
             project,
             stage,
             pb,
+            imageUtils,
           );
           containerIds.set(resource.id, cid);
         }
@@ -129,6 +151,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            imageUtils,
           );
           containerIds.set(resource.id, cid);
         } else {
@@ -140,6 +163,7 @@ export function createDockerRuntime(
             networkName,
             secrets,
             project,
+            imageUtils,
           );
           containerIds.set(resource.id, cid);
         }

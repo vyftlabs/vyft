@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { Change, Operation, ResourceState, Runtime } from "@vyft/core";
-import type { URN } from "@vyft/primitives";
 import { MOUNTABLE, parseURN } from "@vyft/core";
+import type { URN } from "@vyft/primitives";
 import { Store } from "@vyft/store";
 import { deploy } from "../__tests__/test-utils.ts";
 
