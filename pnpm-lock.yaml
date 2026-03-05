@@ -46,7 +46,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^1.19.9
-        version: 1.19.9(hono@4.12.3)
+        version: 1.19.9(hono@4.12.4)
       '@vyft/client':
         specifier: workspace:*
         version: link:../../packages/client
@@ -57,8 +57,8 @@ importers:
         specifier: ^0.45.1
         version: 0.45.1(postgres@3.4.8)
       hono:
-        specifier: ^4.12.3
-        version: 4.12.3
+        specifier: ^4.12.4
+        version: 4.12.4
       ioredis:
         specifier: ^5.10.0
         version: 5.10.0
@@ -2210,8 +2210,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.12.3:
-    resolution: {integrity: sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg==}
+  hono@4.12.4:
+    resolution: {integrity: sha512-ooiZW1Xy8rQ4oELQ++otI2T9DsKpV0M6c6cO6JGx4RTfav9poFFLlet9UMXHZnoM1yG0HWGlQLswBGX3RZmHtg==}
     engines: {node: '>=16.9.0'}
 
   hpagent@1.2.0:
@@ -3904,9 +3904,9 @@ snapshots:
     dependencies:
       '@expressive-code/core': 0.41.7
 
-  '@hono/node-server@1.19.9(hono@4.12.3)':
+  '@hono/node-server@1.19.9(hono@4.12.4)':
     dependencies:
-      hono: 4.12.3
+      hono: 4.12.4
 
   '@img/colour@1.0.0': {}
 
@@ -5348,7 +5348,7 @@ snapshots:
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
 
-  hono@4.12.3: {}
+  hono@4.12.4: {}
 
   hpagent@1.2.0: {}
 
