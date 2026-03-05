@@ -244,6 +244,9 @@ importers:
       '@vyft/primitives':
         specifier: workspace:*
         version: link:../primitives
+      '@vyft/recipes':
+        specifier: workspace:*
+        version: link:../recipes
       '@vyft/runtime':
         specifier: workspace:*
         version: link:../runtime

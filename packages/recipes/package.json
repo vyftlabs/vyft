@@ -12,7 +12,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "echo 'skipped (WIP)'",
+    "build": "tsc",
     "test": "node --test 'src/**/*.test.ts'",
     "lint": "biome check ."
   },

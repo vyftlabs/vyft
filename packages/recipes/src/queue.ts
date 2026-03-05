@@ -5,7 +5,9 @@
  * Each queue() call creates a separate RabbitMQ instance for isolation.
  */
 
-import { config, service, volume } from "@vyft/primitives";
+import { type Interpolation, interpolate } from "@vyft/core";
+import { resource, service, volume } from "@vyft/primitives";
+import { crypto } from "@vyft/std";
 
 export interface QueueOptions {
   /** Volume size for persistence (default: "5Gi") */
@@ -13,22 +15,14 @@ export interface QueueOptions {
 }
 
 export interface QueueResult {
-  /** The RabbitMQ service */
-  svc: ReturnType<typeof service>;
-  /** The data volume */
-  data: ReturnType<typeof volume>;
-  /** Generated password config */
-  password: ReturnType<typeof config>;
   /** AMQP connection URL */
-  url: string;
-  /** Queue name */
-  name: string;
+  url: Interpolation;
   /** Service host */
   host: string;
   /** AMQP port */
   port: number;
-  /** Management UI port */
-  managementPort: number;
+  /** Queue name */
+  name: string;
 }
 
 /**
@@ -41,37 +35,33 @@ export interface QueueResult {
  * const mq = queue("tasks");
  * const worker = service("worker", {
  *   env: { RABBITMQ_URL: mq.url },
- *   dependsOn: [mq.svc],
+ *   dependsOn: [mq],
  * });
  * ```
  */
-export function queue(name: string, opts?: QueueOptions): QueueResult {
+export const queue = resource("queue", (id, opts?: QueueOptions) => {
   const size = opts?.size ?? "5Gi";
 
-  // Namespace with vyft- prefix to avoid conflicts with user resources
-  const id = `vyft-rabbitmq-${name}`;
-
-  const password = config(`${id}-password`, { secret: true, length: 32 });
-  const data = volume(`${id}-data`, { size });
+  const password = crypto.randomString({ length: 32 });
+  const data = volume("data", { size });
 
   const svc = service(id, {
     image: "rabbitmq:3-management-alpine",
     port: 5672,
     env: {
       RABBITMQ_DEFAULT_USER: "vyft",
-      RABBITMQ_DEFAULT_PASS: password,
+      RABBITMQ_DEFAULT_PASS: password.result,
     },
     mounts: [{ source: data, path: "/var/lib/rabbitmq" }],
   });
 
   return {
-    svc,
-    data,
-    password,
-    url: `amqp://vyft:${password}@${svc.host}:5672`,
-    name,
-    host: svc.host,
-    port: 5672,
-    managementPort: 15672,
+    outputs: {
+      url: interpolate`amqp://vyft:${password.result}@${svc.host}:5672`,
+      host: svc.host,
+      port: 5672,
+      name: id,
+    },
+    ready: svc,
   };
-}
+});

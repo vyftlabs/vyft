@@ -291,17 +291,17 @@ export async function deploy(options?: {
     // Pre-build images for services whose config is unchanged but source may have changed
     const buildables = resources.filter(
       (r): r is Service | CronJob =>
-        (r.kind === "service" || r.kind === "cronjob") && !!r.config.build,
+        (r.kind === "service" || r.kind === "cronjob") && !!r.config.path,
     );
     for (const r of buildables) {
       const rUrn = resourceURN(r);
       const prev = store.state.get(rUrn);
       if (!prev || prev.fingerprint !== fingerprint(r)) continue;
-      const build = r.config.build;
-      if (!build) continue;
+      const buildPath = r.config.path;
+      if (!buildPath) continue;
       const tag = `vyft-build-${r.id}:latest`;
       log.info('building image for "%s"...', r.id);
-      await buildImage(tag, build);
+      await buildImage(tag, buildPath, r.config.cwd);
     }
 
     const runtime = createRuntime(ctx.runtimeName, {

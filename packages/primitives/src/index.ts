@@ -25,7 +25,6 @@ export { interpolate, isInterpolation, isReference } from "./ref.ts";
 // Resource types, symbols, and validation
 export type {
   BindMount,
-  BuildConfig,
   Config,
   ConfigConfig,
   CronJob,
@@ -66,3 +65,16 @@ export {
 } from "./resource.ts";
 export type { URN } from "./urn.ts";
 export { buildURN, parseURN } from "./urn.ts";
+// Collector
+export { collect, currentCollector, currentParent } from "./collector.ts";
+// Resource constructors
+export type { CompositeResource, ResourceDefinition } from "./constructors.ts";
+export {
+  bind,
+  config,
+  cronjob,
+  job,
+  resource,
+  service,
+  volume,
+} from "./constructors.ts";

@@ -1,5 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
+import type { FSWatcher } from "node:fs";
 import { watch } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -30,10 +31,50 @@ export const DEV_STAGE = "__dev__";
 
 // ── Service Classification ───────────────────────────────────────────
 
+const NODE_EXTS = new Set([".ts", ".js", ".mts", ".mjs", ".cjs", ".cts"]);
+const GO_EXTS = new Set([".go"]);
+
+export interface DevConfig {
+  command: string;
+  cwd?: string;
+  /** Glob patterns — when set, vyft watches matching files and restarts the process on change. */
+  watch?: string[];
+}
+
 export interface ClassifiedServices {
   infra: Service[];
   dev: Service[];
   buildOnly: Service[];
+  /** Dev configs keyed by service id — includes inferred commands for source-file services. */
+  devConfigs: Map<string, DevConfig>;
+}
+
+function resolveDevConfig(
+  dev: string | { command: string; cwd?: string; watch?: string[] },
+): DevConfig {
+  return typeof dev === "string" ? { command: dev } : dev;
+}
+
+function inferDevCommand(
+  buildPath: string,
+  cwd: string | undefined,
+): DevConfig | undefined {
+  const ext = buildPath.slice(buildPath.lastIndexOf("."));
+  const resolved = path.relative(
+    process.cwd(),
+    path.resolve(cwd ?? ".", buildPath),
+  );
+  if (NODE_EXTS.has(ext)) {
+    return { command: `node --watch ${resolved}` };
+  }
+  if (GO_EXTS.has(ext)) {
+    const dir = path.dirname(resolved);
+    return {
+      command: `go run ${dir === "." ? "." : `./${dir}`}`,
+      watch: ["**/*.go"],
+    };
+  }
+  return undefined;
 }
 
 export function classifyServices(
@@ -42,20 +83,34 @@ export function classifyServices(
   const infra: Service[] = [];
   const dev: Service[] = [];
   const buildOnly: Service[] = [];
+  const devConfigs = new Map<string, DevConfig>();
 
   for (const r of resources) {
     if (r.kind !== "service") continue;
-    if (r.config.dev) {
-      dev.push(r);
-    } else if (r.config.image && !r.config.build) {
-      infra.push(r);
-    } else if (r.config.build) {
+    if (r.config.dev === false) {
       buildOnly.push(r);
-      logger.debug('skipping build-only service "%s" (no dev field)', r.id);
+      logger.debug('dev explicitly disabled for "%s"', r.id);
+    } else if (r.config.dev) {
+      dev.push(r);
+      devConfigs.set(r.id, resolveDevConfig(r.config.dev));
+    } else if (r.config.image && !r.config.path) {
+      infra.push(r);
+    } else if (r.config.path) {
+      const inferred = inferDevCommand(r.config.path, r.config.cwd);
+      if (inferred) {
+        dev.push(r);
+        devConfigs.set(r.id, inferred);
+      } else {
+        buildOnly.push(r);
+        logger.debug(
+          'skipping build-only service "%s" (no dev command inferred)',
+          r.id,
+        );
+      }
     }
   }
 
-  return { infra, dev, buildOnly };
+  return { infra, dev, buildOnly, devConfigs };
 }
 
 // ── Binding Resolution ───────────────────────────────────────────────
@@ -148,6 +203,18 @@ export function assignDevPorts(services: Service[]): Map<string, number> {
   return assigned;
 }
 
+// ── Watch helpers ─────────────────────────────────────────────────────
+
+/** Extract file extensions from simple glob patterns like "**\/*.go" → [".go"] */
+function extractWatchExts(patterns: string[]): string[] {
+  const exts: string[] = [];
+  for (const p of patterns) {
+    const match = p.match(/\*(\.[a-z0-9]+)$/i);
+    if (match?.[1]) exts.push(match[1]);
+  }
+  return exts;
+}
+
 // ── Console prefix colors ────────────────────────────────────────────
 
 const COLORS = [
@@ -174,6 +241,7 @@ export function registerDev(program: Command): void {
       const configPath = await findConfig(process.cwd());
       const dir = path.join(root, context, project, stage);
       const devProcesses = new Map<string, ChildProcess>();
+      const devWatchers = new Map<string, FSWatcher>();
       const ac = new AbortController();
 
       const onSignal = () => ac.abort();
@@ -185,7 +253,7 @@ export function registerDev(program: Command): void {
         logger.debug("loaded config from %s", configPath);
 
         const resources = collect(config);
-        const { infra, dev } = classifyServices(resources);
+        const { infra, dev, devConfigs } = classifyServices(resources);
         const infraIds = new Set(infra.map((s) => s.id));
 
         // Load or generate secrets — plain JSON, no encryption
@@ -273,18 +341,21 @@ export function registerDev(program: Command): void {
         // Assign deterministic dev ports
         const devPorts = assignDevPorts(dev);
 
-        // Kill existing dev processes
+        // Kill existing dev processes and watchers
         for (const [id, proc] of devProcesses) {
           logger.debug('stopping dev process "%s"', id);
           proc.kill("SIGTERM");
         }
         devProcesses.clear();
+        for (const [, w] of devWatchers) w.close();
+        devWatchers.clear();
 
         // Spawn dev processes
         let colorIdx = 0;
         for (const svc of dev) {
-          const devConfig = svc.config.dev;
-          if (!devConfig) continue;
+          const devConfigRaw = devConfigs.get(svc.id);
+          if (!devConfigRaw) continue;
+          const devConfig = devConfigRaw;
 
           const color = COLORS[colorIdx++ % COLORS.length];
           const prefix = `${color}[${svc.id}]${RESET}`;
@@ -305,43 +376,89 @@ export function registerDev(program: Command): void {
             ? { PORT: String(devPort) }
             : {};
 
-          const child = spawn("sh", ["-c", devConfig.command], {
-            cwd: devConfig.cwd ?? process.cwd(),
-            env: {
-              ...process.env,
-              NODE_ENV: "development",
-              ...svcEnv,
-              ...bindingEnv,
-              ...portEnv,
-            },
-            stdio: ["ignore", "pipe", "pipe"],
-          });
+          const spawnEnv = {
+            ...process.env,
+            NODE_ENV: "development",
+            ...svcEnv,
+            ...bindingEnv,
+            ...portEnv,
+          };
+          const spawnCwd = devConfig.cwd ?? process.cwd();
 
-          child.stdout?.on("data", (data: Buffer) => {
-            for (const line of data.toString().split("\n")) {
-              if (line) process.stdout.write(`${prefix} ${line}\n`);
-            }
-          });
+          function spawnChild(): ChildProcess {
+            const child = spawn("sh", ["-c", devConfig.command], {
+              cwd: spawnCwd,
+              env: spawnEnv,
+              stdio: ["ignore", "pipe", "pipe"],
+            });
 
-          child.stderr?.on("data", (data: Buffer) => {
-            for (const line of data.toString().split("\n")) {
-              if (line) process.stderr.write(`${prefix} ${line}\n`);
-            }
-          });
+            child.stdout?.on("data", (data: Buffer) => {
+              for (const line of data.toString().split("\n")) {
+                if (line) process.stdout.write(`${prefix} ${line}\n`);
+              }
+            });
 
-          child.on("exit", (code, signal) => {
-            if (!ac.signal.aborted) {
-              logger.warn(
-                'dev process "%s" exited (code=%s, signal=%s)',
-                svcId,
-                code,
-                signal,
-              );
-            }
-            devProcesses.delete(svcId);
-          });
+            child.stderr?.on("data", (data: Buffer) => {
+              for (const line of data.toString().split("\n")) {
+                if (line) process.stderr.write(`${prefix} ${line}\n`);
+              }
+            });
 
-          devProcesses.set(svcId, child);
+            child.on("exit", (code, signal) => {
+              if (!ac.signal.aborted && !devConfig.watch) {
+                logger.warn(
+                  'dev process "%s" exited (code=%s, signal=%s)',
+                  svcId,
+                  code,
+                  signal,
+                );
+              }
+              devProcesses.delete(svcId);
+            });
+
+            devProcesses.set(svcId, child);
+            return child;
+          }
+
+          spawnChild();
+
+          // Set up file watcher for restart-on-change
+          if (devConfig.watch) {
+            const watchExts = extractWatchExts(devConfig.watch);
+            let debounce: ReturnType<typeof setTimeout> | null = null;
+
+            const fsWatcher = watch(
+              spawnCwd,
+              { recursive: true, signal: ac.signal },
+              (_event, filename) => {
+                if (!filename) return;
+                if (
+                  watchExts.length > 0 &&
+                  !watchExts.some((ext) => filename.endsWith(ext))
+                )
+                  return;
+                if (debounce) clearTimeout(debounce);
+                debounce = setTimeout(() => {
+                  const existing = devProcesses.get(svcId);
+                  if (existing) {
+                    existing.kill("SIGTERM");
+                  }
+                  logger.info('restarting "%s" (file changed)', svcId);
+                  spawnChild();
+                }, 300);
+              },
+            );
+
+            fsWatcher.on("error", (err) => {
+              const code = (err as NodeJS.ErrnoException).code;
+              if (code !== "ERR_USE_AFTER_CLOSE" && code !== "ABORT_ERR") {
+                logger.error('watcher error for "%s": %s', svcId, err.message);
+              }
+            });
+
+            devWatchers.set(svcId, fsWatcher);
+          }
+
           if (devPort) {
             logger.info(
               'started dev process "%s": %s → http://localhost:%d',
@@ -396,7 +513,10 @@ export function registerDev(program: Command): void {
           });
         });
       } finally {
-        // Cleanup dev processes
+        // Cleanup watchers and dev processes
+        for (const [, w] of devWatchers) w.close();
+        devWatchers.clear();
+
         for (const [id, proc] of devProcesses) {
           logger.debug('stopping dev process "%s"', id);
           proc.kill("SIGTERM");

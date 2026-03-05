@@ -3,7 +3,6 @@
  * Used when the platform doesn't provide native object storage (e.g., S3).
  */
 
-import { INTERNAL } from "@vyft/core";
 import { job, resource, service, volume } from "@vyft/primitives";
 
 export interface BucketOptions {
@@ -74,7 +73,7 @@ export const bucket = resource("bucket", (id, opts?: BucketOptions) => {
       endpoint: `http://${svc.host}:9000`,
       name: id,
     },
-    ready: init[INTERNAL].ready,
+    ready: init,
     beforeDelete: () => {
       // Cleanup job removes the bucket before deletion
       job("cleanup", {

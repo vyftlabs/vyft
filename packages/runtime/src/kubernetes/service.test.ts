@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { MOUNTABLE } from "@vyft/primitives";
+import { type Mountable, MOUNTABLE } from "@vyft/primitives";
 import { buildClusterIPManifest, buildDeploymentManifest } from "./service.ts";
 
 const emptySecrets = new Map<string, string>();
@@ -65,7 +65,7 @@ describe("buildDeploymentManifest", () => {
       id: "data",
       config: {},
       [MOUNTABLE]: true as const,
-    };
+    } as unknown as Mountable;
     const m = buildDeploymentManifest(
       "api",
       "ns",

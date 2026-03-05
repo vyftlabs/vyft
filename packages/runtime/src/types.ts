@@ -6,13 +6,12 @@ export type Operation =
   | { action: "update"; resource: Resource }
   | { action: "remove"; urn: URN; id: string; kind: string };
 
-import type { BuildConfig } from "@vyft/primitives";
-
 /** Image build utilities — injected by the CLI to avoid circular deps. */
 export interface ImageUtils {
   buildImage(
     tag: string,
-    build: BuildConfig,
+    buildPath: string,
+    buildCwd?: string,
   ): Promise<{ tag: string; digest: string }>;
   pushImage(localTag: string, remoteTag: string): Promise<void>;
 }

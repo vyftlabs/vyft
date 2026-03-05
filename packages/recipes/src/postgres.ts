@@ -3,7 +3,7 @@
  * Used when the platform doesn't provide native postgres (e.g., RDS).
  */
 
-import { INTERNAL, type Interpolation, interpolate } from "@vyft/core";
+import { type Interpolation, interpolate } from "@vyft/core";
 import { resource, service, volume } from "@vyft/primitives";
 import { crypto } from "@vyft/std";
 
@@ -59,6 +59,6 @@ export const postgres = resource("postgres", (id, opts?: PostgresOptions) => {
       host: svc.host,
       port: 5432,
     },
-    ready: svc[INTERNAL].ready,
+    ready: svc,
   };
 });

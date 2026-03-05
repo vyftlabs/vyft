@@ -100,12 +100,12 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
       }
 
       if (resource.kind === "service") {
-        if (resource.config.build) {
+        if (resource.config.path) {
           const { buildImage, pushImage } = getImageUtils();
           const registry = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${registry}/vyft-${resource.id}:latest`;
-          await buildImage(localTag, resource.config.build);
+          await buildImage(localTag, resource.config.path, resource.config.cwd);
           await pushImage(localTag, remoteTag);
         }
 
@@ -131,9 +131,9 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
         const { buildImage, pushImage } = getImageUtils();
         let baseImage =
           resource.config.image ?? `vyft-build-${resource.id}:latest`;
-        if (resource.config.build) {
+        if (resource.config.path) {
           baseImage = `vyft-build-${resource.id}:latest`;
-          await buildImage(baseImage, resource.config.build);
+          await buildImage(baseImage, resource.config.path, resource.config.cwd);
         }
 
         const cronTag = `vyft-cron-${resource.id}:latest`;

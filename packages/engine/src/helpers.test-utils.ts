@@ -18,7 +18,7 @@ export function vol(id: string, urn?: URN): Volume {
     urn: urn ?? buildURN("platform", "default", "volume", id),
     config: {},
     [MOUNTABLE]: true,
-  };
+  } as Volume;
 }
 
 export function sec(id: string, urn?: URN): Variable {
@@ -45,7 +45,7 @@ export function svc(
     port,
     url: `http://${id}:${port}`,
     [INTERNAL]: { ready: async () => {} }, // no-op for tests
-  };
+  } as unknown as Service;
 }
 
 export function job(
@@ -59,7 +59,7 @@ export function job(
     urn: urn ?? buildURN("runtime", "default", "job", id),
     config,
     [INTERNAL]: { ready: async () => {} }, // no-op for tests
-  };
+  } as unknown as Job;
 }
 
 export function cron(

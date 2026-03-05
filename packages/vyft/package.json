@@ -25,6 +25,7 @@
     "@vyft/errors": "workspace:*",
     "@vyft/logger": "workspace:*",
     "@vyft/primitives": "workspace:*",
+    "@vyft/recipes": "workspace:*",
     "@vyft/runtime": "workspace:*",
     "@vyft/std": "workspace:*",
     "@vyft/store": "workspace:*",

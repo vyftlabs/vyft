@@ -6,7 +6,7 @@ import {
   strictEqual,
 } from "node:assert";
 import { describe, it } from "node:test";
-import { buildURN, MOUNTABLE, type URN } from "@vyft/primitives";
+import { buildURN, MOUNTABLE, type URN, type Volume } from "@vyft/primitives";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
 import type { StateEntry } from "./plan.ts";
 import { fingerprint, plan, serializeConfig } from "./plan.ts";
@@ -35,7 +35,7 @@ describe("fingerprint", () => {
       urn: buildURN("platform", "default", "volume", "data"),
       config: { size: "10Gi" },
       [MOUNTABLE]: true as const,
-    };
+    } as Volume;
     notStrictEqual(fingerprint(a), fingerprint(b));
   });
 
@@ -53,7 +53,7 @@ describe("fingerprint", () => {
       urn: buildURN("platform", "default", "volume", "data"),
       config: { size: "10Gi" },
       [MOUNTABLE]: true as const,
-    };
+    } as Volume;
     const a = svc("api", {
       image: "node",
       mounts: [{ source: v1, path: "/data" }],

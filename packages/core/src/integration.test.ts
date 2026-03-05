@@ -19,7 +19,7 @@ function vol(id: string): Volume {
     urn: buildURN("platform", "default", "volume", id),
     config: {},
     [MOUNTABLE]: true,
-  };
+  } as Volume;
 }
 
 function svc(
@@ -46,7 +46,7 @@ function svc(
     port: 3000,
     url: `http://${id}:3000`,
     [INTERNAL]: { ready: async () => {} },
-  };
+  } as unknown as Service;
 }
 
 // ── Mock ExtendedRuntime ─────────────────────────────────────────────

@@ -90,12 +90,12 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
       }
 
       if (resource.kind === "service") {
-        if (resource.config.build) {
+        if (resource.config.path) {
           const { buildImage, pushImage } = getImageUtils();
           const reg = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${reg.local}/vyft-${resource.id}:latest`;
-          await buildImage(localTag, resource.config.build);
+          await buildImage(localTag, resource.config.path, resource.config.cwd);
           await pushImage(localTag, remoteTag);
         }
 
@@ -104,12 +104,12 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
       }
 
       if (resource.kind === "cronjob") {
-        if (resource.config.build) {
+        if (resource.config.path) {
           const { buildImage, pushImage } = getImageUtils();
           const reg = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${reg.local}/vyft-${resource.id}:latest`;
-          await buildImage(localTag, resource.config.build);
+          await buildImage(localTag, resource.config.path, resource.config.cwd);
           await pushImage(localTag, remoteTag);
         }
 

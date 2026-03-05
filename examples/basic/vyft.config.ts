@@ -4,13 +4,13 @@ export const db = postgres("db");
 export const uploads = bucket("uploads");
 
 export const api = service("api", {
-  build: { context: "../..", path: "examples/basic/src/api.ts" },
+  path: "examples/basic/src/api.ts",
+  cwd: "../..",
   dependsOn: [db, uploads],
-  dev: { command: "node --watch src/api.ts" },
 });
 
 export const worker = service("worker", {
-  build: { context: "../..", path: "examples/basic/src/worker.ts" },
+  path: "examples/basic/src/worker.ts",
+  cwd: "../..",
   dependsOn: [db],
-  dev: { command: "node --watch src/worker.ts" },
 });

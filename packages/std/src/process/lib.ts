@@ -3,35 +3,28 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Resolve stdin input - either read from file or use as literal
+ * Read stdin content from a file path, resolved relative to cwd.
  */
-export async function resolveStdin(
-  stdin: string,
+export async function readStdinFile(
+  filePath: string,
   cwd: string,
 ): Promise<string> {
-  // Check if stdin looks like a file path
-  if (stdin.startsWith("./") || stdin.startsWith("/")) {
-    const filePath = path.isAbsolute(stdin) ? stdin : path.join(cwd, stdin);
-    try {
-      return await fs.readFile(filePath, "utf-8");
-    } catch {
-      // If file doesn't exist, treat as literal
-      return stdin;
-    }
-  }
-  // Treat as literal string
-  return stdin;
+  const resolved = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(cwd, filePath);
+  return fs.readFile(resolved, "utf-8");
 }
 
 /**
- * Execute a command and capture stdout
+ * Execute a command and capture stdout and stderr.
  */
 export function executeCommand(
   command: string[],
   cwd: string,
   env: Record<string, string> | undefined,
   stdin: string | undefined,
-): Promise<{ stdout: string; exitCode: number }> {
+  timeout?: number,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
     const [cmd, ...args] = command;
 
@@ -48,6 +41,15 @@ export function executeCommand(
 
     let stdout = "";
     let stderr = "";
+    let timedOut = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (timeout !== undefined) {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        proc.kill("SIGTERM");
+      }, timeout);
+    }
 
     proc.stdout.on("data", (data: Buffer) => {
       stdout += data.toString();
@@ -59,12 +61,15 @@ export function executeCommand(
 
     if (stdin !== undefined) {
       proc.stdin.write(stdin);
-      proc.stdin.end();
-    } else {
-      proc.stdin.end();
     }
+    proc.stdin.end();
 
     proc.on("close", (code) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (timedOut) {
+        reject(new Error(`Command timed out after ${timeout}ms`));
+        return;
+      }
       const exitCode = code ?? 0;
       if (exitCode !== 0) {
         reject(
@@ -74,10 +79,11 @@ export function executeCommand(
         );
         return;
       }
-      resolve({ stdout, exitCode });
+      resolve({ stdout, stderr, exitCode });
     });
 
     proc.on("error", (err) => {
+      if (timeoutId) clearTimeout(timeoutId);
       reject(err);
     });
   });

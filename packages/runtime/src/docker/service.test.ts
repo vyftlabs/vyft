@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { MOUNTABLE } from "@vyft/primitives";
+import { type Mountable, MOUNTABLE } from "@vyft/primitives";
 import { buildContainerConfig } from "./service.ts";
 
 const networkName = "vyft-test";
@@ -65,7 +65,7 @@ describe("buildContainerConfig", () => {
       id: "data",
       config: {},
       [MOUNTABLE]: true as const,
-    };
+    } as unknown as Mountable;
     const cc = buildContainerConfig(
       "api",
       { image: "node:22", mounts: [{ source: vol, path: "/data" }] },
@@ -81,7 +81,7 @@ describe("buildContainerConfig", () => {
       id: "data",
       config: {},
       [MOUNTABLE]: true as const,
-    };
+    } as unknown as Mountable;
     const cc = buildContainerConfig(
       "api",
       { image: "node:22", mounts: [{ source: vol, path: "/data" }] },
@@ -146,7 +146,7 @@ describe("buildContainerConfig", () => {
   it("uses build-derived tag when no image specified", () => {
     const cc = buildContainerConfig(
       "api",
-      { build: "./app" },
+      { path: "./app" },
       networkName,
       emptySecrets,
     );

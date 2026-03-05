@@ -24,7 +24,7 @@ describe("buildServiceSpec", () => {
     const spec = buildServiceSpec(
       "vyft-test-api",
       "api",
-      { build: "./app" },
+      { path: "./app" },
       "net-id",
       emptySecrets,
     );

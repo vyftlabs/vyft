@@ -1,7 +1,6 @@
 import { logger } from "@vyft/logger";
 import type {
   BindMount,
-  BuildConfig,
   EnvValue,
   HealthCheck,
   ServiceConfig,
@@ -148,13 +147,13 @@ export async function createContainer(
   stage?: string,
   portBindings?: Map<number, number>,
   imageUtils?: {
-    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    buildImage?: (tag: string, buildPath: string, buildCwd?: string) => Promise<unknown>;
     pullImage?: (image: string) => Promise<void>;
   },
 ): Promise<string> {
-  if (config.build) {
+  if (config.path) {
     const tag = `vyft-build-${id}:latest`;
-    await imageUtils?.buildImage?.(tag, config.build);
+    await imageUtils?.buildImage?.(tag, config.path, config.cwd);
   } else if (config.image) {
     await imageUtils?.pullImage?.(config.image);
   }
@@ -228,7 +227,7 @@ export async function recreateContainer(
   stage?: string,
   portBindings?: Map<number, number>,
   imageUtils?: {
-    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    buildImage?: (tag: string, buildPath: string, buildCwd?: string) => Promise<unknown>;
     pullImage?: (image: string) => Promise<void>;
   },
 ): Promise<string> {

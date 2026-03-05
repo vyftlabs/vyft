@@ -12,6 +12,7 @@
     { "path": "../errors" },
     { "path": "../logger" },
     { "path": "../primitives" },
+    { "path": "../recipes" },
     { "path": "../runtime" },
     { "path": "../std" },
     { "path": "../store" }

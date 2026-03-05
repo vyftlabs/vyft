@@ -11,7 +11,7 @@ function vol(id: string): Volume {
     urn: buildURN("platform", "default", "volume", id),
     config: {},
     [MOUNTABLE]: true,
-  };
+  } as Volume;
 }
 
 function sec(id: string): Variable {
@@ -33,7 +33,7 @@ function svc(id: string): Service {
     port: 3000,
     url: `http://${id}:3000`,
     [INTERNAL]: { ready: async () => {} }, // no-op for tests
-  };
+  } as unknown as Service;
 }
 
 describe("changedFields", () => {

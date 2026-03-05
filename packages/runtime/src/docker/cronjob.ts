@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
   BindMount,
-  BuildConfig,
   CronJobConfig,
   EnvValue,
 } from "@vyft/primitives";
@@ -121,14 +120,14 @@ export async function createCronContainer(
   secrets: ReadonlyMap<string, string>,
   project?: string,
   imageUtils?: {
-    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    buildImage?: (tag: string, buildPath: string, buildCwd?: string) => Promise<unknown>;
   },
 ): Promise<string> {
   // Build the user's image if build config is present
   let baseImage = config.image ?? `vyft-build-${id}:latest`;
-  if (config.build) {
+  if (config.path) {
     baseImage = `vyft-build-${id}:latest`;
-    await imageUtils?.buildImage?.(baseImage, config.build);
+    await imageUtils?.buildImage?.(baseImage, config.path, config.cwd);
   }
 
   // Build the wrapper image with supercronic
@@ -183,7 +182,7 @@ export async function recreateCronContainer(
   secrets: ReadonlyMap<string, string>,
   project?: string,
   imageUtils?: {
-    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    buildImage?: (tag: string, buildPath: string, buildCwd?: string) => Promise<unknown>;
   },
 ): Promise<string> {
   await removeContainer(client, containerName);

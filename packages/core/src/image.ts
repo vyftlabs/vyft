@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { BuildConfig } from "@vyft/primitives";
 import * as railpack from "@vyft/railpack";
 
 function exec(cmd: string, args: string[]): Promise<void> {
@@ -30,31 +29,35 @@ async function statOrNull(path: string) {
   }
 }
 
-const SOURCE_EXTS = new Set([".ts", ".js", ".mts", ".mjs", ".cjs", ".cts"]);
+const NODE_EXTS = new Set([".ts", ".js", ".mts", ".mjs", ".cjs", ".cts"]);
+const RAILPACK_EXTS = new Set([".go"]);
 
 /**
- * Resolve a BuildConfig into a build strategy.
+ * Resolve a build path into a build strategy.
  *
- * - If path points to a source file (.ts, .js, …), use railpack with --start-cmd.
- * - If path points to any other file, treat it as a Dockerfile.
- * - If path points to a directory, look for a Dockerfile inside it.
- * - Otherwise, fall back to railpack auto-detect.
+ * - Node source file (.ts, .js, …) → railpack with `node <path>` start command
+ * - Railpack-supported source file (.go) → railpack auto-detect
+ * - File named Dockerfile* → docker build
+ * - Directory with Dockerfile inside → docker build
+ * - Directory without Dockerfile → railpack auto-detect
+ * - Anything else → error
  */
 async function resolveBuild(
-  build: BuildConfig,
+  buildPath: string,
+  buildCwd?: string,
 ): Promise<
   | { mode: "dockerfile"; context: string; dockerfile: string }
   | { mode: "railpack"; context: string; directory: string; startCmd?: string }
 > {
-  const context = typeof build === "string" ? build : build.context;
-  const pathValue = typeof build === "string" ? "." : (build.path ?? ".");
+  const context = buildCwd ?? ".";
+  const pathValue = buildPath;
 
   const fullPath = join(context, pathValue);
   const info = await statOrNull(fullPath);
 
   if (info?.isFile()) {
     const ext = fullPath.slice(fullPath.lastIndexOf("."));
-    if (SOURCE_EXTS.has(ext)) {
+    if (NODE_EXTS.has(ext)) {
       return {
         mode: "railpack",
         context,
@@ -62,7 +65,16 @@ async function resolveBuild(
         startCmd: `node ${pathValue}`,
       };
     }
-    return { mode: "dockerfile", context, dockerfile: fullPath };
+    if (RAILPACK_EXTS.has(ext)) {
+      return { mode: "railpack", context, directory: context };
+    }
+    const basename = fullPath.slice(fullPath.lastIndexOf("/") + 1);
+    if (basename.startsWith("Dockerfile")) {
+      return { mode: "dockerfile", context, dockerfile: fullPath };
+    }
+    throw new Error(
+      `Cannot determine build strategy for "${buildPath}": not a source file or Dockerfile`,
+    );
   }
 
   // path is a directory — check for Dockerfile inside
@@ -79,12 +91,13 @@ export async function imageDigest(tag: string): Promise<string> {
   return execOut("docker", ["inspect", "--format", "{{.Id}}", tag]);
 }
 
-/** Build a Docker image from a BuildConfig. Returns the tag and digest. */
+/** Build a Docker image from a path + context. Returns the tag and digest. */
 export async function buildImage(
   tag: string,
-  build: BuildConfig,
+  buildPath: string,
+  buildCwd?: string,
 ): Promise<{ tag: string; digest: string }> {
-  const resolved = await resolveBuild(build);
+  const resolved = await resolveBuild(buildPath, buildCwd);
 
   if (resolved.mode === "dockerfile") {
     await exec("docker", [

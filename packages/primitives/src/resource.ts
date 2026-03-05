@@ -7,6 +7,13 @@ export const MOUNTABLE: unique symbol = Symbol.for("vyft:mountable");
 /** Symbol for internal resource properties (hidden from IDE autocomplete). */
 export const INTERNAL: unique symbol = Symbol.for("vyft:internal");
 
+// Type-level trait brands — prevent structural matching of plain objects.
+// These symbols exist only at the type level (`declare const`), so they
+// have zero runtime cost.  A plain `{}` can never satisfy a branded trait.
+declare const DependableBrand: unique symbol;
+declare const MountableBrand: unique symbol;
+declare const LinkableBrand: unique symbol;
+
 /**
  * Minimal runtime interface for ready functions.
  * Avoids circular imports with the full Runtime type.
@@ -28,6 +35,7 @@ export type ReadyFn = (runtime: ReadyRuntime) => Promise<void>;
  * The symbol hides internal properties from IDE autocomplete.
  */
 export interface Dependable {
+  readonly [DependableBrand]: true;
   /** Resource ID for dependency tracking. */
   readonly id: string;
   /** Internal properties including optional ready function. */
@@ -53,16 +61,16 @@ export interface ResourceOptions {
 }
 
 export interface Mountable {
+  readonly [MountableBrand]: true;
   readonly [MOUNTABLE]: true;
   readonly kind: string;
   readonly id: string;
 }
 
-export interface BindMount {
+export interface BindMount extends Mountable {
   readonly kind: "bind";
   readonly id: string;
   readonly hostPath: string;
-  readonly [MOUNTABLE]: true;
 }
 
 const ID_RE = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;
@@ -189,15 +197,6 @@ export interface HealthCheck {
   startPeriod?: string;
 }
 
-/** Directory path or explicit build config. */
-export type BuildConfig =
-  | string
-  | {
-      context: string;
-      /** App directory or Dockerfile path relative to context. @default "." */
-      path?: string;
-    };
-
 // Non-spec fields (route, replicas, dev, dependsOn) are listed in
 // src/runtimes/diff.ts NON_SPEC_FIELDS — update that set when adding fields
 // that don't affect the container/pod spec.
@@ -228,8 +227,8 @@ interface BaseServiceConfig {
    * @minimum 1
    */
   replicas?: number;
-  /** Local development override. Runs this command instead of the container. */
-  dev?: { cwd?: string; command: string };
+  /** Local development override. String shorthand for command, `false` to skip, omit to auto-infer from `path`. */
+  dev?: false | string | { command: string; cwd?: string; watch?: string[] };
   /** Bind the container port to the host. `true` = same as container port, or specify a host port number. */
   expose?: boolean | number;
   /** Linkable services whose bindings are injected as env vars. Can also accept raw Service objects for simple dependencies. */
@@ -238,21 +237,23 @@ interface BaseServiceConfig {
 
 /**
  * - `image` — pull from a registry, e.g. `"postgres:17"`
- * - `build` — build from source, e.g. `"./apps/api"` (defaults to `"."`)
+ * - `path` — build from source, e.g. `"src/api.ts"` (defaults to `"."`)
  */
 export type ServiceConfig = BaseServiceConfig & {
   image?: string;
-  build?: BuildConfig;
+  /** Path to source file, Dockerfile, or directory to build. Relative to context. */
+  path?: string;
+  /** Working directory for the build. @default "." */
+  cwd?: string;
 };
 
 /** Persistent storage. */
-export interface Volume {
+export interface Volume extends Mountable {
   readonly kind: "volume";
   readonly id: string;
   readonly urn?: URN;
   readonly config: VolumeConfig;
   readonly options?: ResourceOptions;
-  readonly [MOUNTABLE]: true;
 }
 
 /** A long-running container. */
@@ -313,8 +314,8 @@ interface BaseCronJobConfig {
  */
 export type JobConfig = BaseJobConfig &
   (
-    | { image: string; build?: BuildConfig }
-    | { image?: string; build: BuildConfig }
+    | { image: string; path?: string; cwd?: string }
+    | { image?: string; path: string; cwd?: string }
   );
 
 /** A one-time container that runs to completion. */
@@ -333,8 +334,8 @@ export interface Job extends Dependable {
  */
 export type CronJobConfig = BaseCronJobConfig &
   (
-    | { image: string; build?: BuildConfig }
-    | { image?: string; build: BuildConfig }
+    | { image: string; path?: string; cwd?: string }
+    | { image?: string; path: string; cwd?: string }
   );
 
 /** A container that runs a command on a cron schedule. */
@@ -347,6 +348,7 @@ export interface CronJob {
 }
 
 export interface Linkable {
+  readonly [LinkableBrand]: true;
   readonly id: string;
   readonly service: Service;
   readonly [key: string]: unknown;

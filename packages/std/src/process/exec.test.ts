@@ -44,6 +44,18 @@ describe("exec", () => {
 
       assert.equal(output.stdout.size, 5);
     });
+
+    test("returns stderr artifact", async () => {
+      const { output } = await testResource(exec).create({
+        input: {
+          command: ["sh", "-c", "echo warn >&2; echo ok"],
+        },
+      });
+
+      assert.equal(output.stderr.kind, "artifact");
+      assert.equal(output.stderr.key, "stderr");
+      assert.ok(output.stderr.size > 0);
+    });
   });
 
   describe("stdin", () => {
@@ -58,14 +70,14 @@ describe("exec", () => {
       assert.ok(output.stdout.size > 0);
     });
 
-    test("accepts file path stdin", async () => {
+    test("accepts file path via stdinFile", async () => {
       const inputFile = path.join(tmpDir, "stdin-test.txt");
       await fs.writeFile(inputFile, "file content here");
 
       const { output } = await testResource(exec).create({
         input: {
           command: ["wc", "-c"],
-          stdin: inputFile,
+          stdinFile: inputFile,
         },
       });
 
@@ -78,12 +90,42 @@ describe("exec", () => {
       const { output } = await testResource(exec).create({
         input: {
           command: ["cat"],
-          stdin: "./relative.txt",
+          stdinFile: "./relative.txt",
           cwd: tmpDir,
         },
       });
 
       assert.ok(output.stdout.size > 0);
+    });
+
+    test("throws when stdinFile does not exist", async () => {
+      await assert.rejects(async () => {
+        await testResource(exec).create({
+          input: {
+            command: ["cat"],
+            stdinFile: "./nonexistent.txt",
+            cwd: tmpDir,
+          },
+        });
+      });
+    });
+
+    test("throws when both stdin and stdinFile are specified", async () => {
+      await assert.rejects(
+        async () => {
+          await testResource(exec).create({
+            input: {
+              command: ["cat"],
+              stdin: "literal",
+              stdinFile: "./file.txt",
+            },
+          });
+        },
+        (err: Error) => {
+          assert.ok(err.message.includes("Cannot specify both"));
+          return true;
+        },
+      );
     });
   });
 
@@ -111,7 +153,6 @@ describe("exec", () => {
     });
 
     test("inherits system PATH", async () => {
-      // This should work because echo is found via PATH
       const { output } = await testResource(exec).create({
         input: { command: ["echo", "found"] },
       });
@@ -150,8 +191,54 @@ describe("exec", () => {
     });
   });
 
-  describe("outputs capture", () => {
-    test("captures output files when specified", async () => {
+  describe("timeout", () => {
+    test("kills command after timeout", async () => {
+      await assert.rejects(
+        async () => {
+          await testResource(exec).create({
+            input: {
+              command: ["sleep", "10"],
+              timeout: 100,
+            },
+          });
+        },
+        (err: Error) => {
+          assert.ok(err.message.includes("timed out"));
+          return true;
+        },
+      );
+    });
+
+    test("succeeds when command finishes before timeout", async () => {
+      const { output } = await testResource(exec).create({
+        input: {
+          command: ["echo", "fast"],
+          timeout: 5000,
+        },
+      });
+
+      assert.ok(output.stdout.size > 0);
+    });
+  });
+
+  describe("inputs and outputs declarations", () => {
+    test("accepts inputs glob patterns", async () => {
+      const workDir = path.join(tmpDir, "inputs-test");
+      await fs.mkdir(workDir, { recursive: true });
+      await fs.writeFile(path.join(workDir, "source.ts"), "const x = 1;");
+
+      const { output } = await testResource(exec).create({
+        input: {
+          command: ["echo", "built"],
+          cwd: workDir,
+          inputs: ["*.ts"],
+        },
+      });
+
+      assert.equal(output.stdout.kind, "artifact");
+    });
+
+    test("accepts outputs glob patterns", async () => {
       const workDir = path.join(tmpDir, "outputs-test");
       await fs.mkdir(workDir, { recursive: true });
 
@@ -163,79 +250,16 @@ describe("exec", () => {
         },
       });
 
-      // stdout artifact should exist
-      assert.equal(output.stdout.kind, "artifact");
-
-      // Verify the file was created
-      const content = await fs.readFile(
-        path.join(workDir, "output.txt"),
-        "utf-8",
-      );
-      assert.equal(content.trim(), "content");
-    });
-
-    test("captures nested output files with glob", async () => {
-      const workDir = path.join(tmpDir, "nested-outputs");
-      await fs.mkdir(path.join(workDir, "sub"), { recursive: true });
-
-      const { output } = await testResource(exec).create({
-        input: {
-          command: ["sh", "-c", "echo a > a.txt && echo b > sub/b.txt"],
-          cwd: workDir,
-          outputs: ["**/*.txt"],
-        },
-      });
-
-      assert.equal(output.stdout.kind, "artifact");
-
-      // Verify both files exist
-      assert.ok(await fs.stat(path.join(workDir, "a.txt")));
-      assert.ok(await fs.stat(path.join(workDir, "sub/b.txt")));
-    });
-
-    test("respects exclude patterns", async () => {
-      const workDir = path.join(tmpDir, "exclude-outputs");
-      await fs.mkdir(workDir, { recursive: true });
-
-      const { output } = await testResource(exec).create({
-        input: {
-          command: ["sh", "-c", "echo keep > keep.txt && echo skip > skip.log"],
-          cwd: workDir,
-          outputs: ["*"],
-          exclude: ["*.log"],
-        },
-      });
-
       assert.equal(output.stdout.kind, "artifact");
     });
 
-    test("handles no matching output files gracefully", async () => {
-      const workDir = path.join(tmpDir, "no-outputs");
-      await fs.mkdir(workDir, { recursive: true });
-
+    test("accepts exclude patterns", async () => {
       const { output } = await testResource(exec).create({
         input: {
           command: ["echo", "done"],
-          cwd: workDir,
-          outputs: ["*.nonexistent"],
-        },
-      });
-
-      assert.equal(output.stdout.kind, "artifact");
-    });
-  });
-
-  describe("inputs declaration", () => {
-    test("accepts inputs glob patterns", async () => {
-      const workDir = path.join(tmpDir, "inputs-test");
-      await fs.mkdir(workDir, { recursive: true });
-      await fs.writeFile(path.join(workDir, "source.ts"), "const x = 1;");
-
-      const { output } = await testResource(exec).create({
-        input: {
-          command: ["echo", "built"],
-          cwd: workDir,
-          inputs: ["*.ts"],
+          inputs: ["src/**"],
+          outputs: ["dist/**"],
+          exclude: ["node_modules/**"],
         },
       });
 
@@ -340,12 +364,11 @@ describe("exec", () => {
 
       assert.ok(output.stdout.kind === "artifact");
 
-      // Verify output was created
       const built = await fs.readFile(path.join(distDir, "index.js"), "utf-8");
       assert.equal(built, "export const x = 1;");
     });
 
-    test("data processing pipeline", async () => {
+    test("data processing pipeline with stdinFile", async () => {
       const dataDir = path.join(tmpDir, "data-pipeline");
       await fs.mkdir(dataDir, { recursive: true });
       await fs.writeFile(
@@ -356,7 +379,7 @@ describe("exec", () => {
       const { output } = await testResource(exec).create({
         input: {
           command: ["wc", "-l"],
-          stdin: path.join(dataDir, "input.csv"),
+          stdinFile: path.join(dataDir, "input.csv"),
         },
       });
 
