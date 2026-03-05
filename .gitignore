@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+.vyft/
+.nx/cache/
+.nx/workspace-data/
+*.tsbuildinfo
+.claude/
+.env*.local

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // Node 22 — https://github.com/tsconfig/bases/blob/main/bases/node22.json
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["es2024", "ESNext.Array", "ESNext.Collection", "ESNext.Iterator"],
+
+    // Strictest — https://github.com/tsconfig/bases/blob/main/bases/strictest.json
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "isolatedModules": true,
+    "rewriteRelativeImportExtensions": true,
+
+    // Output
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    // Interop
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/engine" },
+    { "path": "packages/store" },
+    { "path": "packages/runtime" },
+    { "path": "packages/vyft" },
+    { "path": "packages/provider" },
+    { "path": "packages/platform" },
+    { "path": "packages/hcloud" },
+    { "path": "packages/crypto" },
+    { "path": "packages/fs" },
+    { "path": "packages/railpack" }
+  ]
+}
