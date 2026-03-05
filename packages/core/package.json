@@ -11,6 +11,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@vyft/store": "workspace:*"
+  },
   "scripts": {
     "build": "tsc",
     "test": "node --test 'src/**/*.test.ts'",
