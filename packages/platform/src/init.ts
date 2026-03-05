@@ -32,19 +32,19 @@
 
 import type { LifecycleHandlers } from "@vyft/provider";
 import type {
-  BucketConfig,
-  BucketState,
   Platform,
-  PostgresConfig,
-  PostgresState,
-  QueueConfig,
-  QueueState,
-  SecretConfig,
-  SecretState,
-  ServerConfig,
-  ServerState,
-  VolumeConfig,
-  VolumeState,
+  PlatformBucketConfig,
+  PlatformBucketState,
+  PlatformPostgresConfig,
+  PlatformPostgresState,
+  PlatformQueueConfig,
+  PlatformQueueState,
+  PlatformSecretConfig,
+  PlatformSecretState,
+  PlatformServerConfig,
+  PlatformServerState,
+  PlatformVolumeConfig,
+  PlatformVolumeState,
 } from "./contracts.ts";
 
 // ============================================================================
@@ -76,38 +76,72 @@ export interface PlatformBuilder<TName extends string, TCtx> {
   readonly name: TName;
 
   bucket(
-    handler: LifecycleHandlers<BucketConfig, BucketState, TCtx>,
-  ): BrandedHandler<TName, BucketConfig, BucketState, TCtx>;
+    handler: LifecycleHandlers<PlatformBucketConfig, PlatformBucketState, TCtx>,
+  ): BrandedHandler<TName, PlatformBucketConfig, PlatformBucketState, TCtx>;
 
   postgres(
-    handler: LifecycleHandlers<PostgresConfig, PostgresState, TCtx>,
-  ): BrandedHandler<TName, PostgresConfig, PostgresState, TCtx>;
+    handler: LifecycleHandlers<
+      PlatformPostgresConfig,
+      PlatformPostgresState,
+      TCtx
+    >,
+  ): BrandedHandler<TName, PlatformPostgresConfig, PlatformPostgresState, TCtx>;
 
   queue(
-    handler: LifecycleHandlers<QueueConfig, QueueState, TCtx>,
-  ): BrandedHandler<TName, QueueConfig, QueueState, TCtx>;
+    handler: LifecycleHandlers<PlatformQueueConfig, PlatformQueueState, TCtx>,
+  ): BrandedHandler<TName, PlatformQueueConfig, PlatformQueueState, TCtx>;
 
   secret(
-    handler: LifecycleHandlers<SecretConfig, SecretState, TCtx>,
-  ): BrandedHandler<TName, SecretConfig, SecretState, TCtx>;
+    handler: LifecycleHandlers<PlatformSecretConfig, PlatformSecretState, TCtx>,
+  ): BrandedHandler<TName, PlatformSecretConfig, PlatformSecretState, TCtx>;
 
   volume(
-    handler: LifecycleHandlers<VolumeConfig, VolumeState, TCtx>,
-  ): BrandedHandler<TName, VolumeConfig, VolumeState, TCtx>;
+    handler: LifecycleHandlers<PlatformVolumeConfig, PlatformVolumeState, TCtx>,
+  ): BrandedHandler<TName, PlatformVolumeConfig, PlatformVolumeState, TCtx>;
 
   server(
-    handler: LifecycleHandlers<ServerConfig, ServerState, TCtx>,
-  ): BrandedHandler<TName, ServerConfig, ServerState, TCtx>;
+    handler: LifecycleHandlers<PlatformServerConfig, PlatformServerState, TCtx>,
+  ): BrandedHandler<TName, PlatformServerConfig, PlatformServerState, TCtx>;
 
   define(handlers: {
     // Required - fundamental infrastructure
-    server: BrandedHandler<TName, ServerConfig, ServerState, TCtx>;
-    volume: BrandedHandler<TName, VolumeConfig, VolumeState, TCtx>;
+    server: BrandedHandler<
+      TName,
+      PlatformServerConfig,
+      PlatformServerState,
+      TCtx
+    >;
+    volume: BrandedHandler<
+      TName,
+      PlatformVolumeConfig,
+      PlatformVolumeState,
+      TCtx
+    >;
     // Optional - fall back to container-based defaults if not provided
-    bucket?: BrandedHandler<TName, BucketConfig, BucketState, TCtx>;
-    postgres?: BrandedHandler<TName, PostgresConfig, PostgresState, TCtx>;
-    queue?: BrandedHandler<TName, QueueConfig, QueueState, TCtx>;
-    secret?: BrandedHandler<TName, SecretConfig, SecretState, TCtx>;
+    bucket?: BrandedHandler<
+      TName,
+      PlatformBucketConfig,
+      PlatformBucketState,
+      TCtx
+    >;
+    postgres?: BrandedHandler<
+      TName,
+      PlatformPostgresConfig,
+      PlatformPostgresState,
+      TCtx
+    >;
+    queue?: BrandedHandler<
+      TName,
+      PlatformQueueConfig,
+      PlatformQueueState,
+      TCtx
+    >;
+    secret?: BrandedHandler<
+      TName,
+      PlatformSecretConfig,
+      PlatformSecretState,
+      TCtx
+    >;
   }): Platform<TCtx>;
 }
 

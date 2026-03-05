@@ -1,11 +1,16 @@
+import { logger } from "@vyft/logger";
 import type {
   BindMount,
+  BuildConfig,
   EnvValue,
   HealthCheck,
   ServiceConfig,
-} from "@vyft/core";
-import { buildImage, durationToNanos, pullImage, resolveEnv } from "@vyft/core";
-import * as log from "@vyft/core/logger";
+} from "@vyft/primitives";
+import { durationToNanos } from "../duration.ts";
+import { resolveEnv } from "../resolve.ts";
+
+const log = logger.child("docker");
+
 import type { DockerClient } from "./client.ts";
 
 export interface ContainerConfig {
@@ -142,12 +147,16 @@ export async function createContainer(
   project?: string,
   stage?: string,
   portBindings?: Map<number, number>,
+  imageUtils?: {
+    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    pullImage?: (image: string) => Promise<void>;
+  },
 ): Promise<string> {
   if (config.build) {
     const tag = `vyft-build-${id}:latest`;
-    await buildImage(tag, config.build);
+    await imageUtils?.buildImage?.(tag, config.build);
   } else if (config.image) {
-    await pullImage(config.image);
+    await imageUtils?.pullImage?.(config.image);
   }
 
   const cc = buildContainerConfig(
@@ -218,6 +227,10 @@ export async function recreateContainer(
   project?: string,
   stage?: string,
   portBindings?: Map<number, number>,
+  imageUtils?: {
+    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+    pullImage?: (image: string) => Promise<void>;
+  },
 ): Promise<string> {
   await removeContainer(client, containerName);
   return createContainer(
@@ -230,6 +243,7 @@ export async function recreateContainer(
     project,
     stage,
     portBindings,
+    imageUtils,
   );
 }
 

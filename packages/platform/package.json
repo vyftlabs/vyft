@@ -6,10 +6,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./defaults": {
-      "types": "./dist/defaults/index.d.ts",
-      "default": "./dist/defaults/index.js"
     }
   },
   "files": [
@@ -17,12 +13,10 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'src/**/*.test.ts'",
     "lint": "biome check ."
   },
   "dependencies": {
     "@vyft/core": "workspace:*",
-    "@vyft/provider": "workspace:*",
-    "@vyft/std": "workspace:*"
+    "@vyft/provider": "workspace:*"
   }
 }

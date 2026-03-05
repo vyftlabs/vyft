@@ -1,8 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { Binding, BindValue, Linkable, Service } from "@vyft/primitives";
 import { findConfig, loadConfig } from "./config.ts";
-import type { Binding, BindValue } from "./primitives.ts";
-import type { Linkable, Service } from "./resource.ts";
 
 // ── Types ────────────────────────────────────────────────────────────
 

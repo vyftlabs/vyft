@@ -1,9 +1,9 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
+import { VyftError } from "@vyft/errors";
 import { createJiti } from "jiti";
 import { loadEnv } from "./env.ts";
-import { VyftError } from "./errors.ts";
 
 export const RUNTIMES = ["docker", "swarm", "k8s"] as const;
 export type RuntimeName = (typeof RUNTIMES)[number];

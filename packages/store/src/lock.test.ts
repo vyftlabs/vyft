@@ -1,28 +1,29 @@
-import { deepStrictEqual, rejects, strictEqual } from "node:assert";
+import { rejects, strictEqual } from "node:assert";
 import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, it } from "node:test";
-import { createFileStore, LockError } from "./file.ts";
+import { Lock, LockError } from "./lock.ts";
 
-describe("FileStore lock", () => {
-  let root: string;
+describe("Lock", () => {
+  let dir: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), "vyft-lock-"));
+    dir = await mkdtemp(join(tmpdir(), "vyft-lock-"));
   });
 
   it("acquires and releases a lock", async () => {
-    const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj", "local");
-    const lockFile = join(root, "ctx", "proj", "local", "lock");
-    const content = JSON.parse(await readFile(lockFile, "utf8"));
+    const lockPath = join(dir, "lock");
+    const lock = new Lock(lockPath);
+    await lock.acquire();
+
+    const content = JSON.parse(await readFile(lockPath, "utf8"));
     strictEqual(content.pid, process.pid);
     strictEqual(typeof content.timestamp, "string");
 
-    await unlock();
+    await lock.release();
     try {
-      await stat(lockFile);
+      await stat(lockPath);
       throw new Error("lock file should not exist");
     } catch (err: unknown) {
       strictEqual((err as NodeJS.ErrnoException).code, "ENOENT");
@@ -30,97 +31,39 @@ describe("FileStore lock", () => {
   });
 
   it("throws on concurrent lock from same process", async () => {
-    const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj", "local");
+    const lockPath = join(dir, "lock");
+    const lock1 = new Lock(lockPath);
+    await lock1.acquire();
     try {
-      await rejects(() => store.lock("ctx", "proj", "local"), LockError);
+      const lock2 = new Lock(lockPath);
+      await rejects(() => lock2.acquire(), LockError);
     } finally {
-      await unlock();
+      await lock1.release();
     }
   });
 
   it("takes over stale lock from a dead process", async () => {
-    const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj", "local");
+    const lockPath = join(dir, "lock");
     await mkdir(dir, { recursive: true });
 
     const stalePid = 2147483647;
     await writeFile(
-      join(dir, "lock"),
+      lockPath,
       JSON.stringify({ pid: stalePid, timestamp: new Date().toISOString() }),
     );
 
-    const unlock = await store.lock("ctx", "proj", "local");
-    const content = JSON.parse(await readFile(join(dir, "lock"), "utf8"));
+    const lock = new Lock(lockPath);
+    await lock.acquire();
+    const content = JSON.parse(await readFile(lockPath, "utf8"));
     strictEqual(content.pid, process.pid);
-    await unlock();
+    await lock.release();
   });
 
-  it("unlock is idempotent", async () => {
-    const store = createFileStore(root);
-    const unlock = await store.lock("ctx", "proj", "local");
-    await unlock();
-    await unlock();
-  });
-});
-
-describe("FileStore inspectLock", () => {
-  let root: string;
-
-  beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), "vyft-lock-"));
-  });
-
-  it("returns null when no lock exists", async () => {
-    const store = createFileStore(root);
-    const result = await store.inspectLock("ctx", "proj", "local");
-    strictEqual(result, null);
-  });
-
-  it("returns lock info when lock file exists", async () => {
-    const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj", "local");
-    await mkdir(dir, { recursive: true });
-
-    const ts = new Date().toISOString();
-    await writeFile(
-      join(dir, "lock"),
-      JSON.stringify({ pid: 12345, timestamp: ts }),
-    );
-
-    const result = await store.inspectLock("ctx", "proj", "local");
-    deepStrictEqual(result, { pid: 12345, timestamp: ts });
-  });
-});
-
-describe("FileStore clearLock", () => {
-  let root: string;
-
-  beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), "vyft-lock-"));
-  });
-
-  it("removes an existing lock file", async () => {
-    const store = createFileStore(root);
-    const dir = join(root, "ctx", "proj", "local");
-    await mkdir(dir, { recursive: true });
-
-    await writeFile(
-      join(dir, "lock"),
-      JSON.stringify({ pid: 12345, timestamp: new Date().toISOString() }),
-    );
-    await store.clearLock("ctx", "proj", "local");
-
-    try {
-      await stat(join(dir, "lock"));
-      throw new Error("lock file should not exist");
-    } catch (err: unknown) {
-      strictEqual((err as NodeJS.ErrnoException).code, "ENOENT");
-    }
-  });
-
-  it("does not throw when no lock file exists", async () => {
-    const store = createFileStore(root);
-    await store.clearLock("ctx", "proj", "local");
+  it("release is idempotent", async () => {
+    const lockPath = join(dir, "lock");
+    const lock = new Lock(lockPath);
+    await lock.acquire();
+    await lock.release();
+    await lock.release();
   });
 });

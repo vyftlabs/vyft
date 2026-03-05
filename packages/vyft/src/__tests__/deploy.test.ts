@@ -1,18 +1,27 @@
-import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { ok, strictEqual } from "node:assert";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { Change, Operation, Runtime } from "@vyft/core";
-import { deploy } from "@vyft/engine";
-import type { PersistedState } from "@vyft/store";
-import { createFileStore } from "@vyft/store";
+import type { URN } from "@vyft/primitives";
+import { parseURN } from "@vyft/core";
+import { Store } from "@vyft/store";
+import { deploy } from "./test-utils.ts";
 
 function mockRuntime(): Runtime {
   return {
     plan(change: Change): Operation[] {
       if (change.status === "remove") {
-        return [{ action: "remove", id: change.id, kind: change.kind }];
+        const { id, resource: kind } = parseURN(change.urn);
+        return [
+          {
+            action: "remove" as const,
+            urn: change.urn,
+            id,
+            kind: kind as Extract<Operation, { action: "remove" }>["kind"],
+          },
+        ];
       }
       return [
         {
@@ -30,14 +39,20 @@ function vol(id: string, config: Record<string, unknown> = {}) {
 }
 
 function sec(id: string) {
-  return { kind: "config" as const, id, config: {} };
+  return { kind: "variable" as const, id, config: {} };
+}
+
+/** Convert ResourceState array to Store-compatible Map. */
+function toMap(
+  state: { urn: URN; [k: string]: unknown }[],
+): Map<URN, (typeof state)[number]> {
+  const m = new Map<URN, (typeof state)[number]>();
+  for (const s of state) m.set(s.urn, s);
+  return m;
 }
 
 describe("store + deploy integration", () => {
   let root: string;
-  const context = "default";
-  const project = "test-project";
-  const stage = "local";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-deploy-"));
@@ -48,72 +63,63 @@ describe("store + deploy integration", () => {
   });
 
   it("first deploy writes state with all resources", async () => {
-    const store = createFileStore(root);
+    const dir = join(root, "state");
     const runtime = mockRuntime();
     const v = vol("data");
     const s = sec("pass");
 
     const result = await deploy({ v, s }, [], runtime);
 
-    const state: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: result.state,
-      secrets: null,
-    };
-    await store.save(context, project, stage, state);
+    const store = await Store.open(dir);
+    store.state = toMap(result.state) as never;
+    await store.checkpoint();
+    await store.dispose();
 
-    const loaded = await store.load(context, project, stage);
-    ok(loaded !== null);
-    strictEqual(loaded?.resources.length, 2);
-    strictEqual(loaded?.version, 1);
-    ok(loaded?.resources.some((r) => r.id === "data"));
-    ok(loaded?.resources.some((r) => r.id === "pass"));
+    const store2 = await Store.open(dir);
+    strictEqual(store2.state.size, 2);
+    ok([...store2.state.values()].some((r) => parseURN(r.urn).id === "data"));
+    ok([...store2.state.values()].some((r) => parseURN(r.urn).id === "pass"));
+    await store2.dispose();
   });
 
   it("second deploy with same config produces no changes", async () => {
-    const store = createFileStore(root);
+    const dir = join(root, "state");
     const runtime = mockRuntime();
     const v = vol("data");
 
     const first = await deploy({ v }, [], runtime);
-    const state1: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: first.state,
-      secrets: null,
-    };
-    await store.save(context, project, stage, state1);
+    const store = await Store.open(dir);
+    store.state = toMap(first.state) as never;
+    await store.checkpoint();
+    await store.dispose();
 
-    const previous = await store.load(context, project, stage);
-    const result = await deploy({ v }, previous?.resources ?? [], runtime);
-
+    const store2 = await Store.open(dir);
+    const prevState = [...store2.state.values()];
+    const result = await deploy({ v }, prevState, runtime);
     strictEqual(result.state.length, 1);
     strictEqual(result.state[0]?.fingerprint, first.state[0]?.fingerprint);
+    await store2.dispose();
   });
 
   it("second deploy with modified config updates state and preserves created", async () => {
-    const store = createFileStore(root);
+    const dir = join(root, "state");
     const runtime = mockRuntime();
     const v1 = vol("data");
 
     const first = await deploy({ v: v1 }, [], runtime);
-    const state1: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: first.state,
-      secrets: null,
-    };
-    await store.save(context, project, stage, state1);
+    const store = await Store.open(dir);
+    store.state = toMap(first.state) as never;
+    await store.checkpoint();
     const originalCreated = first.state[0]?.created;
+    await store.dispose();
 
-    const previous = await store.load(context, project, stage);
+    const store2 = await Store.open(dir);
+    const prevState = [...store2.state.values()];
     const v2 = vol("data", { size: "10Gi" });
-    const second = await deploy({ v: v2 }, previous?.resources ?? [], runtime);
+    const second = await deploy({ v: v2 }, prevState, runtime);
 
     strictEqual(second.state.length, 1);
     ok(second.state[0]?.fingerprint !== first.state[0]?.fingerprint);
-
     strictEqual(second.state[0]?.created, originalCreated);
 
     ok(originalCreated !== undefined);
@@ -121,65 +127,30 @@ describe("store + deploy integration", () => {
     ok(secondModified !== undefined);
     ok(secondModified >= originalCreated);
 
-    const state2: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: second.state,
-      secrets: null,
-    };
-    await store.save(context, project, stage, state2);
+    store2.state = toMap(second.state) as never;
+    await store2.checkpoint();
+    await store2.dispose();
 
-    const loaded = await store.load(context, project, stage);
-    strictEqual(loaded?.resources[0]?.inputs["size"], "10Gi");
+    const store3 = await Store.open(dir);
+    const entry = [...store3.state.values()][0];
+    strictEqual(entry?.inputs["size"], "10Gi");
+    await store3.dispose();
   });
 
-  it("preserves secrets from previous state", async () => {
-    const store = createFileStore(root);
-    const encrypted = { salt: "abc", iv: "def", data: "ghi", tag: "jkl" };
-
-    const state1: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: [],
-      secrets: encrypted,
-    };
-    await store.save(context, project, stage, state1);
-
-    const previous = await store.load(context, project, stage);
-    const state2: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: [],
-      secrets: previous?.secrets ?? null,
-    };
-    await store.save(context, project, stage, state2);
-
-    const loaded = await store.load(context, project, stage);
-    deepStrictEqual(loaded?.secrets, encrypted);
-  });
-
-  it("full lock/unlock cycle around deploy", async () => {
-    const store = createFileStore(root);
+  it("full lock cycle around deploy", async () => {
+    const dir = join(root, "state");
     const runtime = mockRuntime();
     const v = vol("data");
 
-    const unlock = await store.lock(context, project, stage);
-    try {
-      const previous = await store.load(context, project, stage);
-      const result = await deploy({ v }, previous?.resources ?? [], runtime);
+    const store = await Store.open(dir);
+    const result = await deploy({ v }, [...store.state.values()], runtime);
+    store.state = toMap(result.state) as never;
+    await store.checkpoint();
+    await store.dispose();
 
-      const state: PersistedState = {
-        version: 1,
-        manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-        resources: result.state,
-        secrets: null,
-      };
-      await store.save(context, project, stage, state);
-    } finally {
-      await unlock();
-    }
-
-    const unlock2 = await store.lock(context, project, stage);
-    await unlock2();
+    // Can re-open (lock is released)
+    const store2 = await Store.open(dir);
+    strictEqual(store2.state.size, 1);
+    await store2.dispose();
   });
 });

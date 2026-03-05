@@ -1,11 +1,12 @@
 import path from "node:path";
 import type { BindValue } from "@vyft/core";
 import { findConfig, loadConfig, projectInfo, resolve } from "@vyft/core";
-import * as log from "@vyft/core/logger";
-import { collect, deploy as engineDeploy } from "@vyft/engine";
+import { collect } from "@vyft/engine";
+import { logger } from "@vyft/logger";
 import type { DockerRuntimeOptions } from "@vyft/runtime";
-import { createFileStore } from "@vyft/store";
+import { Store } from "@vyft/store";
 import type { Command } from "commander";
+import { engineDeploy } from "../engine-compat.ts";
 import {
   collectLinkables,
   linkEnvVarName,
@@ -36,12 +37,13 @@ export function registerLocal(program: Command): void {
     .action(async () => {
       const { root, context, project, runtimeName } = await projectInfo();
       const stage = DEV_STAGE;
-      const store = createFileStore(root);
+      const dir = path.join(root, context, project, stage);
+      const store = await Store.open(dir);
 
-      const previous = await store.load(context, project, stage);
-      if (!previous || previous.resources.length === 0) {
-        log.info("nothing to reset");
-        await store.delete(context, project, stage);
+      if (store.state.size === 0) {
+        logger.info("nothing to reset");
+        await store.delete();
+        await store.dispose();
         return;
       }
 
@@ -55,15 +57,14 @@ export function registerLocal(program: Command): void {
         secrets: secretMap,
       });
 
-      await engineDeploy([], previous.resources, runtime);
+      const previousCount = store.state.size;
+      await engineDeploy([], store, runtime);
       await runtime.finalize([]);
       await runtime.teardown();
 
-      await store.delete(context, project, stage);
-      log.info(
-        "reset complete: destroyed %d resources",
-        previous.resources.length,
-      );
+      await store.delete();
+      await store.dispose();
+      logger.info("reset complete: destroyed %d resources", previousCount);
     });
 
   local
@@ -74,16 +75,15 @@ export function registerLocal(program: Command): void {
       const stage = DEV_STAGE;
       const secretsPath = path.join(root, "dev-secrets.json");
       const configPath = await findConfig(process.cwd());
-      const store = createFileStore(root);
 
       const config = await loadConfig(configPath);
-      log.debug("loaded config from %s", configPath);
+      logger.debug("loaded config from %s", configPath);
 
       const resources = collect(config);
       const { infra } = classifyServices(resources);
 
       if (infra.length === 0) {
-        log.info("no infra services to start");
+        logger.info("no infra services to start");
         return;
       }
 
@@ -119,31 +119,14 @@ export function registerLocal(program: Command): void {
       };
       const runtime = createRuntime(runtimeName, runtimeOpts);
 
-      const previous = await store.load(context, project, stage);
-      const result = await engineDeploy(
-        infraResources,
-        previous?.resources ?? [],
-        runtime,
-      );
+      const dir = path.join(root, context, project, stage);
+      const store = await Store.open(dir);
+      await engineDeploy(infraResources, store, runtime);
+      await store.dispose();
 
-      const runtimeStateMap = runtime.runtimeState();
-      const finalResources = result.state.map((rs) => {
-        const extra = runtimeStateMap.get(rs.id);
-        if (extra) return { ...rs, runtime: { ...rs.runtime, ...extra } };
-        return rs;
-      });
-
-      await store.save(context, project, stage, {
-        version: 1,
-        manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-        resources: finalResources,
-        secrets: null,
-        secretOutputs: null,
-      });
-
-      log.info("started %d infra service(s)", infra.length);
+      logger.info("started %d infra service(s)", infra.length);
       for (const svc of infra) {
-        log.info("  %s → localhost:%d", svc.id, svc.port);
+        logger.info("  %s → localhost:%d", svc.id, svc.port);
       }
     });
 
@@ -153,11 +136,12 @@ export function registerLocal(program: Command): void {
     .action(async () => {
       const { root, context, project, runtimeName } = await projectInfo();
       const stage = DEV_STAGE;
-      const store = createFileStore(root);
+      const dir = path.join(root, context, project, stage);
+      const store = await Store.open(dir);
 
-      const previous = await store.load(context, project, stage);
-      if (!previous || previous.resources.length === 0) {
-        log.info("no containers running");
+      if (store.state.size === 0) {
+        logger.info("no containers running");
+        await store.dispose();
         return;
       }
 
@@ -171,20 +155,13 @@ export function registerLocal(program: Command): void {
         secrets: secretMap,
       });
 
-      await engineDeploy([], previous.resources, runtime);
+      const previousCount = store.state.size;
+      await engineDeploy([], store, runtime);
       await runtime.finalize([]);
       await runtime.teardown();
 
-      // Save empty state (don't delete like reset does)
-      await store.save(context, project, stage, {
-        version: 1,
-        manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-        resources: [],
-        secrets: null,
-        secretOutputs: null,
-      });
-
-      log.info("stopped %d resource(s)", previous.resources.length);
+      await store.dispose();
+      logger.info("stopped %d resource(s)", previousCount);
     });
 
   local
@@ -204,8 +181,8 @@ export function registerLocal(program: Command): void {
       const allServices = [...infra, ...dev, ...buildOnly];
       const service = allServices.find((s) => s.id === serviceId);
       if (!service) {
-        log.error('service "%s" not found', serviceId);
-        log.info(
+        logger.error('service "%s" not found', serviceId);
+        logger.info(
           "available services: %s",
           allServices.map((s) => s.id).join(", "),
         );

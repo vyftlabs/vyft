@@ -1,7 +1,7 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Change, Service } from "@vyft/core";
-import { INTERNAL, MOUNTABLE } from "@vyft/core";
+import { buildURN, INTERNAL, MOUNTABLE } from "@vyft/core";
 import { defaultPlan } from "../simulation.ts";
 
 function svc(
@@ -22,16 +22,17 @@ function svc(
 
 describe("defaultPlan", () => {
   it("remove change returns remove operation", () => {
-    const change: Change = { status: "remove", id: "x", kind: "service" };
+    const urn = buildURN("runtime", "default", "service", "x");
+    const change: Change = { status: "remove", urn };
     deepStrictEqual(defaultPlan(change), [
-      { action: "remove", id: "x", kind: "service" },
+      { action: "remove", urn, id: "x", kind: "service" },
     ]);
   });
 
   it("secret change returns empty", () => {
     const change: Change = {
       status: "create",
-      resource: { kind: "config", id: "s", config: {} },
+      resource: { kind: "variable", id: "s", config: {} },
     };
     deepStrictEqual(defaultPlan(change), []);
   });

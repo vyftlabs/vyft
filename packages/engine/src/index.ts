@@ -1,18 +1,21 @@
-// Convenience re-exports from @vyft/core
-export type { Change, StateEntry } from "@vyft/core";
-export {
-  fingerprint,
-  resolve,
-  resolveEnv,
-  resourceReplacer,
-  serializeConfig,
-} from "@vyft/core";
-export type { DeployResult, StateEvent, StateHook } from "./deploy.ts";
-export { deploy, separateSecretOutputs } from "./deploy.ts";
-export type { ExecuteEvent, ExecuteHook } from "./execute.ts";
-export { execute } from "./execute.ts";
+// Re-exports
+export type { URN } from "@vyft/primitives";
+export { buildURN, parseURN } from "@vyft/primitives";
+export type { Dispatcher, Resolve, WALEntry } from "./apply.ts";
+
+export { apply } from "./apply.ts";
+export { changeId, execute } from "./execute.ts";
 export type { BindingLeaf, BindingTree, Graph } from "./graph.ts";
 export { buildGraph, collect, collectBindings } from "./graph.ts";
 export { levels, order } from "./order.ts";
-export { plan } from "./plan.ts";
+export type { Change, StateEntry } from "./plan.ts";
+export {
+  fingerprint,
+  plan,
+  resourceReplacer,
+  resourceURN,
+  serializeConfig,
+} from "./plan.ts";
+export type { LifecycleOp, State } from "./transform.ts";
+export { transform } from "./transform.ts";
 export { checkDuplicateIds, validate } from "./validate.ts";

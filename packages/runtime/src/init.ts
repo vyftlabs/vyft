@@ -21,27 +21,27 @@
  * // runtimes/docker/index.ts
  * import { t } from "./mod.ts";
  * import { service } from "./service.ts";
- * import { config } from "./config.ts";
+ * import { variable } from "./variable.ts";
  * import { cronjob } from "./cronjob.ts";
  * import { volume } from "./volume.ts";
- * export default t.define({ service, config, cronjob, volume });
+ * export default t.define({ service, variable, cronjob, volume });
  * ```
  */
 
 import type {
-  ConfigConfig,
   CronJobConfig,
   ServiceConfig,
+  VariableConfig,
   VolumeConfig,
-} from "@vyft/core";
-import type { LifecycleHandlers } from "@vyft/provider";
+} from "@vyft/primitives";
 import type {
-  ConfigState,
-  CronJobState,
   Runtime,
-  ServiceState,
-  VolumeState,
+  RuntimeCronJobState,
+  RuntimeServiceState,
+  RuntimeVariableState,
+  RuntimeVolumeState,
 } from "./contracts.ts";
+import type { LifecycleHandlers } from "./lifecycle.ts";
 
 // ============================================================================
 // Branded Handler Types
@@ -72,26 +72,26 @@ export interface RuntimeBuilder<TName extends string, TCtx> {
   readonly name: TName;
 
   service(
-    handler: LifecycleHandlers<ServiceConfig, ServiceState, TCtx>,
-  ): BrandedHandler<TName, ServiceConfig, ServiceState, TCtx>;
+    handler: LifecycleHandlers<ServiceConfig, RuntimeServiceState, TCtx>,
+  ): BrandedHandler<TName, ServiceConfig, RuntimeServiceState, TCtx>;
 
-  config(
-    handler: LifecycleHandlers<ConfigConfig, ConfigState, TCtx>,
-  ): BrandedHandler<TName, ConfigConfig, ConfigState, TCtx>;
+  variable(
+    handler: LifecycleHandlers<VariableConfig, RuntimeVariableState, TCtx>,
+  ): BrandedHandler<TName, VariableConfig, RuntimeVariableState, TCtx>;
 
   cronjob(
-    handler: LifecycleHandlers<CronJobConfig, CronJobState, TCtx>,
-  ): BrandedHandler<TName, CronJobConfig, CronJobState, TCtx>;
+    handler: LifecycleHandlers<CronJobConfig, RuntimeCronJobState, TCtx>,
+  ): BrandedHandler<TName, CronJobConfig, RuntimeCronJobState, TCtx>;
 
   volume(
-    handler: LifecycleHandlers<VolumeConfig, VolumeState, TCtx>,
-  ): BrandedHandler<TName, VolumeConfig, VolumeState, TCtx>;
+    handler: LifecycleHandlers<VolumeConfig, RuntimeVolumeState, TCtx>,
+  ): BrandedHandler<TName, VolumeConfig, RuntimeVolumeState, TCtx>;
 
   define(handlers: {
-    service: BrandedHandler<TName, ServiceConfig, ServiceState, TCtx>;
-    config: BrandedHandler<TName, ConfigConfig, ConfigState, TCtx>;
-    cronjob: BrandedHandler<TName, CronJobConfig, CronJobState, TCtx>;
-    volume: BrandedHandler<TName, VolumeConfig, VolumeState, TCtx>;
+    service: BrandedHandler<TName, ServiceConfig, RuntimeServiceState, TCtx>;
+    variable: BrandedHandler<TName, VariableConfig, RuntimeVariableState, TCtx>;
+    cronjob: BrandedHandler<TName, CronJobConfig, RuntimeCronJobState, TCtx>;
+    volume: BrandedHandler<TName, VolumeConfig, RuntimeVolumeState, TCtx>;
   }): Runtime<TCtx>;
 }
 
@@ -113,7 +113,7 @@ export function initRuntime<TName extends string, TCtx>(
       return brandHandler(handler);
     },
 
-    config(handler) {
+    variable(handler) {
       return brandHandler(handler);
     },
 
@@ -131,7 +131,7 @@ export function initRuntime<TName extends string, TCtx>(
         setup,
         ...(teardown && { teardown }),
         service: handlers.service,
-        config: handlers.config,
+        variable: handlers.variable,
         cronjob: handlers.cronjob,
         volume: handlers.volume,
       };

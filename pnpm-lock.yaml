@@ -81,9 +81,27 @@ importers:
 
   packages/core:
     dependencies:
+      '@vyft/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@vyft/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@vyft/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@vyft/primitives':
+        specifier: workspace:*
+        version: link:../primitives
       '@vyft/railpack':
         specifier: workspace:*
         version: link:../railpack
+      '@vyft/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@vyft/store':
+        specifier: workspace:*
+        version: link:../store
       jiti:
         specifier: ^2.4.2
         version: 2.6.1
@@ -96,12 +114,20 @@ importers:
 
   packages/engine:
     dependencies:
-      '@vyft/core':
+      '@vyft/errors':
         specifier: workspace:*
-        version: link:../core
-      '@vyft/platform':
+        version: link:../errors
+      '@vyft/logger':
         specifier: workspace:*
-        version: link:../platform
+        version: link:../logger
+      '@vyft/primitives':
+        specifier: workspace:*
+        version: link:../primitives
+      '@vyft/store':
+        specifier: workspace:*
+        version: link:../store
+
+  packages/errors: {}
 
   packages/hcloud:
     dependencies:
@@ -119,6 +145,8 @@ importers:
         specifier: ^7.6.1
         version: 7.13.0(typescript@5.9.3)
 
+  packages/logger: {}
+
   packages/platform:
     dependencies:
       '@vyft/core':
@@ -127,9 +155,12 @@ importers:
       '@vyft/provider':
         specifier: workspace:*
         version: link:../provider
-      '@vyft/std':
+
+  packages/primitives:
+    dependencies:
+      '@vyft/errors':
         specifier: workspace:*
-        version: link:../std
+        version: link:../errors
 
   packages/provider:
     dependencies:
@@ -143,14 +174,26 @@ importers:
 
   packages/railpack: {}
 
-  packages/runtime:
+  packages/recipes:
     dependencies:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
-      '@vyft/provider':
+      '@vyft/primitives':
         specifier: workspace:*
-        version: link:../provider
+        version: link:../primitives
+      '@vyft/std':
+        specifier: workspace:*
+        version: link:../std
+
+  packages/runtime:
+    dependencies:
+      '@vyft/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@vyft/primitives':
+        specifier: workspace:*
+        version: link:../primitives
     devDependencies:
       '@kubernetes/client-node':
         specifier: ^1.4.0
@@ -177,9 +220,12 @@ importers:
 
   packages/store:
     dependencies:
-      '@vyft/core':
+      '@vyft/errors':
         specifier: workspace:*
-        version: link:../core
+        version: link:../errors
+      '@vyft/primitives':
+        specifier: workspace:*
+        version: link:../primitives
 
   packages/vyft:
     dependencies:
@@ -189,9 +235,18 @@ importers:
       '@vyft/engine':
         specifier: workspace:*
         version: link:../engine
-      '@vyft/platform':
+      '@vyft/errors':
         specifier: workspace:*
-        version: link:../platform
+        version: link:../errors
+      '@vyft/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@vyft/primitives':
+        specifier: workspace:*
+        version: link:../primitives
+      '@vyft/recipes':
+        specifier: workspace:*
+        version: link:../recipes
       '@vyft/runtime':
         specifier: workspace:*
         version: link:../runtime

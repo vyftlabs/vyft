@@ -5,5 +5,5 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../provider" }]
+  "references": [{ "path": "../logger" }, { "path": "../primitives" }]
 }

@@ -1,4 +1,4 @@
-import { serializeConfig } from "./plan.ts";
+import { serializeConfig } from "@vyft/engine";
 
 // These fields only exist on ServiceConfig. CronJobConfig has no non-spec fields.
 // When adding a non-spec config field to any resource type, update this set.

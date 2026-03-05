@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { bindable, service } from "@vyft/platform";
+import type { Service, ServiceConfig } from "@vyft/primitives";
+import { bindable, INTERNAL } from "@vyft/primitives";
 import {
   collectLinkables,
   generateEnvDts,
@@ -8,6 +9,19 @@ import {
 } from "./generate.ts";
 
 // ── Helpers ──────────────────────────────────────────────────────────
+
+function service(id: string, config: ServiceConfig): Service {
+  const port = config.port ?? 3000;
+  return {
+    kind: "service",
+    id,
+    config,
+    host: id,
+    port,
+    url: `http://${id}:${port}`,
+    [INTERNAL]: { ready: async () => {} },
+  };
+}
 
 function makeLinkable(
   id: string,

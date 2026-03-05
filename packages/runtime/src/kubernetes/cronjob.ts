@@ -3,8 +3,9 @@ import type {
   CronJobConfig,
   EnvValue,
   HealthCheck,
-} from "@vyft/core";
-import { durationToSeconds, resolveEnv } from "@vyft/core";
+} from "@vyft/primitives";
+import { durationToSeconds } from "../duration.ts";
+import { resolveEnv } from "../resolve.ts";
 import type { K8sClient } from "./client.ts";
 
 interface CronJobManifest {

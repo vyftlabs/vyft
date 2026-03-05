@@ -1,12 +1,6 @@
-import type {
-  Change,
-  ExtendedRuntime,
-  Operation,
-  RuntimeOptions,
-  Service,
-} from "@vyft/core";
-import { changedFields, hasSpecChange } from "@vyft/core";
-import * as log from "@vyft/core/logger";
+import { logger } from "@vyft/logger";
+import type { Service } from "@vyft/primitives";
+import type { ExtendedRuntime, Operation, RuntimeOptions } from "../types.ts";
 import type { CaddyRoute } from "./caddy.ts";
 import type { DockerClient } from "./client.ts";
 import { createDockerClient } from "./client.ts";
@@ -21,6 +15,8 @@ import {
   warnReplicas,
 } from "./service.ts";
 import { createVolume, removeVolume } from "./volume.ts";
+
+const log = logger.child("docker");
 
 export type DockerRuntimeOptions = RuntimeOptions & {
   client?: DockerClient;
@@ -56,44 +52,6 @@ export function createDockerRuntime(
   }
 
   return {
-    plan(change: Change): Operation[] {
-      if (change.status === "remove") {
-        return [{ action: "remove", id: change.id, kind: change.kind }];
-      }
-
-      const rkind = change.resource.kind as string;
-      if (rkind === "secret" || rkind === "config") {
-        return [];
-      }
-
-      if (change.resource.kind === "volume" && change.status === "modify") {
-        return [];
-      }
-
-      if (change.resource.kind === "service" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "recreate", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (!hasSpecChange(changed)) return [];
-        return [{ action: "recreate", resource: change.resource }];
-      }
-
-      if (change.resource.kind === "cronjob" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "recreate", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (!hasSpecChange(changed)) return [];
-        return [{ action: "recreate", resource: change.resource }];
-      }
-
-      return [
-        {
-          action: change.status === "create" ? "create" : "update",
-          resource: change.resource,
-        },
-      ];
-    },
-
     async execute(op: Operation): Promise<void> {
       await initNetwork();
 
@@ -109,7 +67,11 @@ export function createDockerRuntime(
 
       const resource = op.resource;
 
+      // Variables/secrets are state-only — no runtime action
+      if (resource.kind === "variable") return;
+
       if (resource.kind === "volume") {
+        if (op.action === "update") return; // volumes are immutable
         await createVolume(client, volumeName(resource.id), composeLabels);
         return;
       }
@@ -125,7 +87,8 @@ export function createDockerRuntime(
               : resource.config.expose;
         }
         const pb = hostPort ? new Map([[containerPort, hostPort]]) : undefined;
-        if (op.action === "recreate") {
+        // Docker always recreates on update (stop + start)
+        if (op.action === "update") {
           const cid = await recreateContainer(
             client,
             containerName(resource.id),
@@ -156,7 +119,8 @@ export function createDockerRuntime(
       }
 
       if (resource.kind === "cronjob") {
-        if (op.action === "recreate") {
+        // Docker always recreates cron containers on update
+        if (op.action === "update") {
           const cid = await recreateCronContainer(
             client,
             containerName(resource.id),
@@ -187,7 +151,8 @@ export function createDockerRuntime(
       id: string,
       kind: string,
     ): Promise<Record<string, unknown> | null> {
-      if (kind === "secret" || kind === "config") return null; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+      if (kind === "secret" || kind === "variable" || kind === "config")
+        return null; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
       if (kind === "volume") {
         try {

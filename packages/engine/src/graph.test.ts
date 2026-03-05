@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { interpolate } from "@vyft/core";
+import { interpolate } from "@vyft/primitives";
 import { buildGraph, collect } from "./graph.ts";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
 

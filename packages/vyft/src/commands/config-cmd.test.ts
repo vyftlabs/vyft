@@ -3,42 +3,51 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import type { EncryptedPayload, StageData } from "@vyft/store";
-import { createStageStore, decrypt, encrypt } from "@vyft/store";
+import type { ResourceState } from "@vyft/core";
+import type { URN } from "@vyft/primitives";
+import { buildURN, parseURN } from "@vyft/core";
+import type { EncryptedPayload } from "@vyft/store";
+import { decrypt, encrypt, Store } from "@vyft/store";
 
 // We test config command logic directly rather than through CLI dispatch,
 // since the command depends on process.cwd(). We test the underlying
-// operations that config set/get/rm/ls/rotate perform.
+// operations that variable set/get/rm/ls perform on the Store.
 
-type SecretMap = Record<string, string>;
-
-function decryptSecrets(
-  payload: EncryptedPayload | null,
-  passphrase: string,
-): SecretMap {
-  if (!payload) return {};
-  return JSON.parse(decrypt(payload, passphrase)) as SecretMap;
+function variableURN(name: string) {
+  return buildURN("platform", "default", "variable", name);
 }
 
-function encryptSecrets(
-  secrets: SecretMap,
+function makeVariableState(
+  name: string,
+  value: string,
+  secret: boolean,
   passphrase: string,
-): EncryptedPayload | null {
-  const keys = Object.keys(secrets);
-  if (keys.length === 0) return null;
-  return encrypt(JSON.stringify(secrets), passphrase);
-}
-
-function makeStageData(overrides: Partial<StageData> = {}): StageData {
+  existing?: ResourceState,
+): ResourceState {
+  const now = new Date().toISOString();
+  const outputs: Record<string, unknown> = secret
+    ? { value: encrypt(value, passphrase) }
+    : { value };
   return {
-    version: 1,
-    values: {},
-    secrets: null,
-    ...overrides,
+    urn: variableURN(name),
+    fingerprint: JSON.stringify(outputs),
+    inputs: {},
+    outputs,
+    dependencies: [],
+    created: existing?.created ?? now,
+    modified: now,
+    taint: false,
+    ...(secret ? { sensitive: ["value"] } : {}),
   };
 }
 
-describe("config set", () => {
+function toMap(entries: ResourceState[]): Map<URN, ResourceState> {
+  const m = new Map<URN, ResourceState>();
+  for (const e of entries) m.set(e.urn, e);
+  return m;
+}
+
+describe("variable set", () => {
   let root: string;
   const passphrase = "test-passphrase";
 
@@ -51,125 +60,83 @@ describe("config set", () => {
   });
 
   it("sets a plain value", async () => {
-    const store = createStageStore(root);
-    await store.saveStage("local", makeStageData());
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    const rs = makeVariableState(
+      "DB_URL",
+      "postgres://localhost/mydb",
+      false,
+      passphrase,
+    );
+    store.state = toMap([rs]);
+    await store.checkpoint();
+    await store.dispose();
 
-    // Simulate set
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    await store.saveStage("local", {
-      ...data,
-      values: { ...data.values, DB_URL: "postgres://localhost/mydb" },
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual(loaded.values["DB_URL"], "postgres://localhost/mydb");
+    const store2 = await Store.open(dir);
+    const found = store2.state.get(variableURN("DB_URL"));
+    ok(found, "variable should exist");
+    strictEqual(found.outputs["value"], "postgres://localhost/mydb");
+    await store2.dispose();
   });
 
   it("sets a secret value", async () => {
-    const store = createStageStore(root);
-    await store.saveStage("local", makeStageData());
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    const rs = makeVariableState("DB_PASSWORD", "hunter2", true, passphrase);
+    store.state = toMap([rs]);
+    await store.checkpoint();
+    await store.dispose();
 
-    // Simulate set --secret
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    const secrets = decryptSecrets(data.secrets, passphrase);
-    secrets["DB_PASSWORD"] = "hunter2";
-    await store.saveStage("local", {
-      ...data,
-      secrets: encryptSecrets(secrets, passphrase),
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    const result = decryptSecrets(loaded.secrets, passphrase);
-    strictEqual(result["DB_PASSWORD"], "hunter2");
-  });
-
-  it("setting a secret removes it from plain values", async () => {
-    const store = createStageStore(root);
-    await store.saveStage(
-      "local",
-      makeStageData({
-        values: { KEY: "plain-value" },
-      }),
+    const store2 = await Store.open(dir);
+    const found = store2.state.get(variableURN("DB_PASSWORD"));
+    ok(found, "variable should exist");
+    ok(found.sensitive?.includes("value"), "should be marked as sensitive");
+    const decrypted = decrypt(
+      found.outputs["value"] as EncryptedPayload,
+      passphrase,
     );
-
-    // Simulate set --secret (moves KEY from values to secrets)
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    const secrets = decryptSecrets(data.secrets, passphrase);
-    secrets["KEY"] = "secret-value";
-    const { KEY: _, ...remainingValues } = data.values;
-    await store.saveStage("local", {
-      ...data,
-      values: remainingValues,
-      secrets: encryptSecrets(secrets, passphrase),
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual("KEY" in loaded.values, false);
-    const result = decryptSecrets(loaded.secrets, passphrase);
-    strictEqual(result["KEY"], "secret-value");
-  });
-
-  it("setting a plain value removes it from secrets", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { KEY: "was-secret" };
-    await store.saveStage(
-      "local",
-      makeStageData({
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
-    );
-
-    // Simulate set (plain, removes from secrets)
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    const existingSecrets = decryptSecrets(data.secrets, passphrase);
-    delete existingSecrets["KEY"];
-    await store.saveStage("local", {
-      ...data,
-      values: { ...data.values, KEY: "now-plain" },
-      secrets: encryptSecrets(existingSecrets, passphrase),
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual(loaded.values["KEY"], "now-plain");
-    strictEqual(loaded.secrets, null);
+    strictEqual(decrypted, "hunter2");
+    await store2.dispose();
   });
 
   it("overwrites existing plain value", async () => {
-    const store = createStageStore(root);
-    await store.saveStage("local", makeStageData({ values: { A: "1" } }));
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([makeVariableState("A", "1", false, passphrase)]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    await store.saveStage("local", {
-      ...data,
-      values: { ...data.values, A: "2" },
-    });
+    const store2 = await Store.open(dir);
+    const existing = store2.state.get(variableURN("A"));
+    const updated = makeVariableState("A", "2", false, passphrase, existing);
+    store2.state = toMap([updated]);
+    await store2.checkpoint();
+    await store2.dispose();
 
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual(loaded.values["A"], "2");
+    const store3 = await Store.open(dir);
+    const found = store3.state.get(variableURN("A"));
+    ok(found, "variable should exist");
+    strictEqual(found.outputs["value"], "2");
+    await store3.dispose();
   });
 
-  it("creates stage data if it doesn't exist", async () => {
-    const store = createStageStore(root);
+  it("creates variable on empty store", async () => {
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    strictEqual(store.state.size, 0);
+    store.state = toMap([makeVariableState("X", "val", false, passphrase)]);
+    await store.checkpoint();
+    await store.dispose();
 
-    // Simulate set on non-existent stage
-    const data = (await store.loadStage("local")) ?? makeStageData();
-    await store.saveStage("local", {
-      ...data,
-      values: { ...data.values, X: "val" },
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should be created");
-    strictEqual(loaded.values["X"], "val");
+    const store2 = await Store.open(dir);
+    strictEqual(store2.state.size, 1);
+    const entry = [...store2.state.values()][0];
+    strictEqual(entry?.outputs["value"], "val");
+    await store2.dispose();
   });
 });
 
-describe("config get", () => {
+describe("variable get", () => {
   let root: string;
   const passphrase = "test-passphrase";
 
@@ -182,37 +149,43 @@ describe("config get", () => {
   });
 
   it("retrieves a plain value", async () => {
-    const store = createStageStore(root);
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        values: { DB_URL: "postgres://prod/db" },
-      }),
-    );
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("DB_URL", "postgres://prod/db", false, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("prod");
-    ok(data, "stage should exist");
-    strictEqual(data.values["DB_URL"], "postgres://prod/db");
+    const store2 = await Store.open(dir);
+    const found = store2.state.get(variableURN("DB_URL"));
+    ok(found, "variable should exist");
+    strictEqual(found.outputs["value"], "postgres://prod/db");
+    await store2.dispose();
   });
 
   it("retrieves a secret value", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { API_KEY: "sk-12345" };
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
-    );
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("API_KEY", "sk-12345", true, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("prod");
-    ok(data, "stage should exist");
-    const result = decryptSecrets(data.secrets, passphrase);
-    strictEqual(result["API_KEY"], "sk-12345");
+    const store2 = await Store.open(dir);
+    const found = store2.state.get(variableURN("API_KEY"));
+    ok(found, "variable should exist");
+    const decrypted = decrypt(
+      found.outputs["value"] as EncryptedPayload,
+      passphrase,
+    );
+    strictEqual(decrypted, "sk-12345");
+    await store2.dispose();
   });
 });
 
-describe("config rm", () => {
+describe("variable rm", () => {
   let root: string;
   const passphrase = "test-passphrase";
 
@@ -224,78 +197,52 @@ describe("config rm", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("removes a plain value", async () => {
-    const store = createStageStore(root);
-    await store.saveStage(
-      "local",
-      makeStageData({
-        values: { A: "1", B: "2" },
-      }),
-    );
+  it("removes a variable", async () => {
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("A", "1", false, passphrase),
+      makeVariableState("B", "2", false, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("local");
-    ok(data, "stage should exist");
-    const { A: _, ...remaining } = data.values;
-    await store.saveStage("local", { ...data, values: remaining });
+    const store2 = await Store.open(dir);
+    store2.state.delete(variableURN("A"));
+    await store2.checkpoint();
+    await store2.dispose();
 
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual("A" in loaded.values, false);
-    strictEqual(loaded.values["B"], "2");
+    const store3 = await Store.open(dir);
+    strictEqual(store3.state.size, 1);
+    const entry = [...store3.state.values()][0];
+    strictEqual(parseURN(entry!.urn).id, "B");
+    await store3.dispose();
   });
 
-  it("removes a secret value", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { X: "1", Y: "2" };
-    await store.saveStage(
-      "local",
-      makeStageData({
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
-    );
+  it("removes a secret variable", async () => {
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("X", "1", true, passphrase),
+      makeVariableState("Y", "2", true, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("local");
-    ok(data, "stage should exist");
-    const decrypted = decryptSecrets(data.secrets, passphrase);
-    delete decrypted["X"];
-    await store.saveStage("local", {
-      ...data,
-      secrets: encryptSecrets(decrypted, passphrase),
-    });
+    const store2 = await Store.open(dir);
+    store2.state.delete(variableURN("X"));
+    await store2.checkpoint();
+    await store2.dispose();
 
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    const result = decryptSecrets(loaded.secrets, passphrase);
-    strictEqual("X" in result, false);
-    strictEqual(result["Y"], "2");
-  });
-
-  it("removing last secret sets secrets to null", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { ONLY: "one" };
-    await store.saveStage(
-      "local",
-      makeStageData({
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
-    );
-
-    const data = await store.loadStage("local");
-    ok(data, "stage should exist");
-    const decrypted = decryptSecrets(data.secrets, passphrase);
-    delete decrypted["ONLY"];
-    await store.saveStage("local", {
-      ...data,
-      secrets: encryptSecrets(decrypted, passphrase),
-    });
-
-    const loaded = await store.loadStage("local");
-    ok(loaded, "stage should exist");
-    strictEqual(loaded.secrets, null);
+    const store3 = await Store.open(dir);
+    strictEqual(store3.state.size, 1);
+    const entry = [...store3.state.values()][0];
+    strictEqual(parseURN(entry!.urn).id, "Y");
+    await store3.dispose();
   });
 });
 
-describe("config ls", () => {
+describe("variable ls", () => {
   let root: string;
   const passphrase = "test-passphrase";
 
@@ -308,60 +255,64 @@ describe("config ls", () => {
   });
 
   it("lists plain and secret names sorted", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { Z_SECRET: "val", A_SECRET: "val" };
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        values: { M_PLAIN: "val", B_PLAIN: "val" },
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("M_PLAIN", "val", false, passphrase),
+      makeVariableState("B_PLAIN", "val", false, passphrase),
+      makeVariableState("Z_SECRET", "val", true, passphrase),
+      makeVariableState("A_SECRET", "val", true, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
+
+    const store2 = await Store.open(dir);
+    const variables = [...store2.state.values()].filter(
+      (r) => parseURN(r.urn).resource === "variable",
     );
-
-    const data = await store.loadStage("prod");
-    ok(data, "stage should exist");
-    const valueNames = Object.keys(data.values);
-    const secretNames = Object.keys(decryptSecrets(data.secrets, passphrase));
-    const allNames = [...new Set([...valueNames, ...secretNames])].sort();
-
-    deepStrictEqual(allNames, ["A_SECRET", "B_PLAIN", "M_PLAIN", "Z_SECRET"]);
+    const names = variables.map((r) => parseURN(r.urn).id).sort();
+    deepStrictEqual(names, ["A_SECRET", "B_PLAIN", "M_PLAIN", "Z_SECRET"]);
+    await store2.dispose();
   });
 
-  it("annotates secret names", async () => {
-    const store = createStageStore(root);
-    const secrets: SecretMap = { DB_PW: "val" };
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        values: { DB_URL: "val" },
-        secrets: encryptSecrets(secrets, passphrase),
-      }),
-    );
+  it("identifies secret variables", async () => {
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = toMap([
+      makeVariableState("DB_URL", "val", false, passphrase),
+      makeVariableState("DB_PW", "val", true, passphrase),
+    ]);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("prod");
-    ok(data, "stage should exist");
-    const secretNameSet = new Set(
-      Object.keys(decryptSecrets(data.secrets, passphrase)),
-    );
-
-    ok(!secretNameSet.has("DB_URL"), "DB_URL should not be a secret");
-    ok(secretNameSet.has("DB_PW"), "DB_PW should be a secret");
+    const store2 = await Store.open(dir);
+    const dbUrl = store2.state.get(variableURN("DB_URL"));
+    const dbPw = store2.state.get(variableURN("DB_PW"));
+    ok(dbUrl, "DB_URL should exist");
+    ok(dbPw, "DB_PW should exist");
+    ok(!dbUrl.sensitive?.includes("value"), "DB_URL should not be secret");
+    ok(dbPw.sensitive?.includes("value"), "DB_PW should be secret");
+    await store2.dispose();
   });
 
-  it("returns empty when no config values exist", async () => {
-    const store = createStageStore(root);
-    await store.saveStage("local", makeStageData());
+  it("returns empty when no variables exist", async () => {
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    await store.checkpoint();
+    await store.dispose();
 
-    const data = await store.loadStage("local");
-    ok(data, "stage should exist");
-    const allNames = Object.keys(data.values);
-    strictEqual(allNames.length, 0);
-    strictEqual(data.secrets, null);
+    const store2 = await Store.open(dir);
+    const variables = [...store2.state.values()].filter(
+      (r) => parseURN(r.urn).resource === "variable",
+    );
+    strictEqual(variables.length, 0);
+    await store2.dispose();
   });
 });
 
-describe("config stage scoping", () => {
+describe("variable scoping per store directory", () => {
   let root: string;
+  const passphrase = "test-passphrase";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-config-"));
@@ -371,56 +322,42 @@ describe("config stage scoping", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("values are scoped per stage", async () => {
-    const store = createStageStore(root);
-    await store.saveStage(
-      "local",
-      makeStageData({
-        values: { DB_URL: "postgres://localhost/dev" },
-      }),
-    );
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        values: { DB_URL: "postgres://prod-host/prod" },
-      }),
-    );
+  it("variables are scoped per store directory", async () => {
+    const dir1 = join(root, "local");
+    const dir2 = join(root, "prod");
 
-    const localData = await store.loadStage("local");
-    const prodData = await store.loadStage("prod");
+    const store1 = await Store.open(dir1);
+    store1.state = toMap([
+      makeVariableState(
+        "DB_URL",
+        "postgres://localhost/dev",
+        false,
+        passphrase,
+      ),
+    ]);
+    await store1.checkpoint();
+    await store1.dispose();
 
-    ok(localData, "local stage should exist");
-    ok(prodData, "prod stage should exist");
-    strictEqual(localData.values["DB_URL"], "postgres://localhost/dev");
-    strictEqual(prodData.values["DB_URL"], "postgres://prod-host/prod");
-  });
+    const store2 = await Store.open(dir2);
+    store2.state = toMap([
+      makeVariableState(
+        "DB_URL",
+        "postgres://prod-host/prod",
+        false,
+        passphrase,
+      ),
+    ]);
+    await store2.checkpoint();
+    await store2.dispose();
 
-  it("modifying one stage does not affect another", async () => {
-    const store = createStageStore(root);
-    await store.saveStage(
-      "staging",
-      makeStageData({
-        values: { A: "1" },
-      }),
-    );
-    await store.saveStage(
-      "prod",
-      makeStageData({
-        values: { A: "2" },
-      }),
-    );
-
-    // Modify staging
-    const data = await store.loadStage("staging");
-    ok(data, "staging should exist");
-    await store.saveStage("staging", {
-      ...data,
-      values: { ...data.values, A: "updated" },
-    });
-
-    // Prod should be unchanged
-    const prodData = await store.loadStage("prod");
-    ok(prodData, "prod should exist");
-    strictEqual(prodData.values["A"], "2");
+    const s1 = await Store.open(dir1);
+    const s2 = await Store.open(dir2);
+    const v1 = s1.state.get(variableURN("DB_URL"));
+    const v2 = s2.state.get(variableURN("DB_URL"));
+    ok(v1 && v2, "both should exist");
+    strictEqual(v1.outputs["value"], "postgres://localhost/dev");
+    strictEqual(v2.outputs["value"], "postgres://prod-host/prod");
+    await s1.dispose();
+    await s2.dispose();
   });
 });

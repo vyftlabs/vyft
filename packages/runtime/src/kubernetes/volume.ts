@@ -1,4 +1,4 @@
-import type { VolumeConfig } from "@vyft/core";
+import type { VolumeConfig } from "@vyft/primitives";
 import type { K8sClient } from "./client.ts";
 
 /** Create a PersistentVolumeClaim. */

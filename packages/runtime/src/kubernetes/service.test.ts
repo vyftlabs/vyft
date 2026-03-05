@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { MOUNTABLE } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/primitives";
 import { buildClusterIPManifest, buildDeploymentManifest } from "./service.ts";
 
 const emptySecrets = new Map<string, string>();
@@ -46,7 +46,7 @@ describe("buildDeploymentManifest", () => {
       "api",
       {
         image: "test",
-        env: { HOST: "0.0.0.0", TOKEN: { kind: "config", id: "token" } },
+        env: { HOST: "0.0.0.0", TOKEN: { kind: "variable", id: "token" } },
       },
       secrets,
     );

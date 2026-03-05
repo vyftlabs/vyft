@@ -3,17 +3,25 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import type { Change, Operation, Runtime } from "@vyft/core";
-import { MOUNTABLE } from "@vyft/core";
-import { deploy } from "@vyft/engine";
-import type { PersistedState } from "@vyft/store";
-import { createFileStore } from "@vyft/store";
+import type { Change, Operation, ResourceState, Runtime } from "@vyft/core";
+import type { URN } from "@vyft/primitives";
+import { MOUNTABLE, parseURN } from "@vyft/core";
+import { Store } from "@vyft/store";
+import { deploy } from "../__tests__/test-utils.ts";
 
 function mockRuntime(): Runtime {
   return {
     plan(change: Change): Operation[] {
       if (change.status === "remove") {
-        return [{ action: "remove", id: change.id, kind: change.kind }];
+        const { id, resource: kind } = parseURN(change.urn);
+        return [
+          {
+            action: "remove" as const,
+            urn: change.urn,
+            id,
+            kind: kind as Extract<Operation, { action: "remove" }>["kind"],
+          },
+        ];
       }
       return [
         {
@@ -36,14 +44,17 @@ function vol(id: string) {
 }
 
 function sec(id: string) {
-  return { kind: "config" as const, id, config: {} };
+  return { kind: "variable" as const, id, config: {} };
+}
+
+function toMap(state: ResourceState[]): Map<URN, ResourceState> {
+  const m = new Map<URN, ResourceState>();
+  for (const s of state) m.set(s.urn, s);
+  return m;
 }
 
 describe("destroy logic", () => {
   let root: string;
-  const context = "default";
-  const project = "test";
-  const stage = "local";
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "vyft-destroy-"));
@@ -54,52 +65,49 @@ describe("destroy logic", () => {
   });
 
   it("removes all resources by deploying empty config", async () => {
-    const store = createFileStore(root);
+    const dir = join(root, "state");
     const runtime = mockRuntime();
 
     // Deploy some resources
     const v = vol("data");
     const s = sec("pass");
     const result = await deploy({ v, s }, [], runtime);
-    const state: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: result.state,
-      secrets: null,
-    };
-    await store.save(context, project, stage, state);
+
+    // Write state via Store
+    const store = await Store.open(dir);
+    store.state = toMap(result.state);
+    await store.checkpoint();
+    await store.dispose();
 
     // Destroy: deploy empty config against existing state
-    const previous = await store.load(context, project, stage);
-    ok(previous, "state should exist before destroy");
-    await deploy({}, previous.resources, runtime);
-    await store.delete(context, project, stage);
+    const store2 = await Store.open(dir);
+    ok(store2.state.size > 0, "state should exist before destroy");
+    await deploy({}, [...store2.state.values()], runtime);
+    await store2.delete();
+    await store2.dispose();
 
-    // State should be gone
-    const loaded = await store.load(context, project, stage);
-    strictEqual(loaded, null);
+    // State should be gone — opening should give empty state
+    const store3 = await Store.open(dir);
+    strictEqual(store3.state.size, 0);
+    await store3.dispose();
   });
 
   it("handles already-empty state gracefully", async () => {
-    const store = createFileStore(root);
-    const loaded = await store.load(context, project, stage);
-    // No state file — nothing to destroy
-    strictEqual(loaded, null);
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    strictEqual(store.state.size, 0);
+    await store.dispose();
   });
 
   it("handles state with zero resources", async () => {
-    const store = createFileStore(root);
-    const state: PersistedState = {
-      version: 1,
-      manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-      resources: [],
-      secrets: null,
-    };
-    await store.save(context, project, stage, state);
+    const dir = join(root, "state");
+    const store = await Store.open(dir);
+    store.state = new Map();
+    await store.checkpoint();
+    await store.dispose();
 
-    const previous = await store.load(context, project, stage);
-    ok(previous, "state should exist");
-    strictEqual(previous.resources.length, 0);
-    // Nothing to destroy
+    const store2 = await Store.open(dir);
+    strictEqual(store2.state.size, 0);
+    await store2.dispose();
   });
 });

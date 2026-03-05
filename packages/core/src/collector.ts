@@ -1,4 +1,4 @@
-import type { Resource } from "./resource.ts";
+import type { Resource } from "@vyft/primitives";
 
 interface Scope {
   resources: Resource[];

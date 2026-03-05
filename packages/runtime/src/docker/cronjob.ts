@@ -2,8 +2,14 @@ import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BindMount, CronJobConfig, EnvValue } from "@vyft/core";
-import { buildImage, durationToNanos, resolveEnv } from "@vyft/core";
+import type {
+  BindMount,
+  BuildConfig,
+  CronJobConfig,
+  EnvValue,
+} from "@vyft/primitives";
+import { durationToNanos } from "../duration.ts";
+import { resolveEnv } from "../resolve.ts";
 import type { DockerClient } from "./client.ts";
 import type { ContainerConfig } from "./service.ts";
 import { removeContainer } from "./service.ts";
@@ -114,12 +120,15 @@ export async function createCronContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  imageUtils?: {
+    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+  },
 ): Promise<string> {
   // Build the user's image if build config is present
   let baseImage = config.image ?? `vyft-build-${id}:latest`;
   if (config.build) {
     baseImage = `vyft-build-${id}:latest`;
-    await buildImage(baseImage, config.build);
+    await imageUtils?.buildImage?.(baseImage, config.build);
   }
 
   // Build the wrapper image with supercronic
@@ -173,6 +182,9 @@ export async function recreateCronContainer(
   networkName: string,
   secrets: ReadonlyMap<string, string>,
   project?: string,
+  imageUtils?: {
+    buildImage?: (tag: string, build: BuildConfig) => Promise<unknown>;
+  },
 ): Promise<string> {
   await removeContainer(client, containerName);
   return createCronContainer(
@@ -183,5 +195,6 @@ export async function recreateCronContainer(
     networkName,
     secrets,
     project,
+    imageUtils,
   );
 }

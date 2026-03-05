@@ -1,22 +1,11 @@
-import type {
-  Change,
-  ExtendedRuntime,
-  Operation,
-  RuntimeOptions,
-  Service,
-} from "@vyft/core";
-import {
-  buildImage,
-  changedFields,
-  hasSpecChange,
-  pushImage,
-} from "@vyft/core";
-import * as log from "@vyft/core/logger";
+import { logger } from "@vyft/logger";
+import type { Service } from "@vyft/primitives";
 import type { CaddyRoute } from "../docker/caddy.ts";
 import type { DockerClient } from "../docker/client.ts";
 import { createDockerClient } from "../docker/client.ts";
 import { buildCronImage } from "../docker/cronjob.ts";
 import { createVolume, removeVolume } from "../docker/volume.ts";
+import type { ExtendedRuntime, Operation, RuntimeOptions } from "../types.ts";
 import { buildCronServiceSpec } from "./cronjob.ts";
 import { normalizeSwarmService } from "./inspect.ts";
 import { deploySwarmProxy, removeSwarmProxy } from "./proxy.ts";
@@ -27,6 +16,8 @@ import {
   removeSwarmService,
   updateSwarmService,
 } from "./service.ts";
+
+const log = logger.child("swarm");
 
 export type SwarmRuntimeOptions = RuntimeOptions & { client?: DockerClient };
 
@@ -72,45 +63,16 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
     return `vyft-${project}-${id}`;
   }
 
+  function getImageUtils() {
+    if (!opts.imageUtils) {
+      throw new Error(
+        "imageUtils required for build operations in swarm runtime",
+      );
+    }
+    return opts.imageUtils;
+  }
+
   return {
-    plan(change: Change): Operation[] {
-      if (change.status === "remove") {
-        return [{ action: "remove", id: change.id, kind: change.kind }];
-      }
-
-      const rkind = change.resource.kind as string;
-      if (rkind === "secret" || rkind === "config") return [];
-
-      if (change.resource.kind === "volume" && change.status === "modify")
-        return [];
-
-      if (change.resource.kind === "service" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "update", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (changed.has("replicas") && !hasSpecChange(changed)) {
-          return [{ action: "update", resource: change.resource }];
-        }
-        if (!hasSpecChange(changed)) return [];
-        return [{ action: "update", resource: change.resource }];
-      }
-
-      if (change.resource.kind === "cronjob" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "update", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (!hasSpecChange(changed)) return [];
-        return [{ action: "update", resource: change.resource }];
-      }
-
-      return [
-        {
-          action: change.status === "create" ? "create" : "update",
-          resource: change.resource,
-        },
-      ];
-    },
-
     async execute(op: Operation): Promise<void> {
       const networkId = await initNetwork();
 
@@ -126,7 +88,11 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
 
       const resource = op.resource;
 
+      // Variables/secrets are state-only
+      if (resource.kind === "variable") return;
+
       if (resource.kind === "volume") {
+        if (op.action === "update") return; // volumes are immutable
         await createVolume(client, volName(resource.id), {
           "com.docker.stack.namespace": networkName,
         });
@@ -135,6 +101,7 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
 
       if (resource.kind === "service") {
         if (resource.config.build) {
+          const { buildImage, pushImage } = getImageUtils();
           const registry = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${registry}/vyft-${resource.id}:latest`;
@@ -161,6 +128,7 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
       }
 
       if (resource.kind === "cronjob") {
+        const { buildImage, pushImage } = getImageUtils();
         let baseImage =
           resource.config.image ?? `vyft-build-${resource.id}:latest`;
         if (resource.config.build) {
@@ -204,7 +172,8 @@ export function createSwarmRuntime(opts: SwarmRuntimeOptions): ExtendedRuntime {
       id: string,
       kind: string,
     ): Promise<Record<string, unknown> | null> {
-      if (kind === "secret" || kind === "config") return null;
+      if (kind === "secret" || kind === "config" || kind === "variable")
+        return null;
 
       if (kind === "volume") {
         try {

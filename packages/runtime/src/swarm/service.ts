@@ -3,9 +3,10 @@ import type {
   EnvValue,
   HealthCheck,
   ServiceConfig,
-} from "@vyft/core";
-import { durationToNanos, resolveEnv } from "@vyft/core";
+} from "@vyft/primitives";
 import type { DockerClient } from "../docker/client.ts";
+import { durationToNanos } from "../duration.ts";
+import { resolveEnv } from "../resolve.ts";
 
 export interface SwarmServiceSpec {
   Name: string;

@@ -7,8 +7,8 @@ import type {
   Job,
   Resource,
   Service,
-} from "@vyft/core";
-import { MOUNTABLE } from "@vyft/core";
+} from "@vyft/primitives";
+import { MOUNTABLE } from "@vyft/primitives";
 
 /** Resolve a Dependable to the underlying resource ID. */
 function resolveDep(dep: Dependable): string {
@@ -79,6 +79,7 @@ export function collect(value: unknown): Resource[] {
     } else if (
       kind === "volume" ||
       kind === "secret" ||
+      kind === "variable" ||
       kind === "config" ||
       kind === "service" ||
       kind === "job" ||
@@ -101,20 +102,22 @@ export function collect(value: unknown): Resource[] {
   return found;
 }
 
-/** Extract config/secret IDs referenced in an env value. */
+/** Extract variable/config IDs referenced in an env value. */
 function refsIn(value: EnvValue, out: Set<string>): void {
   if (typeof value === "string") return;
-  if (value.kind === "config") {
-    out.add(value.id);
-  } else if (value.kind === "provider-output") {
-    out.add(value.resourceId);
-  } else if (value.kind === "interpolation") {
-    for (const v of value.values) {
+  const kind = (value as { kind: string }).kind;
+  if (kind === "variable" || kind === "config") {
+    out.add((value as { id: string }).id);
+  } else if (kind === "provider-output") {
+    out.add((value as { resourceId: string }).resourceId);
+  } else if (kind === "interpolation") {
+    for (const v of (value as { values: readonly unknown[] }).values) {
       if (typeof v === "string") continue;
-      if (v.kind === "config") {
-        out.add(v.id);
-      } else if (v.kind === "provider-output") {
-        out.add(v.resourceId);
+      const vk = (v as { kind: string }).kind;
+      if (vk === "variable" || vk === "config") {
+        out.add((v as { id: string }).id);
+      } else if (vk === "provider-output") {
+        out.add((v as { resourceId: string }).resourceId);
       }
     }
   }
@@ -159,6 +162,9 @@ function jobDepsOf(job: Job): Set<string> {
 /** Extract all resource IDs a cronjob depends on. */
 function cronDepsOf(cron: CronJob): Set<string> {
   const deps = new Set<string>();
+  if (cron.config.dependsOn) {
+    for (const dep of cron.config.dependsOn) deps.add(resolveDep(dep));
+  }
   if (cron.config.mounts) {
     for (const m of cron.config.mounts) {
       // Skip bind mounts - they're not managed resources

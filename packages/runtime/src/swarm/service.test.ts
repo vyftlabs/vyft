@@ -52,7 +52,7 @@ describe("buildServiceSpec", () => {
       "api",
       {
         image: "test",
-        env: { FOO: "bar", PASS: { kind: "config", id: "pass" } },
+        env: { FOO: "bar", PASS: { kind: "variable", id: "pass" } },
       },
       "net",
       secrets,

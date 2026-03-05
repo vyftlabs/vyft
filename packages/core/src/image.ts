@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
+import type { BuildConfig } from "@vyft/primitives";
 import * as railpack from "@vyft/railpack";
-import type { BuildConfig } from "./resource.ts";
 
 function exec(cmd: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {

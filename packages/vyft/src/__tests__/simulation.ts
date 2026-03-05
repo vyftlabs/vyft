@@ -3,17 +3,12 @@ import type {
   ExtendedRuntime,
   Operation,
   Resource,
+  ResourceState,
   RuntimeName,
   Service,
 } from "@vyft/core";
-import { changedFields, hasSpecChange } from "@vyft/core";
-import { deploy } from "@vyft/engine";
-import { docker, kubernetes, swarm } from "@vyft/runtime";
-import type { ResourceState } from "@vyft/store";
-import {
-  createMockDockerClient,
-  createMockK8sClient,
-} from "./helpers/mocks.ts";
+import { changedFields, hasSpecChange, parseURN } from "@vyft/core";
+import { deploy } from "./test-utils.ts";
 
 /** A recorded operation with its index in the execution log. */
 export interface LogEntry {
@@ -31,23 +26,28 @@ interface Failure {
   fired: boolean;
 }
 
+/** Remove operation helper. */
+function removeOp(change: Change & { status: "remove" }): Operation[] {
+  const { id, resource: kind } = parseURN(change.urn);
+  return [
+    {
+      action: "remove" as const,
+      urn: change.urn,
+      id,
+      kind: kind as Extract<Operation, { action: "remove" }>["kind"],
+    },
+  ];
+}
+
 /**
  * Default plan logic with Docker semantics (recreate for spec changes,
  * no-op for non-spec-only changes) — used when no runtime-specific planFn
  * is injected.
  */
 export function defaultPlan(change: Change): Operation[] {
-  if (change.status === "remove") {
-    return [{ action: "remove", id: change.id, kind: change.kind }];
-  }
-
-  if (change.resource.kind === "config") {
-    return [];
-  }
-
-  if (change.resource.kind === "volume" && change.status === "modify") {
-    return [];
-  }
+  if (change.status === "remove") return removeOp(change);
+  if (change.resource.kind === "variable") return [];
+  if (change.resource.kind === "volume" && change.status === "modify") return [];
 
   if (change.resource.kind === "service" && change.status === "modify") {
     if (!change.previous)
@@ -63,6 +63,38 @@ export function defaultPlan(change: Change): Operation[] {
     const changed = changedFields(change.previous, change.resource.config);
     if (!hasSpecChange(changed)) return [];
     return [{ action: "recreate", resource: change.resource }];
+  }
+
+  return [
+    {
+      action: change.status === "create" ? "create" : "update",
+      resource: change.resource,
+    },
+  ];
+}
+
+/**
+ * K8s plan logic — uses `update` instead of `recreate` since k8s
+ * supports in-place rolling updates and scaling via Deployments.
+ */
+export function k8sPlan(change: Change): Operation[] {
+  if (change.status === "remove") return removeOp(change);
+  if (change.resource.kind === "variable") return [];
+  if (change.resource.kind === "volume" && change.status === "modify") return [];
+
+  if (
+    (change.resource.kind === "service" || change.resource.kind === "cronjob") &&
+    change.status === "modify"
+  ) {
+    if (!change.previous)
+      return [{ action: "update", resource: change.resource }];
+    const changed = changedFields(change.previous, change.resource.config);
+    if (changed.size === 0) return [];
+    // K8s skips route/dev/dependsOn changes but handles replicas + spec changes as updates
+    const k8sSkip = new Set(["route", "dev", "dependsOn", "link"]);
+    const meaningful = [...changed].filter((f) => !k8sSkip.has(f));
+    if (meaningful.length === 0) return [];
+    return [{ action: "update", resource: change.resource }];
   }
 
   return [
@@ -173,22 +205,10 @@ export class Simulation {
     if (!runtimeType) {
       this.runtime = new SimulationRuntime();
     } else if (runtimeType === "k8s") {
-      const rt = kubernetes({
-        project: "test",
-        stage: "local",
-        secrets: new Map(),
-        client: createMockK8sClient(),
-      });
-      this.runtime = new SimulationRuntime(rt.plan);
+      this.runtime = new SimulationRuntime(k8sPlan);
     } else {
-      const factory = runtimeType === "swarm" ? swarm : docker;
-      const rt = factory({
-        project: "test",
-        stage: "local",
-        secrets: new Map(),
-        client: createMockDockerClient(),
-      });
-      this.runtime = new SimulationRuntime(rt.plan);
+      // Docker and Swarm use the default plan (recreate semantics)
+      this.runtime = new SimulationRuntime(defaultPlan);
     }
   }
 

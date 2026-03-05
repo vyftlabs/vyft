@@ -19,68 +19,86 @@ export {
   nanosToDigits,
 } from "./duration.ts";
 export { loadEnv, parseEnv } from "./env.ts";
-export { CliError, ValidationError, VyftError } from "./errors.ts";
-// New exports for monorepo migration
+export { CliError } from "./errors.ts";
 export { generateSecret } from "./generate.ts";
 export { buildImage, imageDigest, pullImage, pushImage } from "./image.ts";
-export type { Change, StateEntry } from "./plan.ts";
-export { fingerprint, resourceReplacer, serializeConfig } from "./plan.ts";
 export type {
-  Binding,
-  BindValue,
-  ConfigOptions,
-  SecretOutput,
-} from "./primitives.ts";
-export type {
-  ConfigRef,
-  EnvValue,
-  Interpolation,
-  OutputRef,
-  Reference,
-  SecretRef,
-} from "./ref.ts";
-export { interpolate, isInterpolation, isReference } from "./ref.ts";
-export { resolve, resolveCompat, resolveEnv } from "./resolve.ts";
+  DeployResult,
+  DestroyResult,
+  DiffResult,
+  PreviewChange,
+  RefreshResult,
+} from "./orchestrate.ts";
+export { deploy, destroy, diff, preview, refresh } from "./orchestrate.ts";
+export * from "./platform.ts";
+export { resolve, resolveEnv } from "./resolve.ts";
+
+// Re-exports from @vyft/primitives for backward compatibility
 export type {
   BindMount,
-  BuildConfig,
+  Binding,
+  BindValue,
   Config,
   ConfigConfig,
+  ConfigOptions,
+  ConfigRef,
   CronJob,
   CronJobConfig,
   Dependable,
+  EnvValue,
   GeneratedSecretConfig,
   HealthCheck,
+  Interpolation,
   Job,
   JobConfig,
   Linkable,
   Mountable,
+  OutputRef,
   PlainConfigConfig,
+  PlainVariableConfig,
   ProvidedSecretConfig,
   ProviderResource,
   ReadyFn,
   ReadyRuntime,
+  Reference,
   Resource,
   ResourceOptions,
   Secret,
+  SecretConfig,
+  SecretOutput,
+  SecretRef,
+  SecretValue,
   Service,
   ServiceConfig,
+  URN,
+  Variable,
+  VariableConfig,
+  VariableOptions,
+  VariableRef,
   Volume,
   VolumeConfig,
-} from "./resource.ts";
+} from "@vyft/primitives";
 export {
+  bindable,
+  buildURN,
   INTERNAL,
+  interpolate,
+  isInterpolation,
+  isReference,
   isSecretConfig,
+  isSecretOutput,
+  isSecretVariable,
   MOUNTABLE,
+  parseURN,
+  secret,
   validateCron,
   validateDuration,
   validateId,
   validateRoute,
-} from "./resource.ts";
-export type {
-  ExtendedRuntime,
-  Operation,
-  Runtime,
-  RuntimeOptions,
-} from "./runtime.ts";
-export type { ResourceState } from "./state.ts";
+} from "@vyft/primitives";
+
+// Re-exports from @vyft/store for backward compatibility
+export type { ResourceState } from "@vyft/store";
+
+// Re-exports from @vyft/errors for backward compatibility
+export { ValidationError } from "@vyft/errors";

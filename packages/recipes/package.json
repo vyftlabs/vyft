@@ -1,0 +1,24 @@
+{
+  "name": "@vyft/recipes",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "echo 'skipped (WIP)'",
+    "test": "node --test 'src/**/*.test.ts'",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@vyft/core": "workspace:*",
+    "@vyft/primitives": "workspace:*",
+    "@vyft/std": "workspace:*"
+  }
+}

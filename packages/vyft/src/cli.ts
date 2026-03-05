@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { VyftError } from "@vyft/core";
+import { VyftError } from "@vyft/errors";
 import { Command } from "commander";
-import { registerConfig } from "./commands/config-cmd.ts";
+import { registerVariable } from "./commands/config-cmd.ts";
 import { registerContext } from "./commands/context.ts";
 import { registerDeploy } from "./commands/deploy.ts";
 import { registerDestroy } from "./commands/destroy.ts";
@@ -25,7 +25,7 @@ registerStage(program);
 registerDeploy(program);
 registerDestroy(program);
 registerLocal(program);
-registerConfig(program);
+registerVariable(program);
 registerRefresh(program);
 registerOutput(program);
 registerPreview(program);

@@ -1,4 +1,5 @@
-import type { ExtendedRuntime, RuntimeName, RuntimeOptions } from "@vyft/core";
+import type { RuntimeName } from "@vyft/core";
+import type { ExtendedRuntime, RuntimeOptions } from "@vyft/runtime";
 import { docker, kubernetes, swarm } from "@vyft/runtime";
 
 const factories: Record<

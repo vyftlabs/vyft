@@ -1,17 +1,6 @@
-import type {
-  Change,
-  ExtendedRuntime,
-  Operation,
-  RuntimeOptions,
-  Service,
-} from "@vyft/core";
-import {
-  buildImage,
-  changedFields,
-  hasSpecChange,
-  pushImage,
-} from "@vyft/core";
-import * as log from "@vyft/core/logger";
+import { logger } from "@vyft/logger";
+import type { Service } from "@vyft/primitives";
+import type { ExtendedRuntime, Operation, RuntimeOptions } from "../types.ts";
 import type { K8sClient } from "./client.ts";
 import { loadK8sClient } from "./client.ts";
 import { applyCronJob, deleteCronJob } from "./cronjob.ts";
@@ -21,6 +10,8 @@ import { ensureK8sRegistry, portForwardRegistry } from "./registry.ts";
 import { applyIngress, deleteIngress } from "./routing.ts";
 import { applyService, deleteService } from "./service.ts";
 import { createPVC, deletePVC } from "./volume.ts";
+
+const log = logger.child("kubernetes");
 
 export type K8sRuntimeOptions = RuntimeOptions & { client?: K8sClient };
 
@@ -54,7 +45,6 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
     const k = await getClient();
     registryAddrs = await ensureK8sRegistry(k);
     portForward = portForwardRegistry();
-    // Brief pause for port-forward to establish
     await new Promise((r) => setTimeout(r, 2000));
     return registryAddrs;
   }
@@ -63,48 +53,16 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
     return id;
   }
 
+  function getImageUtils() {
+    if (!opts.imageUtils) {
+      throw new Error(
+        "imageUtils required for build operations in kubernetes runtime",
+      );
+    }
+    return opts.imageUtils;
+  }
+
   return {
-    plan(change: Change): Operation[] {
-      if (change.status === "remove") {
-        return [{ action: "remove", id: change.id, kind: change.kind }];
-      }
-
-      const rkind = change.resource.kind as string;
-      if (rkind === "secret" || rkind === "config") {
-        return [];
-      }
-
-      if (change.resource.kind === "volume" && change.status === "modify") {
-        return [];
-      }
-
-      if (change.resource.kind === "service" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "update", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (changed.has("replicas") && !hasSpecChange(changed)) {
-          return [{ action: "update", resource: change.resource }]; // scale without restart
-        }
-        if (!hasSpecChange(changed)) return []; // route/dev only — no-op
-        return [{ action: "update", resource: change.resource }];
-      }
-
-      if (change.resource.kind === "cronjob" && change.status === "modify") {
-        if (!change.previous)
-          return [{ action: "update", resource: change.resource }];
-        const changed = changedFields(change.previous, change.resource.config);
-        if (!hasSpecChange(changed)) return [];
-        return [{ action: "update", resource: change.resource }];
-      }
-
-      return [
-        {
-          action: change.status === "create" ? "create" : "update",
-          resource: change.resource,
-        },
-      ];
-    },
-
     async execute(op: Operation): Promise<void> {
       await initNamespace();
       const k = await getClient();
@@ -122,14 +80,18 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
 
       const resource = op.resource;
 
+      // Variables/secrets are state-only
+      if (resource.kind === "variable") return;
+
       if (resource.kind === "volume") {
+        if (op.action === "update") return; // PVCs are immutable
         await createPVC(k, namespace, pvcName(resource.id), resource.config);
         return;
       }
 
       if (resource.kind === "service") {
-        // Build and push if has build config
         if (resource.config.build) {
+          const { buildImage, pushImage } = getImageUtils();
           const reg = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${reg.local}/vyft-${resource.id}:latest`;
@@ -143,6 +105,7 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
 
       if (resource.kind === "cronjob") {
         if (resource.config.build) {
+          const { buildImage, pushImage } = getImageUtils();
           const reg = await ensureBuildRegistry();
           const localTag = `vyft-build-${resource.id}:latest`;
           const remoteTag = `${reg.local}/vyft-${resource.id}:latest`;
@@ -161,7 +124,8 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
     ): Promise<Record<string, unknown> | null> {
       const k = await getClient();
 
-      if (kind === "secret" || kind === "config") return null;
+      if (kind === "secret" || kind === "variable" || kind === "config")
+        return null;
 
       if (kind === "volume") {
         try {
@@ -239,7 +203,6 @@ export function createK8sRuntime(opts: K8sRuntimeOptions): ExtendedRuntime {
         if (svc.config.route) {
           await applyIngress(k, namespace, svc.id, svc.config.route, svc.port);
         } else {
-          // Remove Ingress if route was removed
           await deleteIngress(k, namespace, svc.id);
         }
       }

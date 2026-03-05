@@ -17,6 +17,9 @@ export type {
   SecretRef,
   Service,
   ServiceConfig,
+  Variable,
+  VariableConfig,
+  VariableRef,
   Volume,
   VolumeConfig,
 } from "@vyft/core";
@@ -29,23 +32,16 @@ export {
 export type {
   Binding,
   BindValue,
-  CompositeResource,
   ConfigOptions,
-  ResourceDefinition,
   SecretOutput,
-} from "@vyft/platform";
+  VariableOptions,
+} from "@vyft/primitives";
 // Platform primitives
 export {
-  bind,
   bindable,
-  config,
-  cronjob,
   isSecretOutput,
-  resource,
   secret,
-  service,
-  volume,
-} from "@vyft/platform";
+} from "@vyft/primitives";
 export type {
   BucketOptions,
   BucketResult,
@@ -53,6 +49,6 @@ export type {
   PostgresResult,
   QueueOptions,
   QueueResult,
-} from "@vyft/platform/defaults";
-export { bucket, postgres, queue } from "@vyft/platform/defaults";
+} from "@vyft/recipes";
+export { bucket, postgres, queue } from "@vyft/recipes";
 export * as std from "@vyft/std";

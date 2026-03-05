@@ -1,10 +1,3 @@
-export class VyftError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-  }
-}
-
-export class ValidationError extends VyftError {}
+import { VyftError } from "@vyft/errors";
 
 export class CliError extends VyftError {}

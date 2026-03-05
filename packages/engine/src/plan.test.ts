@@ -1,9 +1,20 @@
-import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
+import {
+  deepStrictEqual,
+  match,
+  notStrictEqual,
+  ok,
+  strictEqual,
+} from "node:assert";
 import { describe, it } from "node:test";
-import type { StateEntry } from "@vyft/core";
-import { fingerprint, MOUNTABLE, serializeConfig } from "@vyft/core";
+import { buildURN, MOUNTABLE, type URN } from "@vyft/primitives";
 import { sec, svc, vol } from "./helpers.test-utils.ts";
-import { plan } from "./plan.ts";
+import type { StateEntry } from "./plan.ts";
+import { fingerprint, plan, serializeConfig } from "./plan.ts";
+
+/** Flatten Change[][] to Change[] for simpler assertions. */
+function flat(levels: ReturnType<typeof plan>) {
+  return levels.flat();
+}
 
 describe("fingerprint", () => {
   it("is stable for the same resource", () => {
@@ -11,45 +22,21 @@ describe("fingerprint", () => {
     strictEqual(fingerprint(v), fingerprint(v));
   });
 
+  it("returns a hex hash string", () => {
+    const v = vol("data");
+    match(fingerprint(v), /^[a-f0-9]{64}$/);
+  });
+
   it("changes when config changes", () => {
     const a = vol("data");
     const b = {
       kind: "volume" as const,
       id: "data",
+      urn: buildURN("platform", "default", "volume", "data"),
       config: { size: "10Gi" },
       [MOUNTABLE]: true as const,
     };
     notStrictEqual(fingerprint(a), fingerprint(b));
-  });
-
-  it("replaces nested resources with their IDs", () => {
-    const v = vol("data");
-    const a = svc("api", {
-      image: "node",
-      mounts: [{ source: v, path: "/data" }],
-    });
-    const parsed = JSON.parse(fingerprint(a));
-    strictEqual(parsed.config.mounts[0].source, "data");
-  });
-
-  it("replaces nested secrets with their IDs", () => {
-    const s = sec("pass");
-    const a = svc("api", { image: "node", env: { SECRET: s } });
-    const parsed = JSON.parse(fingerprint(a));
-    strictEqual(parsed.config.env.SECRET, "pass");
-  });
-
-  it("leaves non-resource nested objects intact", () => {
-    const a = svc("api", { image: "node", env: { HOST: "localhost" } });
-    const parsed = JSON.parse(fingerprint(a));
-    strictEqual(parsed.config.env.HOST, "localhost");
-  });
-
-  it("handles primitive and null values in config", () => {
-    const a = svc("api", { image: "node", port: 8080 });
-    const parsed = JSON.parse(fingerprint(a));
-    strictEqual(parsed.config.port, 8080);
-    strictEqual(parsed.config.image, "node");
   });
 
   it("is stable regardless of key insertion order", () => {
@@ -58,17 +45,12 @@ describe("fingerprint", () => {
     strictEqual(fingerprint(a), fingerprint(b));
   });
 
-  it("only includes kind, id, and config", () => {
-    const a = svc("api", { image: "node" });
-    const parsed = JSON.parse(fingerprint(a));
-    deepStrictEqual(Object.keys(parsed).sort(), ["config", "id", "kind"]);
-  });
-
   it("ignores dependency config changes via ID replacement", () => {
     const v1 = vol("data");
     const v2 = {
       kind: "volume" as const,
       id: "data",
+      urn: buildURN("platform", "default", "volume", "data"),
       config: { size: "10Gi" },
       [MOUNTABLE]: true as const,
     };
@@ -91,30 +73,33 @@ describe("plan", () => {
 
   it("detects new resources as creates", () => {
     const v = vol("data");
-    deepStrictEqual(plan([v], []), [{ status: "create", resource: v }]);
+    const changes = flat(plan([v], []));
+    strictEqual(changes.length, 1);
+    strictEqual(changes[0]?.status, "create");
+    if (changes[0]?.status === "create") {
+      strictEqual(changes[0].resource.id, "data");
+    }
   });
 
   it("detects removed resources", () => {
-    const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: "x" },
-    ];
-    deepStrictEqual(plan([], current), [
-      { status: "remove", id: "data", kind: "volume" },
-    ]);
+    const urn = buildURN("platform", "default", "volume", "data");
+    const current: StateEntry[] = [{ urn, fingerprint: "x" }];
+    const changes = flat(plan([], current));
+    deepStrictEqual(changes, [{ status: "remove", urn }]);
   });
 
   it("detects modifications from fingerprint mismatch", () => {
     const v = vol("data");
-    const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: "stale" },
-    ];
-    deepStrictEqual(plan([v], current), [{ status: "modify", resource: v }]);
+    const current: StateEntry[] = [{ urn: v.urn as URN, fingerprint: "stale" }];
+    const changes = flat(plan([v], current));
+    strictEqual(changes.length, 1);
+    strictEqual(changes[0]?.status, "modify");
   });
 
   it("returns empty when fingerprints match", () => {
     const v = vol("data");
     const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: fingerprint(v) },
+      { urn: v.urn as URN, fingerprint: fingerprint(v) },
     ];
     deepStrictEqual(plan([v], current), []);
   });
@@ -122,22 +107,22 @@ describe("plan", () => {
   it("creates multiple resources from empty state", () => {
     const a = vol("a");
     const b = sec("b");
-    const changes = plan([a, b], []);
-    deepStrictEqual(changes, [
-      { status: "create", resource: a },
-      { status: "create", resource: b },
-    ]);
+    const changes = flat(plan([a, b], []));
+    strictEqual(changes.length, 2);
+    ok(changes.every((c) => c.status === "create"));
   });
 
   it("removes multiple resources when desired is empty", () => {
+    const urnA = buildURN("platform", "default", "volume", "a");
+    const urnB = buildURN("platform", "default", "variable", "b");
     const current: StateEntry[] = [
-      { id: "a", kind: "volume", fingerprint: "x" },
-      { id: "b", kind: "config", fingerprint: "y" },
+      { urn: urnA, fingerprint: "x" },
+      { urn: urnB, fingerprint: "y" },
     ];
-    const changes = plan([], current);
+    const changes = flat(plan([], current));
     deepStrictEqual(changes, [
-      { status: "remove", id: "a", kind: "volume" },
-      { status: "remove", id: "b", kind: "config" },
+      { status: "remove", urn: urnA },
+      { status: "remove", urn: urnB },
     ]);
   });
 
@@ -146,21 +131,26 @@ describe("plan", () => {
     const modified = vol("mod");
     const added = sec("new");
     const current: StateEntry[] = [
-      { id: "keep", kind: "volume", fingerprint: fingerprint(existing) },
-      { id: "mod", kind: "volume", fingerprint: "old" },
-      { id: "gone", kind: "config", fingerprint: "x" },
+      { urn: existing.urn as URN, fingerprint: fingerprint(existing) },
+      { urn: modified.urn as URN, fingerprint: "old" },
+      {
+        urn: buildURN("platform", "default", "variable", "gone"),
+        fingerprint: "x",
+      },
     ];
-    const changes = plan([existing, modified, added], current);
+    const changes = flat(plan([existing, modified, added], current));
     const statuses = changes.map((c) => c.status);
-    deepStrictEqual(statuses, ["modify", "create", "remove"]);
+    ok(statuses.includes("modify"));
+    ok(statuses.includes("create"));
+    ok(statuses.includes("remove"));
   });
 
   it("taintedIds forces modify even when fingerprint matches", () => {
     const v = vol("data");
     const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: fingerprint(v) },
+      { urn: v.urn as URN, fingerprint: fingerprint(v) },
     ];
-    const changes = plan([v], current, new Set(["data"]));
+    const changes = flat(plan([v], current, new Set(["data"])));
     strictEqual(changes.length, 1);
     strictEqual(changes[0]?.status, "modify");
   });
@@ -169,10 +159,10 @@ describe("plan", () => {
     const a = vol("a");
     const b = vol("b");
     const current: StateEntry[] = [
-      { id: "a", kind: "volume", fingerprint: fingerprint(a) },
-      { id: "b", kind: "volume", fingerprint: fingerprint(b) },
+      { urn: a.urn as URN, fingerprint: fingerprint(a) },
+      { urn: b.urn as URN, fingerprint: fingerprint(b) },
     ];
-    const changes = plan([a, b], current, new Set(["a"]));
+    const changes = flat(plan([a, b], current, new Set(["a"])));
     strictEqual(changes.length, 1);
     strictEqual(changes[0]?.status, "modify");
     if (changes[0]?.status === "modify") {
@@ -183,7 +173,7 @@ describe("plan", () => {
   it("taintedIds with empty set behaves like no tainted ids", () => {
     const v = vol("data");
     const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: fingerprint(v) },
+      { urn: v.urn as URN, fingerprint: fingerprint(v) },
     ];
     deepStrictEqual(plan([v], current, new Set()), []);
   });
@@ -192,9 +182,9 @@ describe("plan", () => {
     const v = vol("data");
     const inputs = { size: "5Gi" };
     const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: "stale", inputs },
+      { urn: v.urn as URN, fingerprint: "stale", inputs },
     ];
-    const changes = plan([v], current);
+    const changes = flat(plan([v], current));
     strictEqual(changes.length, 1);
     strictEqual(changes[0]?.status, "modify");
     if (changes[0]?.status === "modify") {
@@ -204,10 +194,8 @@ describe("plan", () => {
 
   it("omits previous when StateEntry has no inputs", () => {
     const v = vol("data");
-    const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: "stale" },
-    ];
-    const changes = plan([v], current);
+    const current: StateEntry[] = [{ urn: v.urn as URN, fingerprint: "stale" }];
+    const changes = flat(plan([v], current));
     strictEqual(changes.length, 1);
     strictEqual(changes[0]?.status, "modify");
     if (changes[0]?.status === "modify") {
@@ -219,14 +207,39 @@ describe("plan", () => {
     const v = vol("data");
     const inputs = { size: "5Gi" };
     const current: StateEntry[] = [
-      { id: "data", kind: "volume", fingerprint: fingerprint(v), inputs },
+      { urn: v.urn as URN, fingerprint: fingerprint(v), inputs },
     ];
-    const changes = plan([v], current, new Set(["data"]));
+    const changes = flat(plan([v], current, new Set(["data"])));
     strictEqual(changes.length, 1);
     strictEqual(changes[0]?.status, "modify");
     if (changes[0]?.status === "modify") {
       strictEqual("previous" in changes[0], false);
     }
+  });
+
+  it("returns levels grouped by dependency order", () => {
+    const v = vol("data");
+    const api = svc("api", {
+      image: "node",
+      mounts: [{ source: v, path: "/data" }],
+    });
+    const levels = plan([v, api], []);
+    ok(levels.length >= 2, "should have at least 2 levels");
+    ok(
+      levels[0]?.some((c) => c.status === "create" && c.resource.id === "data"),
+    );
+    ok(
+      levels[1]?.some((c) => c.status === "create" && c.resource.id === "api"),
+    );
+  });
+
+  it("puts removals in the final level", () => {
+    const v = vol("data");
+    const urn = buildURN("platform", "default", "variable", "old");
+    const current: StateEntry[] = [{ urn, fingerprint: "x" }];
+    const levels = plan([v], current);
+    const lastLevel = levels.at(-1) as (typeof levels)[number];
+    ok(lastLevel.some((c) => c.status === "remove"));
   });
 });
 

@@ -1,5 +1,6 @@
-import type { BindMount, CronJobConfig, EnvValue } from "@vyft/core";
-import { durationToNanos, resolveEnv } from "@vyft/core";
+import type { BindMount, CronJobConfig, EnvValue } from "@vyft/primitives";
+import { durationToNanos } from "../duration.ts";
+import { resolveEnv } from "../resolve.ts";
 import type { SwarmServiceSpec } from "./service.ts";
 
 /** Build a Swarm service spec for a cronjob scheduler container. */

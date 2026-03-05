@@ -1,5 +1,5 @@
-import type { Resource } from "@vyft/core";
-import { ValidationError } from "@vyft/core";
+import { ValidationError } from "@vyft/errors";
+import type { Resource } from "@vyft/primitives";
 import type { Graph } from "./graph.ts";
 
 /** Validate a resource graph. Throws on duplicate IDs, dangling refs, or cycles. */

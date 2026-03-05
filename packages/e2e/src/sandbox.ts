@@ -366,15 +366,15 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
             .replace(/`/g, "\\`")
             .replace(/\$/g, "\\$");
           const result = await vyftExec(
-            `config set ${key} "${escapedValue}" ${flags.join(" ")}`,
+            `variable set ${key} "${escapedValue}" ${flags.join(" ")}`,
           );
           if (result.code !== 0) {
-            throw new Error(`config set failed: ${result.stderr}`);
+            throw new Error(`variable set failed: ${result.stderr}`);
           }
         },
 
         async get(key) {
-          const result = await vyftExec(`config get ${key} -o json`);
+          const result = await vyftExec(`variable get ${key} -o json`);
           if (result.code !== 0) {
             return undefined;
           }
@@ -383,9 +383,9 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
         },
 
         async rm(key) {
-          const result = await vyftExec(`config rm ${key}`);
+          const result = await vyftExec(`variable rm ${key}`);
           if (result.code !== 0) {
-            throw new Error(`config rm failed: ${result.stderr}`);
+            throw new Error(`variable rm failed: ${result.stderr}`);
           }
         },
       },

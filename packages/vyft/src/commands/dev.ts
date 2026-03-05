@@ -3,19 +3,20 @@ import { spawn } from "node:child_process";
 import { watch } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BindValue, Config, EnvValue, Service } from "@vyft/core";
+import type { BindValue, EnvValue, Service, Variable } from "@vyft/core";
 import {
   findConfig,
   generateSecret,
-  isSecretConfig,
+  isSecretVariable,
   loadConfig,
   projectInfo,
   resolve,
 } from "@vyft/core";
-import * as log from "@vyft/core/logger";
-import { collect, deploy as engineDeploy } from "@vyft/engine";
+import { collect } from "@vyft/engine";
+import { engineDeploy } from "../engine-compat.ts";
+import { logger } from "@vyft/logger";
 import type { DockerRuntimeOptions } from "@vyft/runtime";
-import { createFileStore } from "@vyft/store";
+import { Store } from "@vyft/store";
 import type { Command } from "commander";
 import {
   collectLinkables,
@@ -50,7 +51,7 @@ export function classifyServices(
       infra.push(r);
     } else if (r.config.build) {
       buildOnly.push(r);
-      log.debug('skipping build-only service "%s" (no dev field)', r.id);
+      logger.debug('skipping build-only service "%s" (no dev field)', r.id);
     }
   }
 
@@ -171,7 +172,7 @@ export function registerDev(program: Command): void {
       const stage = "__dev__";
       const secretsPath = path.join(root, "dev-secrets.json");
       const configPath = await findConfig(process.cwd());
-      const store = createFileStore(root);
+      const dir = path.join(root, context, project, stage);
       const devProcesses = new Map<string, ChildProcess>();
       const ac = new AbortController();
 
@@ -181,7 +182,7 @@ export function registerDev(program: Command): void {
 
       async function loadAndRun(): Promise<void> {
         const config = await loadConfig(configPath);
-        log.debug("loaded config from %s", configPath);
+        logger.debug("loaded config from %s", configPath);
 
         const resources = collect(config);
         const { infra, dev } = classifyServices(resources);
@@ -189,13 +190,13 @@ export function registerDev(program: Command): void {
 
         // Load or generate secrets — plain JSON, no encryption
         const secretMap = await loadDevSecrets(secretsPath);
-        const configResources = resources.filter(
-          (r): r is Config => r.kind === "config",
+        const variableResources = resources.filter(
+          (r): r is Variable => r.kind === "variable",
         );
         let secretsChanged = false;
-        for (const cr of configResources) {
+        for (const cr of variableResources) {
           if (!secretMap.has(cr.id)) {
-            if (isSecretConfig(cr.config)) {
+            if (isSecretVariable(cr.config)) {
               if (cr.config.generated === false) continue;
               secretMap.set(
                 cr.id,
@@ -213,7 +214,7 @@ export function registerDev(program: Command): void {
         // Generate resource bindings files
         const clientDir = resolveClientDir(process.cwd());
         const entries = await writeEnv(config, clientDir);
-        log.debug("generated env bindings (%d export(s))", entries.length);
+        logger.debug("generated env bindings (%d export(s))", entries.length);
 
         // Build binding env vars from linkables with dev-resolved values
         const linkables = collectLinkables(config);
@@ -236,7 +237,7 @@ export function registerDev(program: Command): void {
 
         // Deploy infra services through the engine
         if (infra.length > 0) {
-          log.debug("ensuring %d infra service(s)...", infra.length);
+          logger.debug("ensuring %d infra service(s)...", infra.length);
 
           const portBindingsMap: Record<string, number> = {};
           for (const svc of infra) {
@@ -262,29 +263,11 @@ export function registerDev(program: Command): void {
           };
           const runtime = createRuntime(runtimeName, runtimeOpts);
 
-          const previous = await store.load(context, project, stage);
-          const result = await engineDeploy(
-            infraResources,
-            previous?.resources ?? [],
-            runtime,
-          );
+          const store = await Store.open(dir);
+          await engineDeploy(infraResources, store, runtime);
+          await store.dispose();
 
-          const runtimeStateMap = runtime.runtimeState();
-          const finalResources = result.state.map((rs) => {
-            const extra = runtimeStateMap.get(rs.id);
-            if (extra) return { ...rs, runtime: { ...rs.runtime, ...extra } };
-            return rs;
-          });
-
-          await store.save(context, project, stage, {
-            version: 1,
-            manifest: { timestamp: new Date().toISOString(), tool: "vyft" },
-            resources: finalResources,
-            secrets: null,
-            secretOutputs: null,
-          });
-
-          log.debug("infra services ready");
+          logger.debug("infra services ready");
         }
 
         // Assign deterministic dev ports
@@ -292,7 +275,7 @@ export function registerDev(program: Command): void {
 
         // Kill existing dev processes
         for (const [id, proc] of devProcesses) {
-          log.debug('stopping dev process "%s"', id);
+          logger.debug('stopping dev process "%s"', id);
           proc.kill("SIGTERM");
         }
         devProcesses.clear();
@@ -348,7 +331,7 @@ export function registerDev(program: Command): void {
 
           child.on("exit", (code, signal) => {
             if (!ac.signal.aborted) {
-              log.warn(
+              logger.warn(
                 'dev process "%s" exited (code=%s, signal=%s)',
                 svcId,
                 code,
@@ -360,14 +343,18 @@ export function registerDev(program: Command): void {
 
           devProcesses.set(svcId, child);
           if (devPort) {
-            log.info(
+            logger.info(
               'started dev process "%s": %s → http://localhost:%d',
               svcId,
               devConfig.command,
               devPort,
             );
           } else {
-            log.info('started dev process "%s": %s', svcId, devConfig.command);
+            logger.info(
+              'started dev process "%s": %s',
+              svcId,
+              devConfig.command,
+            );
           }
         }
       }
@@ -380,11 +367,11 @@ export function registerDev(program: Command): void {
         const watcher = watch(configPath, { signal: ac.signal }, () => {
           if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(async () => {
-            log.info("config changed, reloading...");
+            logger.info("config changed, reloading...");
             try {
               await loadAndRun();
             } catch (err) {
-              log.error(
+              logger.error(
                 "reload failed: %s",
                 err instanceof Error ? err.message : err,
               );
@@ -397,7 +384,7 @@ export function registerDev(program: Command): void {
             (err as NodeJS.ErrnoException).code !== "ERR_USE_AFTER_CLOSE" &&
             (err as NodeJS.ErrnoException).code !== "ABORT_ERR"
           ) {
-            log.error("watcher error: %s", err.message);
+            logger.error("watcher error: %s", err.message);
           }
         });
 
@@ -411,7 +398,7 @@ export function registerDev(program: Command): void {
       } finally {
         // Cleanup dev processes
         for (const [id, proc] of devProcesses) {
-          log.debug('stopping dev process "%s"', id);
+          logger.debug('stopping dev process "%s"', id);
           proc.kill("SIGTERM");
         }
 

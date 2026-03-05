@@ -3,35 +3,36 @@
  */
 
 import type {
-  ConfigConfig,
   CronJobConfig,
   ServiceConfig,
+  VariableConfig,
   VolumeConfig,
-} from "@vyft/core";
-import type { LifecycleHandlers } from "@vyft/provider";
+} from "@vyft/primitives";
+import type { LifecycleHandlers } from "./lifecycle.ts";
 
-// ============================================================================
-// Runtime State Types
-// ============================================================================
-
-export interface ServiceState {
+export interface RuntimeServiceState {
   host: string;
   port: number;
   url: string;
 }
 
-export interface ConfigState {
+export interface RuntimeVariableState {
   value: string;
 }
 
-export interface CronJobState {
+export interface RuntimeCronJobState {
   name: string;
 }
 
-export interface VolumeState {
-  /** Volume name for mounting */
+export interface RuntimeVolumeState {
   name: string;
 }
+
+// Backward-compat aliases
+export type ServiceState = RuntimeServiceState;
+export type ConfigState = RuntimeVariableState;
+export type CronJobState = RuntimeCronJobState;
+export type VolumeState = RuntimeVolumeState;
 
 // ============================================================================
 // Runtime Handler Types (using provider's LifecycleHandlers)
@@ -39,22 +40,24 @@ export interface VolumeState {
 
 export type ServiceHandler<TCtx> = LifecycleHandlers<
   ServiceConfig,
-  ServiceState,
+  RuntimeServiceState,
   TCtx
 >;
-export type ConfigHandler<TCtx> = LifecycleHandlers<
-  ConfigConfig,
-  ConfigState,
+export type VariableHandler<TCtx> = LifecycleHandlers<
+  VariableConfig,
+  RuntimeVariableState,
   TCtx
 >;
+/** @deprecated Use VariableHandler instead. */
+export type ConfigHandler<TCtx> = VariableHandler<TCtx>;
 export type CronJobHandler<TCtx> = LifecycleHandlers<
   CronJobConfig,
-  CronJobState,
+  RuntimeCronJobState,
   TCtx
 >;
 export type VolumeHandler<TCtx> = LifecycleHandlers<
   VolumeConfig,
-  VolumeState,
+  RuntimeVolumeState,
   TCtx
 >;
 
@@ -68,7 +71,7 @@ export interface Runtime<TCtx = unknown> {
   teardown?(ctx: TCtx): Promise<void>;
 
   service: ServiceHandler<TCtx>;
-  config: ConfigHandler<TCtx>;
+  variable: VariableHandler<TCtx>;
   cronjob: CronJobHandler<TCtx>;
   volume: VolumeHandler<TCtx>;
 }

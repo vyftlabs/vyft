@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { MOUNTABLE } from "@vyft/core";
+import { MOUNTABLE } from "@vyft/primitives";
 import { buildContainerConfig } from "./service.ts";
 
 const networkName = "vyft-test";
@@ -30,7 +30,7 @@ describe("buildContainerConfig", () => {
       "api",
       {
         image: "node:22",
-        env: { FOO: "bar", DB_PASS: { kind: "config", id: "db-pass" } },
+        env: { FOO: "bar", DB_PASS: { kind: "variable", id: "db-pass" } },
       },
       networkName,
       secrets,

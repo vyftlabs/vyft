@@ -1,7 +1,8 @@
 import { strict as assert } from "node:assert";
+import type { ResourceState } from "@vyft/core";
+import { parseURN } from "@vyft/core";
 import type { DockerClient } from "@vyft/runtime/docker/client";
 import type { K8sClient } from "@vyft/runtime/kubernetes/client";
-import type { ResourceState } from "@vyft/store";
 
 interface ContainerInspect {
   State: { Status: string; Health?: { Status: string } };
@@ -33,13 +34,13 @@ export abstract class TestContext {
   }
 
   resource(id: string): ResourceState {
-    const r = this.state.find((s) => s.id === id);
+    const r = this.state.find((s) => parseURN(s.urn).id === id);
     assert.ok(r, `Resource "${id}" not found in state`);
     return r;
   }
 
   resourceKind(id: string, kind: string): void {
-    assert.strictEqual(this.resource(id).kind, kind);
+    assert.strictEqual(parseURN(this.resource(id).urn).resource, kind);
   }
 
   serviceOutputs(

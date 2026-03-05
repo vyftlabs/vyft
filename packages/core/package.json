@@ -25,7 +25,14 @@
     "lint": "biome check ."
   },
   "dependencies": {
+    "@vyft/engine": "workspace:*",
+    "@vyft/errors": "workspace:*",
+
+    "@vyft/logger": "workspace:*",
+    "@vyft/primitives": "workspace:*",
     "@vyft/railpack": "workspace:*",
+    "@vyft/runtime": "workspace:*",
+    "@vyft/store": "workspace:*",
     "jiti": "^2.4.2"
   }
 }

@@ -2,117 +2,85 @@
  * Platform contract types.
  */
 
+import type {
+  PlatformBucketConfig,
+  PlatformBucketState,
+  PlatformPostgresConfig,
+  PlatformPostgresState,
+  PlatformQueueConfig,
+  PlatformQueueState,
+  PlatformSecretConfig,
+  PlatformSecretState,
+  PlatformServerConfig,
+  PlatformServerState,
+  PlatformVolumeConfig,
+  PlatformVolumeState,
+} from "@vyft/core";
 import type { LifecycleHandlers } from "@vyft/provider";
 
-// ============================================================================
-// Platform Config Types
-// ============================================================================
+// Re-export platform shapes from core
+export type {
+  PlatformBucketConfig,
+  PlatformBucketState,
+  PlatformPostgresConfig,
+  PlatformPostgresState,
+  PlatformQueueConfig,
+  PlatformQueueState,
+  PlatformSecretConfig,
+  PlatformSecretState,
+  PlatformServerConfig,
+  PlatformServerState,
+  PlatformVolumeConfig,
+  PlatformVolumeState,
+  SSHConnection,
+} from "@vyft/core";
 
-export interface BucketConfig {
-  /** Access control: private or public-read */
-  acl?: "private" | "public-read";
-}
-
-export interface BucketState {
-  url: string;
-  name: string;
-}
-
-export interface PostgresConfig {
-  /** Postgres version (e.g., "16", "15") */
-  version?: string;
-}
-
-export interface PostgresState {
-  /** Connection URL */
-  url: string;
-  /** Database host */
-  host: string;
-  /** Database port */
-  port: number;
-}
-
-export interface QueueConfig {
-  durable?: boolean;
-}
-
-export interface QueueState {
-  url: string;
-  name: string;
-}
-
-export interface SecretConfig {
-  /** Length for generated secrets */
-  length?: number;
-  /** Character set for generated secrets */
-  alphabet?: string;
-}
-
-export interface SecretState {
-  /** The secret value (only available at runtime, not stored in state) */
-  value: string;
-}
-
-export interface VolumeConfig {
-  /** Size of the volume (e.g., "10Gi") */
-  size?: string;
-}
-
-export interface VolumeState {
-  /** Volume identifier for mounting */
-  name: string;
-}
-
-export interface ServerConfig {
-  /** Server type/size (e.g., "cx11", "t3.micro") */
-  type: string;
-  /** OS image */
-  image: string;
-  /** SSH keys */
-  sshKeys?: string[];
-  /** User data / cloud-init */
-  userData?: string;
-}
-
-export interface ServerState {
-  /** Public IP address */
-  ip: string;
-  /** Server ID */
-  id: string;
-}
+// Backward-compat aliases
+export type BucketConfig = PlatformBucketConfig;
+export type BucketState = PlatformBucketState;
+export type PostgresConfig = PlatformPostgresConfig;
+export type PostgresState = PlatformPostgresState;
+export type QueueConfig = PlatformQueueConfig;
+export type QueueState = PlatformQueueState;
+export type SecretConfig = PlatformSecretConfig;
+export type SecretState = PlatformSecretState;
+export type ServerConfig = PlatformServerConfig;
+export type ServerState = PlatformServerState;
+export type VolumeConfig = PlatformVolumeConfig;
+export type VolumeState = PlatformVolumeState;
 
 // ============================================================================
 // Platform Handler Types (using provider's LifecycleHandlers)
 // ============================================================================
 
 export type BucketHandler<TCtx> = LifecycleHandlers<
-  BucketConfig,
-  BucketState,
+  PlatformBucketConfig,
+  PlatformBucketState,
   TCtx
 >;
 export type PostgresHandler<TCtx> = LifecycleHandlers<
-  PostgresConfig,
-  PostgresState,
+  PlatformPostgresConfig,
+  PlatformPostgresState,
   TCtx
 >;
 export type QueueHandler<TCtx> = LifecycleHandlers<
-  QueueConfig,
-  QueueState,
+  PlatformQueueConfig,
+  PlatformQueueState,
   TCtx
 >;
 export type SecretHandler<TCtx> = LifecycleHandlers<
-  SecretConfig,
-  SecretState,
+  PlatformSecretConfig,
+  PlatformSecretState,
   TCtx
 >;
 export type VolumeHandler<TCtx> = LifecycleHandlers<
-  VolumeConfig,
-  VolumeState,
+  PlatformVolumeConfig,
+  PlatformVolumeState,
   TCtx
 >;
 export type ServerHandler<TCtx> = LifecycleHandlers<
-  ServerConfig,
-  ServerState,
+  PlatformServerConfig,
+  PlatformServerState,
   TCtx
 >;
 

@@ -1,4 +1,4 @@
-import { nanosToDigits } from "@vyft/core";
+import { nanosToDigits } from "../duration.ts";
 
 interface SwarmServiceJson {
   Spec?: {

@@ -1,21 +1,33 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { Service, Variable, Volume } from "@vyft/primitives";
+import { buildURN, INTERNAL, MOUNTABLE } from "@vyft/primitives";
 import { changedFields, hasSpecChange, NON_SPEC_FIELDS } from "./diff.ts";
-import type { Config, Service, Volume } from "./resource.ts";
-import { INTERNAL, MOUNTABLE } from "./resource.ts";
 
 function vol(id: string): Volume {
-  return { kind: "volume", id, config: {}, [MOUNTABLE]: true };
+  return {
+    kind: "volume",
+    id,
+    urn: buildURN("platform", "default", "volume", id),
+    config: {},
+    [MOUNTABLE]: true,
+  };
 }
 
-function sec(id: string): Config {
-  return { kind: "config", id, config: {} };
+function sec(id: string): Variable {
+  return {
+    kind: "variable",
+    id,
+    urn: buildURN("platform", "default", "variable", id),
+    config: {},
+  };
 }
 
 function svc(id: string): Service {
   return {
     kind: "service",
     id,
+    urn: buildURN("runtime", "default", "service", id),
     config: { image: "test" },
     host: id,
     port: 3000,

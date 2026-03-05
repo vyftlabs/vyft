@@ -30,7 +30,8 @@ export const server = t.server({
     return {
       externalId: String(data.server.id),
       output: {
-        ip: data.server.public_net.ipv4?.ip ?? "",
+        host: data.server.public_net.ipv4?.ip ?? "",
+        privateKey: "",
         id: String(data.server.id),
       },
     };
@@ -45,7 +46,8 @@ export const server = t.server({
       return {
         externalId: String(data.server.id),
         output: {
-          ip: data.server.public_net.ipv4?.ip ?? "",
+          host: data.server.public_net.ipv4?.ip ?? "",
+          privateKey: "",
           id: String(data.server.id),
         },
       };
@@ -71,7 +73,8 @@ export const server = t.server({
     return {
       externalId: String(server.id),
       output: {
-        ip: server.public_net.ipv4?.ip ?? "",
+        host: server.public_net.ipv4?.ip ?? "",
+        privateKey: "",
         id: String(server.id),
       },
     };
@@ -94,7 +97,8 @@ export const server = t.server({
     return {
       externalId: String(data.server.id),
       output: {
-        ip: data.server.public_net.ipv4?.ip ?? "",
+        host: data.server.public_net.ipv4?.ip ?? "",
+        privateKey: "",
         id: String(data.server.id),
       },
     };

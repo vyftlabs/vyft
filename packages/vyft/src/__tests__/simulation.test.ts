@@ -6,9 +6,9 @@ import {
   strictEqual,
 } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
-import { interpolate, ValidationError } from "@vyft/core";
-import { config, cronjob, service, volume } from "@vyft/platform";
-import type { ResourceState } from "@vyft/store";
+import type { ResourceState } from "@vyft/core";
+import { interpolate, parseURN, ValidationError } from "@vyft/core";
+import { cronjob, service, variable, volume } from "./test-utils.ts";
 import { Simulation } from "./simulation.ts";
 
 // ---------------------------------------------------------------------------
@@ -28,7 +28,7 @@ function opSummary(sim: Simulation): { action: string; id: string }[] {
 
 /** Get a resource state by id, failing if missing. */
 function getState(states: ResourceState[], id: string): ResourceState {
-  const s = states.find((r) => r.id === id);
+  const s = states.find((r) => parseURN(r.urn).id === id);
   ok(s, `expected state for "${id}"`);
   return s;
 }
@@ -85,7 +85,7 @@ describe("collection", () => {
     const v = volume("data");
     await sim.deploy({ a: null, b: undefined, c: 42, d: "hello", v });
     strictEqual(sim.state.length, 1);
-    strictEqual(sim.state[0]?.id, "data");
+    strictEqual(parseURN(sim.state[0]?.urn).id, "data");
   });
 });
 
@@ -109,8 +109,8 @@ describe("validation", () => {
     });
     await sim.deploy({ s }); // only pass service — volume discovered inside config
     strictEqual(sim.state.length, 2);
-    ok(sim.state.some((r) => r.id === "data"));
-    ok(sim.state.some((r) => r.id === "api"));
+    ok(sim.state.some((r) => parseURN(r.urn).id === "data"));
+    ok(sim.state.some((r) => parseURN(r.urn).id === "api"));
   });
 
   it("dependsOn targets are auto-discovered from config tree", async () => {
@@ -118,8 +118,8 @@ describe("validation", () => {
     const api = service("api", { image: "x", dependsOn: [db] });
     await sim.deploy({ api }); // only pass api — db discovered inside dependsOn
     strictEqual(sim.state.length, 2);
-    ok(sim.state.some((r) => r.id === "db"));
-    ok(sim.state.some((r) => r.id === "api"));
+    ok(sim.state.some((r) => parseURN(r.urn).id === "db"));
+    ok(sim.state.some((r) => parseURN(r.urn).id === "api"));
   });
 
   it("rejects dependency cycle", async () => {
@@ -258,7 +258,7 @@ describe("runtime semantics", () => {
   // --- Secrets ---
 
   it("secret create produces zero runtime operations", async () => {
-    const s = config("tok", { secret: true });
+    const s = variable("tok", { secret: true });
     await sim.deploy({ s });
     strictEqual(sim.lastOps().length, 0);
     strictEqual(sim.state.length, 1);
@@ -266,15 +266,15 @@ describe("runtime semantics", () => {
   });
 
   it("secret modify produces zero runtime operations", async () => {
-    const s = config("tok", { secret: true });
+    const s = variable("tok", { secret: true });
     await sim.deploy({ s });
-    const s2 = config("tok", { secret: true, length: 64 });
+    const s2 = variable("tok", { secret: true, length: 64 });
     await sim.deploy({ s: s2 });
     strictEqual(sim.lastOps().length, 0);
   });
 
   it("secret remove produces a remove operation", async () => {
-    const s = config("tok", { secret: true });
+    const s = variable("tok", { secret: true });
     await sim.deploy({ s });
     await sim.deploy({});
     deepStrictEqual(opSummary(sim), [{ action: "remove", id: "tok" }]);
@@ -512,14 +512,14 @@ describe("dependency ordering", () => {
   });
 
   it("secret created before service that uses it (state-wise, no ops for secret)", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const s = service("api", { image: "x", env: { TOKEN: sec } });
     await sim.deploy({ s, sec });
     // Secret has no runtime ops, but both should be in state
     strictEqual(sim.state.length, 2);
     // Service should have secret as dependency
     const apiState = getState(sim.state, "api");
-    ok(apiState.dependencies.includes("tok"));
+    ok(apiState.dependencies.some((d) => parseURN(d).id === "tok"));
   });
 
   it("dependsOn ordering — db before api", async () => {
@@ -588,7 +588,7 @@ describe("dependency ordering", () => {
   });
 
   it("cronjob depends on secret via env", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const c = cronjob("report", {
       image: "alpine",
       schedule: "0 6 * * *",
@@ -596,7 +596,7 @@ describe("dependency ordering", () => {
     });
     await sim.deploy({ c, sec });
     const cronState = getState(sim.state, "report");
-    ok(cronState.dependencies.includes("tok"));
+    ok(cronState.dependencies.some((d) => parseURN(d).id === "tok"));
   });
 });
 
@@ -612,7 +612,7 @@ describe("state correctness", () => {
 
   it("state count matches config resource count", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const s = service("api", {
       image: "x",
       env: { T: sec },
@@ -626,20 +626,20 @@ describe("state correctness", () => {
     const v = volume("data");
     const s = service("api", { image: "x" });
     await sim.deploy({ v, s });
-    const ids = sim.state.map((r) => r.id).sort();
+    const ids = sim.state.map((r) => parseURN(r.urn).id).sort();
     deepStrictEqual(ids, ["api", "data"]);
   });
 
   it("state kind is correct", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const s = service("api", { image: "x" });
     const c = cronjob("job", { image: "alpine", schedule: "0 * * * *" });
     await sim.deploy({ v, sec, s, c });
-    strictEqual(getState(sim.state, "data").kind, "volume");
-    strictEqual(getState(sim.state, "tok").kind, "config");
-    strictEqual(getState(sim.state, "api").kind, "service");
-    strictEqual(getState(sim.state, "job").kind, "cronjob");
+    strictEqual(parseURN(getState(sim.state, "data").urn).resource, "volume");
+    strictEqual(parseURN(getState(sim.state, "tok").urn).resource, "variable");
+    strictEqual(parseURN(getState(sim.state, "api").urn).resource, "service");
+    strictEqual(parseURN(getState(sim.state, "job").urn).resource, "cronjob");
   });
 
   it("service outputs include host, port, url", async () => {
@@ -666,7 +666,7 @@ describe("state correctness", () => {
 
   it("non-service outputs are empty", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const c = cronjob("job", { image: "alpine", schedule: "0 * * * *" });
     await sim.deploy({ v, sec, c });
     deepStrictEqual(getState(sim.state, "data").outputs, {});
@@ -689,7 +689,7 @@ describe("state correctness", () => {
 
   it("dependencies list is correct", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const db = service("db", { image: "pg" });
     const api = service("api", {
       image: "x",
@@ -699,13 +699,13 @@ describe("state correctness", () => {
     });
     await sim.deploy({ v, sec, db, api });
     const apiState = getState(sim.state, "api");
-    const deps = [...apiState.dependencies].sort();
-    deepStrictEqual(deps, ["data", "db", "tok"]);
+    const depIds = [...apiState.dependencies].map((d) => parseURN(d).id).sort();
+    deepStrictEqual(depIds, ["data", "db", "tok"]);
   });
 
   it("resources with no dependencies have empty dependencies array", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     await sim.deploy({ v, sec });
     deepStrictEqual(getState(sim.state, "data").dependencies, []);
     deepStrictEqual(getState(sim.state, "tok").dependencies, []);
@@ -720,10 +720,11 @@ describe("state correctness", () => {
     }
   });
 
-  it("runtime field defaults to empty object on first deploy", async () => {
+  // TODO: runtime field was removed from ResourceState during URN migration.
+  // Runtime state is now tracked separately by the CLI layer.
+  it.skip("runtime field defaults to empty object on first deploy", async () => {
     const v = volume("data");
     await sim.deploy({ v });
-    deepStrictEqual(getState(sim.state, "data").runtime, {});
   });
 
   it("created and modified are ISO timestamps", async () => {
@@ -794,19 +795,11 @@ describe("state persistence across deploys", () => {
     ok(mod2 >= mod1);
   });
 
-  it("runtime field preserved from previous state", async () => {
-    // The engine preserves `prev?.runtime ?? {}`, so let's verify that once set,
-    // it carries forward. We can't set it via simulation runtime directly since
-    // the engine reads from previous state, but we can verify it stays {}.
+  // TODO: runtime field was removed from ResourceState during URN migration.
+  // Runtime state is now tracked separately by the CLI layer.
+  it.skip("runtime field preserved from previous state", async () => {
     const s = service("api", { image: "node:20" });
     await sim.deploy({ s });
-    const runtime1 = getState(sim.state, "api").runtime;
-    deepStrictEqual(runtime1, {});
-
-    const s2 = service("api", { image: "node:22" });
-    await sim.deploy({ s: s2 });
-    const runtime2 = getState(sim.state, "api").runtime;
-    deepStrictEqual(runtime2, {});
   });
 
   it("fingerprint updates when config changes", async () => {
@@ -840,7 +833,7 @@ describe("state persistence across deploys", () => {
 
     await sim.deploy({ v });
     strictEqual(sim.state.length, 1);
-    strictEqual(sim.state[0]?.id, "data");
+    strictEqual(parseURN(sim.state[0]?.urn).id, "data");
   });
 
   it("newly added resources appear in state on redeploy", async () => {
@@ -851,7 +844,7 @@ describe("state persistence across deploys", () => {
     const s = service("api", { image: "x" });
     await sim.deploy({ v, s });
     strictEqual(sim.state.length, 2);
-    ok(sim.state.some((r) => r.id === "api"));
+    ok(sim.state.some((r) => parseURN(r.urn).id === "api"));
   });
 });
 
@@ -947,8 +940,8 @@ describe("multi-deploy lifecycle", () => {
     // Check dependencies updated in state
     const s1State = getState(sim.state, "s1");
     const s2State = getState(sim.state, "s2");
-    ok(!s1State.dependencies.includes("data"));
-    ok(s2State.dependencies.includes("data"));
+    ok(!s1State.dependencies.some((d) => parseURN(d).id === "data"));
+    ok(s2State.dependencies.some((d) => parseURN(d).id === "data"));
   });
 
   it("scale up — add multiple services in one deploy", async () => {
@@ -1015,47 +1008,61 @@ describe("secrets and interpolation", () => {
   });
 
   it("secret referenced directly in env is tracked as dependency", async () => {
-    const sec = config("db-pass", { secret: true });
+    const sec = variable("db-pass", { secret: true });
     const s = service("api", { image: "x", env: { DB_PASSWORD: sec } });
     await sim.deploy({ sec, s });
-    ok(getState(sim.state, "api").dependencies.includes("db-pass"));
+    ok(
+      getState(sim.state, "api").dependencies.some(
+        (d) => parseURN(d).id === "db-pass",
+      ),
+    );
   });
 
   it("secret via interpolate is tracked as dependency", async () => {
-    const sec = config("db-pass", { secret: true });
+    const sec = variable("db-pass", { secret: true });
     const s = service("api", {
       image: "x",
       env: { DATABASE_URL: interpolate`postgres://user:${sec}@db:5432/mydb` },
     });
     await sim.deploy({ sec, s });
-    ok(getState(sim.state, "api").dependencies.includes("db-pass"));
+    ok(
+      getState(sim.state, "api").dependencies.some(
+        (d) => parseURN(d).id === "db-pass",
+      ),
+    );
   });
 
   it("multiple secrets in one service are all tracked", async () => {
-    const s1 = config("key-a", { secret: true });
-    const s2 = config("key-b", { secret: true });
+    const s1 = variable("key-a", { secret: true });
+    const s2 = variable("key-b", { secret: true });
     const svc = service("api", { image: "x", env: { A: s1, B: s2 } });
     await sim.deploy({ s1, s2, svc });
-    const deps = getState(sim.state, "api").dependencies.sort();
-    deepStrictEqual(deps, ["key-a", "key-b"]);
+    const depIds = getState(sim.state, "api")
+      .dependencies.map((d) => parseURN(d).id)
+      .sort();
+    deepStrictEqual(depIds, ["key-a", "key-b"]);
   });
 
   it("secret in interpolation alongside plain strings", async () => {
-    const sec = config("token", { secret: true });
+    const sec = variable("token", { secret: true });
     const svc = service("api", {
       image: "x",
       env: { AUTH: interpolate`Bearer ${sec}` },
     });
     await sim.deploy({ sec, svc });
-    ok(getState(sim.state, "api").dependencies.includes("token"));
+    ok(
+      getState(sim.state, "api").dependencies.some(
+        (d) => parseURN(d).id === "token",
+      ),
+    );
   });
 
   it("changing a secret's config doesn't create runtime ops but updates state", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     await sim.deploy({ sec });
     const fp1 = getState(sim.state, "tok").fingerprint;
 
-    const sec2 = config("tok", { secret: true, length: 64 });
+    const sec2 = variable("tok", { secret: true, length: 64 });
     await sim.deploy({ sec: sec2 });
     strictEqual(sim.lastOps().length, 0);
 
@@ -1068,7 +1075,7 @@ describe("secrets and interpolation", () => {
   });
 
   it("removing a secret that was referenced triggers both remove ops", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const svc = service("api", { image: "x", env: { T: sec } });
     await sim.deploy({ sec, svc });
     strictEqual(sim.state.length, 2);
@@ -1331,7 +1338,7 @@ describe("runtimeState", () => {
   });
 
   it("secrets are not in runtimeState (no execute called)", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     await sim.deploy({ sec });
     strictEqual(sim.runtime.runtimeState().size, 0);
   });
@@ -1528,7 +1535,7 @@ describe("complex topologies", () => {
     );
 
     const apiState = getState(sim.state, "api");
-    ok(apiState.dependencies.includes("db"));
+    ok(apiState.dependencies.some((d) => parseURN(d).id === "db"));
   });
 
   it("three-tier: db → api → frontend", async () => {
@@ -1570,7 +1577,7 @@ describe("complex topologies", () => {
   it("mixed resource types with complex dependencies", async () => {
     const v1 = volume("v1");
     const v2 = volume("v2");
-    const sec = config("sec", { secret: true });
+    const sec = variable("sec", { secret: true });
     const db = service("db", {
       image: "pg",
       mounts: [{ source: v1, path: "/d" }],
@@ -1611,10 +1618,14 @@ describe("complex topologies", () => {
     if (croni >= 0) ok(v1i < croni, "v1 before cleanup cron");
 
     // Check dependency lists in state
-    const apiDeps = getState(sim.state, "api").dependencies.sort();
+    const apiDeps = getState(sim.state, "api")
+      .dependencies.map((d) => parseURN(d).id)
+      .sort();
     deepStrictEqual(apiDeps, ["cache", "db", "sec"]);
 
-    const cronDeps = getState(sim.state, "cleanup").dependencies.sort();
+    const cronDeps = getState(sim.state, "cleanup")
+      .dependencies.map((d) => parseURN(d).id)
+      .sort();
     deepStrictEqual(cronDeps, ["sec", "v1"]);
   });
 
@@ -1689,7 +1700,7 @@ describe("cronjob specifics", () => {
 
   it("cronjob with volume mount and secret env", async () => {
     const v = volume("logs");
-    const sec = config("api-key", { secret: true });
+    const sec = variable("api-key", { secret: true });
     const c = cronjob("report", {
       image: "alpine",
       schedule: "0 6 * * *",
@@ -1699,8 +1710,8 @@ describe("cronjob specifics", () => {
     await sim.deploy({ v, sec, c });
 
     const cronState = getState(sim.state, "report");
-    const deps = cronState.dependencies.sort();
-    deepStrictEqual(deps, ["api-key", "logs"]);
+    const depIds = cronState.dependencies.map((d) => parseURN(d).id).sort();
+    deepStrictEqual(depIds, ["api-key", "logs"]);
 
     // Volume should be created before cronjob
     const ops = opSummary(sim);
@@ -1806,7 +1817,7 @@ describe("edge cases", () => {
   });
 
   it("single secret deploy — no runtime ops, state exists", async () => {
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     await sim.deploy({ sec });
     strictEqual(sim.state.length, 1);
     strictEqual(sim.runtime.resources.size, 0); // no runtime ops for secrets
@@ -1814,9 +1825,9 @@ describe("edge cases", () => {
   });
 
   it("only secrets in config — no operations at all", async () => {
-    const a = config("a", { secret: true });
-    const b = config("b", { secret: true });
-    const c = config("c", { secret: true });
+    const a = variable("a", { secret: true });
+    const b = variable("b", { secret: true });
+    const c = variable("c", { secret: true });
     await sim.deploy({ a, b, c });
     strictEqual(sim.lastOps().length, 0);
     strictEqual(sim.state.length, 3);
@@ -1832,7 +1843,7 @@ describe("edge cases", () => {
 
   it("service with all optional fields set", async () => {
     const v = volume("data");
-    const sec = config("tok", { secret: true });
+    const sec = variable("tok", { secret: true });
     const db = service("db", { image: "pg" });
     const api = service("api", {
       image: "node:20",
@@ -1862,8 +1873,8 @@ describe("edge cases", () => {
       port: 8080,
       url: "http://api:8080",
     });
-    const deps = apiState.dependencies.sort();
-    deepStrictEqual(deps, ["data", "db", "tok"]);
+    const depIds = apiState.dependencies.map((d) => parseURN(d).id).sort();
+    deepStrictEqual(depIds, ["data", "db", "tok"]);
   });
 
   it("many deploys tracking runtime resources correctly", async () => {

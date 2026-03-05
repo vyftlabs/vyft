@@ -1,4 +1,4 @@
-import type { Resource } from "@vyft/core";
+import type { Resource } from "@vyft/primitives";
 import type { Graph } from "./graph.ts";
 
 /** Topological sort — dependencies before dependents. */
