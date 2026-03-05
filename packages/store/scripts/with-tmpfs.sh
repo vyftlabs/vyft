@@ -25,9 +25,14 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
-exec unshare -rm sh -c '
-  dir=$(mktemp -d)
-  mount -t tmpfs -o size="$1" tmpfs "$dir"
-  shift
-  TMPFS_DIR="$dir" exec "$@"
-' -- "$size" "$@"
+if unshare -rm true 2>/dev/null; then
+  exec unshare -rm sh -c '
+    dir=$(mktemp -d)
+    mount -t tmpfs -o size="$1" tmpfs "$dir"
+    shift
+    TMPFS_DIR="$dir" exec "$@"
+  ' -- "$size" "$@"
+else
+  echo "warning: unshare not available, running without tmpfs (ENOSPC tests will be skipped)" >&2
+  exec "$@"
+fi

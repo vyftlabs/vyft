@@ -518,12 +518,12 @@ describe("Store", { concurrency: true }, () => {
       const dir = await setup(t);
       const brokenFs: FileSystem = {
         ...nodeFs,
-        writeFile: (...args: Parameters<FileSystem["writeFile"]>) => {
-          if (String(args[0]).includes(".state.json.tmp")) {
+        writeFile: ((path: string, data: string, options: { flag: string }) => {
+          if (path.includes(".state.json.tmp")) {
             return Promise.reject(new Error("disk full"));
           }
-          return nodeFs.writeFile(...args);
-        },
+          return nodeFs.writeFile(path, data, options);
+        }) as FileSystem["writeFile"],
       };
 
       await seedFile(
