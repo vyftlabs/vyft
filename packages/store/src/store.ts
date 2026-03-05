@@ -10,6 +10,7 @@ import { apply, replay, WALog } from "./wal.ts";
 export class Store {
   #state: State;
   #deleted = false;
+  #disposed = false;
   readonly #dir: string;
   readonly #fs: FileSystem;
   readonly #stateStore: StateStore;
@@ -36,19 +37,24 @@ export class Store {
     const lock = new Lock(join(dir, "lock"), fs);
     await lock.acquire();
 
-    const stateStore = new StateStore(join(dir, "state.json"), fs);
-    const wal = new WALog(join(dir, "wal.jsonl"), fs);
+    try {
+      const stateStore = new StateStore(join(dir, "state.json"), fs);
+      const wal = new WALog(join(dir, "wal.jsonl"), fs);
 
-    const snapshot = await stateStore.read();
-    const entries = await wal.read();
-    const state = entries.length > 0 ? replay(snapshot, entries) : snapshot;
+      const snapshot = await stateStore.read();
+      const entries = await wal.read();
+      const state = entries.length > 0 ? replay(snapshot, entries) : snapshot;
 
-    if (entries.length > 0) {
-      await stateStore.write(state);
-      await wal.clear();
+      if (entries.length > 0) {
+        await stateStore.write(state);
+        await wal.clear();
+      }
+
+      return new Store(dir, fs, state, stateStore, wal, lock);
+    } catch (err) {
+      await lock.release();
+      throw err;
     }
-
-    return new Store(dir, fs, state, stateStore, wal, lock);
   }
 
   get size(): number {
@@ -68,6 +74,8 @@ export class Store {
   }
 
   async append(entry: WALEntry): Promise<void> {
+    if (this.#disposed) throw new Error("Store is disposed");
+    if (this.#deleted) throw new Error("Store is deleted");
     await this.#wal.append(entry);
     apply(this.#state, entry);
   }
@@ -83,12 +91,16 @@ export class Store {
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
-    if (!this.#deleted) await this.#compact();
-    await this.#lock.release();
+    await this.dispose();
   }
 
   async dispose(): Promise<void> {
-    if (!this.#deleted) await this.#compact();
-    await this.#lock.release();
+    if (this.#disposed) return;
+    this.#disposed = true;
+    try {
+      if (!this.#deleted) await this.#compact();
+    } finally {
+      await this.#lock.release();
+    }
   }
 }

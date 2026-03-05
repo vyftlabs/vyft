@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'src/**/*.test.ts'",
+    "test": "./scripts/with-tmpfs.sh -- node --test 'src/**/*.test.ts'",
     "lint": "biome check ."
   },
   "dependencies": {
