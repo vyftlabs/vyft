@@ -195,7 +195,7 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
 
   // Create default context
   const contextResult = await vyftExec(
-    `context add ${id} --platform test --runtime test`,
+    `context add ${id} --platform test --runtime docker`,
   );
   if (contextResult.code !== 0) {
     throw new Error(`Failed to create context: ${contextResult.stderr}`);

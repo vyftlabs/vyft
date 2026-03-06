@@ -21,7 +21,6 @@ export async function ensureProxy(ctx: DockerContext): Promise<string> {
 
   const config = buildContainerConfig(
     {
-      image: CADDY_IMAGE,
       port: 80,
       restart: "always",
       env: {},

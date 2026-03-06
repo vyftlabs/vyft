@@ -54,6 +54,9 @@ export default new Command("deploy")
           }
         },
       });
+    } catch (err) {
+      s.stop("failed");
+      throw err;
     } finally {
       await store.dispose();
     }

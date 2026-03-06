@@ -1,6 +1,21 @@
-import type { ServiceInput } from "@vyft/runtime";
 import type { DockerClient } from "./client.ts";
 import type { DockerContext } from "./context.ts";
+
+export interface ContainerInput {
+  port: number;
+  env?: Record<string, string> | undefined;
+  command?: string[] | undefined;
+  mounts?: Array<{ source: string; target: string }> | undefined;
+  health?:
+    | {
+        path: string;
+        interval?: string | undefined;
+        timeout?: string | undefined;
+        retries?: number | undefined;
+      }
+    | undefined;
+  restart?: string | undefined;
+}
 
 export function containerName(
   project: string,
@@ -32,7 +47,7 @@ interface ContainerConfig {
 }
 
 export function buildContainerConfig(
-  input: ServiceInput,
+  input: ContainerInput,
   name: string,
   image: string,
   ctx: DockerContext,

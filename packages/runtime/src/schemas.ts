@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const serviceInput = z.object({
+  name: z.string(),
   image: z.string().optional(),
   path: z.string().optional(),
   cwd: z.string().optional(),
@@ -28,12 +29,14 @@ export const serviceInput = z.object({
 export type ServiceInput = z.infer<typeof serviceInput>;
 
 export const volumeInput = z.object({
+  name: z.string(),
   size: z.string().optional(),
 });
 
 export type VolumeInput = z.infer<typeof volumeInput>;
 
 export const cronJobInput = z.object({
+  name: z.string(),
   schedule: z.string(),
   image: z.string().optional(),
   path: z.string().optional(),

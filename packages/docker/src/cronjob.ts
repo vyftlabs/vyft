@@ -8,6 +8,7 @@ import {
   removeContainer,
 } from "./container.ts";
 import type { DockerContext } from "./context.ts";
+import { pullImage } from "./image.ts";
 import { ensureNetwork } from "./network.ts";
 
 function buildCronCommand(schedule: string, command: string[]): string[] {
@@ -24,12 +25,9 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   async create({ input, ctx }) {
     await ensureNetwork(ctx.client, ctx.networkName);
 
-    const name = containerName(
-      ctx.project,
-      ctx.stage,
-      `cron-${input.schedule.replace(/\s+/g, "-")}`,
-    );
+    const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
+    await pullImage(ctx.client, image);
 
     const serviceInput = {
       image,
@@ -59,11 +57,7 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   async update({ input, ctx }) {
     await ensureNetwork(ctx.client, ctx.networkName);
 
-    const name = containerName(
-      ctx.project,
-      ctx.stage,
-      `cron-${input.schedule.replace(/\s+/g, "-")}`,
-    );
+    const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
 
     const serviceInput = {
@@ -90,11 +84,7 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   },
 
   async delete({ input, ctx }) {
-    const name = containerName(
-      ctx.project,
-      ctx.stage,
-      `cron-${input.schedule.replace(/\s+/g, "-")}`,
-    );
+    const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
 

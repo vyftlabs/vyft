@@ -29,24 +29,20 @@ export async function removeVolume(
 
 export const volumeHandlers: Handlers<VolumeInput, DockerContext> = {
   async create({ input, ctx }) {
-    // Use a deterministic name based on project/stage. The actual `id` isn't
-    // in VolumeInput, so we derive from project+stage+size as a simple key.
-    // The real id comes from the URN at a higher level — here we just need a
-    // stable Docker volume name. We use "default" as a fallback.
-    const name = volumeName(ctx.project, ctx.stage, input.size ?? "default");
+    const name = volumeName(ctx.project, ctx.stage, input.name);
     await createVolume(ctx.client, name);
     return { output: { name } };
   },
 
   async read({ input, ctx }) {
-    const name = volumeName(ctx.project, ctx.stage, input.size ?? "default");
+    const name = volumeName(ctx.project, ctx.stage, input.name);
     const res = await ctx.client.get(`/volumes/${name}`);
     if (res.status !== 200) return {};
     return { name };
   },
 
   async delete({ input, ctx }) {
-    const name = volumeName(ctx.project, ctx.stage, input.size ?? "default");
+    const name = volumeName(ctx.project, ctx.stage, input.name);
     await removeVolume(ctx.client, name);
   },
 

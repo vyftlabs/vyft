@@ -70,7 +70,7 @@ export const service: {
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "service",
-  (_id, config) => {
+  (id, config) => {
     const env: Record<string, string> = {
       PORT: String(config.port ?? 3000),
       NODE_ENV: "production",
@@ -78,6 +78,7 @@ export const service: {
     };
 
     return {
+      name: id,
       image: config.image,
       path: config.path ?? (config.image ? undefined : "."),
       cwd: config.cwd,
@@ -104,7 +105,8 @@ export const volume: {
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "volume",
-  (_id, config) => ({
+  (id, config) => ({
+    name: id,
     size: config.size,
   }),
 );
@@ -120,7 +122,8 @@ export const cronjob: {
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "cronjob",
-  (_id, config) => ({
+  (id, config) => ({
+    name: id,
     schedule: config.schedule,
     image: config.image,
     path: config.path,

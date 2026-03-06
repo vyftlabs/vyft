@@ -8,6 +8,7 @@ import {
   removeContainer,
 } from "./container.ts";
 import type { DockerContext } from "./context.ts";
+import { pullImage } from "./image.ts";
 import { inspectContainer, normalizeDockerContainer } from "./inspect.ts";
 import { ensureNetwork } from "./network.ts";
 
@@ -15,8 +16,9 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   async create({ input, ctx }) {
     await ensureNetwork(ctx.client, ctx.networkName);
 
-    const name = containerName(ctx.project, ctx.stage, input.image ?? "app");
+    const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
+    await pullImage(ctx.client, image);
     const config = buildContainerConfig(input, name, image, ctx);
     const containerId = await createContainer(ctx.client, name, config);
 
@@ -31,7 +33,7 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   },
 
   async read({ input, ctx }) {
-    const name = containerName(ctx.project, ctx.stage, input.image ?? "app");
+    const name = containerName(ctx.project, ctx.stage, input.name);
     const inspect = await inspectContainer(ctx.client, name);
     if (!inspect) return {};
     const normalized = normalizeDockerContainer(inspect);
@@ -47,8 +49,9 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   async update({ input, ctx }) {
     await ensureNetwork(ctx.client, ctx.networkName);
 
-    const name = containerName(ctx.project, ctx.stage, input.image ?? "app");
+    const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
+    await pullImage(ctx.client, image);
     const config = buildContainerConfig(input, name, image, ctx);
     const containerId = await recreateContainer(ctx.client, name, config);
 
@@ -61,7 +64,7 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   },
 
   async delete({ input, ctx }) {
-    const name = containerName(ctx.project, ctx.stage, input.image ?? "app");
+    const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
 
