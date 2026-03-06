@@ -1,0 +1,22 @@
+{
+  "name": "@vyft/client",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/env.d.ts",
+      "default": "./dist/env.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "postinstall.js"
+  ],
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "peerDependencies": {
+    "@vyft/core": "workspace:*"
+  }
+}

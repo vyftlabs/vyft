@@ -24,6 +24,12 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/client:
+    dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/core:
     dependencies:
       '@vyft/engine':
@@ -32,6 +38,9 @@ importers:
       '@vyft/store':
         specifier: workspace:*
         version: link:../store
+      jiti:
+        specifier: ^2.4.2
+        version: 2.6.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
