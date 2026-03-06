@@ -56,5 +56,6 @@ export {
   secret,
   unwrap,
 } from "./secret.ts";
+export type { Dependable, Linkable } from "@vyft/engine";
 export { StateBuilder, toState, transform } from "./transform.ts";
 export { urn } from "./urn.ts";

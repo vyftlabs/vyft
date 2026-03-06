@@ -7,7 +7,7 @@ import { service } from "vyft";
 export const api = service("api", { image: "nginx:alpine", port: 80 });
 `;
 
-describe("diff", () => {
+describe("diff", { concurrency: true }, () => {
   it("shows create for new resources", async () => {
     await using box = await sandbox();
     await box.writeConfig(CONFIG);

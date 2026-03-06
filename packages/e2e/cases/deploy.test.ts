@@ -7,7 +7,7 @@ import { service } from "vyft";
 export const api = service("api", { image: "nginx:alpine", port: 80 });
 `;
 
-describe("deploy", () => {
+describe("deploy", { concurrency: true }, () => {
   it("creates a service container", async () => {
     await using box = await sandbox();
     await box.writeConfig(CONFIG);

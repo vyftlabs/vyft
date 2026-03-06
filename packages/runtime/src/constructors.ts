@@ -2,8 +2,10 @@ import {
   type Provider,
   type ResourceEntry,
   type ResourceOptions,
+  createRef,
   resource,
 } from "@vyft/core";
+import type { Linkable } from "@vyft/core";
 import type { CronJobInput, ServiceInput, VolumeInput } from "./schemas.ts";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
@@ -36,6 +38,7 @@ export interface ServiceConfig {
   };
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
   expose?: boolean;
+  link?: Linkable[];
 }
 
 export interface VolumeConfig {
@@ -59,6 +62,14 @@ export interface CronJobConfig {
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
 }
 
+function linkEnvPrefix(urn: string): string {
+  // Extract the resource id from the URN (last segment)
+  // urn:vyft:resource:runtime:service:db → DB
+  const parts = urn.split(":");
+  const id = parts[parts.length - 1] ?? "";
+  return id.toUpperCase().replace(/-/g, "_");
+}
+
 export const service: {
   (
     id: string,
@@ -76,6 +87,18 @@ export const service: {
       NODE_ENV: "production",
       ...config.env,
     };
+
+    // Refs are branded objects that sealInput converts to serialized envelopes.
+    // They resolve to strings at deploy time, but at config time they aren't strings.
+    const envWithRefs = env as Record<string, unknown>;
+    if (config.link) {
+      for (const ref of config.link) {
+        const prefix = linkEnvPrefix(ref.urn);
+        envWithRefs[`${prefix}_HOST`] = createRef(ref.urn, "host");
+        envWithRefs[`${prefix}_PORT`] = createRef(ref.urn, "port");
+        envWithRefs[`${prefix}_URL`] = createRef(ref.urn, "url");
+      }
+    }
 
     return {
       name: id,

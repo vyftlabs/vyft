@@ -1,4 +1,4 @@
-import type { Dependable } from "@vyft/engine";
+import { DEPENDABLE, type Dependable, LINKABLE } from "@vyft/engine";
 import type { z } from "zod";
 import type { Provider } from "./provider.ts";
 import type { URN } from "./urn.ts";
@@ -14,6 +14,8 @@ export interface ResourceOptions {
 }
 
 export interface ResourceEntry<T = unknown> extends ResourceRef<T> {
+  [DEPENDABLE]: true;
+  [LINKABLE]: true;
   value: Record<string, unknown>;
   dependsOn?: Dependable[];
   provider: Provider<unknown>;
@@ -93,11 +95,13 @@ export function resource<C, T extends Record<string, unknown>>(
     }
 
     const value = define(id, config);
-    const entry: ResourceEntry<T> = {
+    const entry = {
+      [DEPENDABLE]: true,
+      [LINKABLE]: true,
       urn: resourceUrn,
       value,
       provider: providerInstance,
-    };
+    } as ResourceEntry<T>;
     if (options?.dependsOn) {
       entry.dependsOn = options.dependsOn;
     }

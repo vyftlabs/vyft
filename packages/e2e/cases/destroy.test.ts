@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { sandbox } from "../src/sandbox.ts";
 
-describe("destroy", () => {
+describe("destroy", { concurrency: true }, () => {
   it("removes deployed containers", async () => {
     await using box = await sandbox();
     await box.writeConfig(`
