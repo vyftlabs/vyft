@@ -42,75 +42,83 @@ after(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
+function assertArtifactRef(value: unknown, expectedKey: string): void {
+  assert.ok(value != null && typeof value === "object" && "key" in value);
+  assert.equal(value.key, expectedKey);
+}
+
+const create = exec.handlers.create;
+assert.ok(create);
+
 describe("exec", () => {
   describe("basic command execution", () => {
     test("executes simple command and returns stdout artifact", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: { command: ["echo", "hello"] },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef; stderr: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("executes command with multiple arguments", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: { command: ["printf", "%s %s", "hello", "world"] },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("returns stderr artifact", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["sh", "-c", "echo warn >&2; echo ok"],
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef; stderr: ArtifactRef };
+      });
 
-      assert.equal(result.stderr.key, "stderr");
+      assertArtifactRef(output["stderr"], "stderr");
     });
   });
 
   describe("stdin", () => {
     test("accepts literal string stdin", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["wc", "-c"],
           stdin: "hello",
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("accepts file path via stdinFile", async () => {
       const inputFile = path.join(tmpDir, "stdin-test.txt");
       await fs.writeFile(inputFile, "file content here");
 
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["wc", "-c"],
           stdinFile: inputFile,
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("accepts relative file path with cwd", async () => {
       await fs.writeFile(path.join(tmpDir, "relative.txt"), "relative content");
 
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["cat"],
           stdinFile: "./relative.txt",
@@ -118,14 +126,14 @@ describe("exec", () => {
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("throws when stdinFile does not exist", async () => {
       await assert.rejects(async () => {
-        await exec.handlers.create?.({
+        await create({
           input: {
             command: ["cat"],
             stdinFile: "./nonexistent.txt",
@@ -140,7 +148,7 @@ describe("exec", () => {
     test("throws when both stdin and stdinFile are specified", async () => {
       await assert.rejects(
         async () => {
-          await exec.handlers.create?.({
+          await create({
             input: {
               command: ["cat"],
               stdin: "literal",
@@ -160,16 +168,16 @@ describe("exec", () => {
 
   describe("environment variables", () => {
     test("sets custom environment variables", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["sh", "-c", "echo $MY_CUSTOM_VAR"],
           env: { MY_CUSTOM_VAR: "test_value" },
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
   });
 
@@ -177,16 +185,16 @@ describe("exec", () => {
     test("executes in specified directory", async () => {
       await fs.writeFile(path.join(tmpDir, "cwd-test.txt"), "exists");
 
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["ls", "cwd-test.txt"],
           cwd: tmpDir,
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("fails when file not in cwd", async () => {
@@ -195,7 +203,7 @@ describe("exec", () => {
       await fs.writeFile(path.join(tmpDir, "not-here.txt"), "content");
 
       await assert.rejects(async () => {
-        await exec.handlers.create?.({
+        await create({
           input: {
             command: ["ls", "not-here.txt"],
             cwd: otherDir,
@@ -211,7 +219,7 @@ describe("exec", () => {
     test("kills command after timeout", async () => {
       await assert.rejects(
         async () => {
-          await exec.handlers.create?.({
+          await create({
             input: {
               command: ["sleep", "10"],
               timeout: 100,
@@ -228,16 +236,16 @@ describe("exec", () => {
     });
 
     test("succeeds when command finishes before timeout", async () => {
-      const result = (await exec.handlers.create?.({
+      const { output } = await create({
         input: {
           command: ["echo", "fast"],
           timeout: 5000,
         },
         ctx,
         artifacts: createMockArtifacts(),
-      })) as { stdout: ArtifactRef };
+      });
 
-      assert.equal(result.stdout.key, "stdout");
+      assertArtifactRef(output["stdout"], "stdout");
     });
   });
 
@@ -245,7 +253,7 @@ describe("exec", () => {
     test("throws on non-zero exit code", async () => {
       await assert.rejects(
         async () => {
-          await exec.handlers.create?.({
+          await create({
             input: { command: ["sh", "-c", "exit 1"] },
             ctx,
             artifacts: createMockArtifacts(),
@@ -260,7 +268,7 @@ describe("exec", () => {
 
     test("throws on command not found", async () => {
       await assert.rejects(async () => {
-        await exec.handlers.create?.({
+        await create({
           input: { command: ["this-command-does-not-exist-xyz"] },
           ctx,
           artifacts: createMockArtifacts(),
@@ -271,7 +279,7 @@ describe("exec", () => {
     test("includes stderr in error for failed commands", async () => {
       await assert.rejects(
         async () => {
-          await exec.handlers.create?.({
+          await create({
             input: {
               command: ["sh", "-c", "echo 'error message' >&2; exit 1"],
             },

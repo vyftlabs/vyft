@@ -26,7 +26,9 @@ describe("resource builder", () => {
       .input(z.object({ serverId: z.string() }))
       .handle({
         async create({ input, ctx }) {
-          return { id: `snap-${input.serverId}`, user: ctx.userId };
+          return {
+            output: { id: `snap-${input.serverId}`, user: ctx.userId },
+          };
         },
       });
 
@@ -41,7 +43,7 @@ describe("platform builder", () => {
 
     const server = t.platform.server.handle({
       async create({ input }) {
-        return { id: `srv-${input.name}`, size: input.size };
+        return { output: { id: `srv-${input.name}`, size: input.size } };
       },
     });
 
@@ -57,9 +59,11 @@ describe("platform builder", () => {
       .handle({
         async create({ input }) {
           return {
-            name: input.name,
-            size: input.size,
-            region: input.provider.region,
+            output: {
+              name: input.name,
+              size: input.size,
+              region: input.provider.region,
+            },
           };
         },
       });
@@ -75,19 +79,19 @@ describe("createProvider", () => {
 
     const server = t.platform.server.handle({
       async create({ input }) {
-        return { id: input.name };
+        return { output: { id: input.name } };
       },
     });
 
     const volume = t.platform.volume.handle({
       async create({ input }) {
-        return { id: `vol-${input.size}` };
+        return { output: { id: `vol-${input.size}` } };
       },
     });
 
     const network = t.platform.network.handle({
       async create({ input }) {
-        return { id: input.cidr };
+        return { output: { id: input.cidr } };
       },
     });
 
@@ -95,7 +99,7 @@ describe("createProvider", () => {
       .input(z.object({ serverId: z.string() }))
       .handle({
         async create({ input }) {
-          return { id: input.serverId };
+          return { output: { id: input.serverId } };
         },
       });
 
@@ -115,7 +119,7 @@ describe("createProvider", () => {
 
     const server = t.platform.server.handle({
       async create({ input }) {
-        return { id: input.name };
+        return { output: { id: input.name } };
       },
     });
 
@@ -134,7 +138,7 @@ describe("createProvider", () => {
 
     const glob = t.resource.input(z.object({ pattern: z.string() })).handle({
       async create({ input }) {
-        return { matched: [input.pattern] };
+        return { output: { matched: [input.pattern] } };
       },
     });
 

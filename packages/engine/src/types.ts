@@ -1,21 +1,34 @@
+import type { Dependable } from "./brands.ts";
+
 export type Action = "create" | "update" | "delete";
 
-export interface Change<T = unknown> {
+export type EntryData = Omit<Entry, "urn">;
+
+export interface Change {
   urn: string;
   action: Action;
-  old?: T;
-  new?: T;
+  old?: EntryData;
+  new?: EntryData;
 }
 
-export interface Result<T = unknown> {
-  change: Change<T>;
-  output: unknown;
+export interface Result {
+  change: Change;
+  externalId?: string;
+  output: Record<string, unknown>;
 }
 
-export interface Dispatcher<T = unknown> {
-  dispatch(change: Change<T>): Promise<Result<T>>;
+export interface Dispatcher {
+  dispatch(change: Change): Promise<Result>;
 }
 
-export interface State<T = unknown> {
-  entries: Record<string, T>;
+export interface Entry {
+  urn: string;
+  externalId?: string;
+  input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  dependsOn?: Dependable[];
+}
+
+export interface State {
+  entries: Record<string, Entry>;
 }

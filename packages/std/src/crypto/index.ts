@@ -25,7 +25,7 @@ export const randomBytes = t.resource
     async create({ input }) {
       const encoding = input.encoding ?? "hex";
       const result = crypto.randomBytes(input.length).toString(encoding);
-      return { result };
+      return { output: { result } };
     },
   });
 
@@ -66,7 +66,7 @@ export const randomString = t.resource
       for (const byte of bytes) {
         result += alphabet[byte % alphabet.length];
       }
-      return { result };
+      return { output: { result } };
     },
   });
 
@@ -89,7 +89,7 @@ export const randomInteger = t.resource
     async create({ input }) {
       const range = input.max - input.min + 1;
       const result = input.min + crypto.randomInt(range);
-      return { result };
+      return { output: { result } };
     },
   });
 
@@ -104,7 +104,7 @@ export const randomInteger = t.resource
 export const randomUuid = t.resource.input(z.object({})).handle({
   async create() {
     const result = crypto.randomUUID();
-    return { result };
+    return { output: { result } };
   },
 });
 
@@ -162,6 +162,6 @@ export const sshKeyPair = t.resource
         .digest("base64");
       const fingerprint = `SHA256:${hash}`;
 
-      return { privateKeyPem, publicKeyPem, fingerprint };
+      return { output: { privateKeyPem, publicKeyPem, fingerprint } };
     },
   });

@@ -47,6 +47,6 @@ export const template = t.resource
 
       const sha256 = crypto.createHash("sha256").update(rendered).digest("hex");
 
-      return { content: rendered, sha256 };
+      return { output: { content: rendered, sha256 } };
     },
   });

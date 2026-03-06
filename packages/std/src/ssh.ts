@@ -50,7 +50,7 @@ export const ssh = t.resource
       const { stdout, stderr } = await executeSSH(input);
       const stdoutRef = await artifacts.write("stdout", stdout);
       const stderrRef = await artifacts.write("stderr", stderr);
-      return { stdout: stdoutRef, stderr: stderrRef };
+      return { output: { stdout: stdoutRef, stderr: stderrRef } };
     },
   });
 

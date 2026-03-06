@@ -59,6 +59,6 @@ export const glob = t.resource
 
       const archive = await artifacts.write("archive", archiveData);
 
-      return { archive, files, count: files.length };
+      return { output: { archive, files, count: files.length } };
     },
   });

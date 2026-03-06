@@ -1,10 +1,10 @@
 import type { Change, Dispatcher, Result } from "./types.ts";
 
-export async function execute<T>(
-  plan: Change<T>[][],
-  dispatcher: Dispatcher<T>,
-): Promise<Result<T>[]> {
-  const results: Result<T>[] = [];
+export async function execute(
+  plan: Change[][],
+  dispatcher: Dispatcher,
+): Promise<Result[]> {
+  const results: Result[] = [];
 
   for (const step of plan) {
     const stepResults = await Promise.all(

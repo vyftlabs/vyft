@@ -14,14 +14,14 @@ export async function plan(
 
   for (const step of steps) {
     for (const change of step) {
-      if (change.action === "update") {
+      if (change.action === "update" && change.old && change.new) {
         const { provider: providerName, resource: resourceName } = urn.parse(
           change.urn,
         );
         const provider = ctx.providers[providerName];
-        const platformResources = provider?.config.platform as
+        const platformResources:
           | Record<string, ResourceDefinition>
-          | undefined;
+          | undefined = provider?.config.platform;
         const resource =
           platformResources?.[resourceName] ??
           provider?.config.resources?.[resourceName];
@@ -30,8 +30,8 @@ export async function plan(
         if (diffHandler) {
           const artifacts = ctx.createArtifacts(change.urn);
           const result = await diffHandler({
-            old: change.old,
-            new: change.new,
+            old: change.old.input,
+            new: change.new.input,
             artifacts,
           });
           switch (result.action) {

@@ -1,23 +1,36 @@
-import type { State } from "@vyft/engine";
+import type { Entry, State } from "@vyft/engine";
 import type { ResourceEntry, ResourceRef } from "./resource.ts";
 
 export class StateBuilder {
-  readonly entries: Record<string, unknown>;
+  readonly entries: Record<string, Entry>;
 
-  constructor(entries: Record<string, unknown>) {
+  constructor(entries: Record<string, Entry>) {
     this.entries = entries;
   }
 
   add<T>(entry: ResourceEntry<T>): StateBuilder {
-    return new StateBuilder({ ...this.entries, [entry.urn]: entry.value });
+    const engineEntry: Entry = {
+      urn: entry.urn,
+      input: entry.value ?? {},
+    };
+    if (entry.dependsOn) {
+      engineEntry.dependsOn = entry.dependsOn;
+    }
+    return new StateBuilder({ ...this.entries, [entry.urn]: engineEntry });
   }
 
-  update<T>(ref: ResourceRef<T>, fn: (prev: T) => T): StateBuilder {
-    const prev = this.entries[ref.urn];
-    if (prev === undefined) {
+  update(
+    ref: ResourceRef,
+    fn: (prev: Record<string, unknown>) => Record<string, unknown>,
+  ): StateBuilder {
+    const existing = this.entries[ref.urn];
+    if (!existing) {
       throw new Error(`Cannot update unknown entry: ${ref.urn}`);
     }
-    return new StateBuilder({ ...this.entries, [ref.urn]: fn(prev as T) });
+    return new StateBuilder({
+      ...this.entries,
+      [ref.urn]: { ...existing, input: fn(existing.input) },
+    });
   }
 
   remove(ref: ResourceRef): StateBuilder {

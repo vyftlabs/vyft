@@ -42,23 +42,35 @@ after(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
+// helper to pull typed file entries from glob output
+function outputFiles(
+  output: Record<string, unknown>,
+): Array<{ path: string; size: number; sha256: string }> {
+  const arr = output["files"];
+  assert.ok(Array.isArray(arr));
+  return arr;
+}
+
 // ── file ────────────────────────────────────────────────────────────────
 
 describe("file", () => {
+  const create = file.handlers.create;
+  assert.ok(create);
+
   test("reads file as utf-8 by default", async () => {
     const filePath = path.join(tmpDir, "hello.txt");
     await fs.writeFile(filePath, "hello world");
 
     const input = { source: filePath };
-    const result = (await file.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { content: string; size: number; sha256: string };
-    assert.equal(result.content, "hello world");
-    assert.equal(result.size, 11);
-    assert.equal(typeof result.sha256, "string");
-    assert.equal(result.sha256.length, 64);
+    });
+    assert.equal(output["content"], "hello world");
+    assert.equal(output["size"], 11);
+    assert.equal(typeof output["sha256"], "string");
+    assert.equal(String(output["sha256"]).length, 64);
   });
 
   test("reads file as base64", async () => {
@@ -67,13 +79,13 @@ describe("file", () => {
     await fs.writeFile(filePath, buf);
 
     const input = { source: filePath, encoding: "base64" } as const;
-    const result = (await file.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { content: string; size: number };
-    assert.equal(result.content, buf.toString("base64"));
-    assert.equal(result.size, 3);
+    });
+    assert.equal(output["content"], buf.toString("base64"));
+    assert.equal(output["size"], 3);
   });
 
   test("sha256 is consistent for same content", async () => {
@@ -82,33 +94,36 @@ describe("file", () => {
     await fs.writeFile(a, "same content");
     await fs.writeFile(b, "same content");
 
-    const resA = (await file.handlers.create?.({
+    const resA = await create({
       input: { source: a },
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { sha256: string };
-    const resB = (await file.handlers.create?.({
+    });
+    const resB = await create({
       input: { source: b },
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { sha256: string };
-    assert.equal(resA.sha256, resB.sha256);
+    });
+    assert.equal(resA.output["sha256"], resB.output["sha256"]);
   });
 });
 
 // ── template ────────────────────────────────────────────────────────────
 
 describe("template", () => {
+  const create = template.handlers.create;
+  assert.ok(create);
+
   test("interpolates inline content", async () => {
     const input = { content: "Hello, {{name}}!", vars: { name: "World" } };
-    const result = (await template.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { content: string; sha256: string };
-    assert.equal(result.content, "Hello, World!");
-    assert.equal(typeof result.sha256, "string");
-    assert.equal(result.sha256.length, 64);
+    });
+    assert.equal(output["content"], "Hello, World!");
+    assert.equal(typeof output["sha256"], "string");
+    assert.equal(String(output["sha256"]).length, 64);
   });
 
   test("interpolates from file source", async () => {
@@ -119,18 +134,18 @@ describe("template", () => {
       source: tplPath,
       vars: { user: "Alice", place: "Wonderland" },
     };
-    const result = (await template.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { content: string };
-    assert.equal(result.content, "Hi Alice, welcome to Wonderland.");
+    });
+    assert.equal(output["content"], "Hi Alice, welcome to Wonderland.");
   });
 
   test("throws on undefined variable", async () => {
     const input = { content: "{{missing}}", vars: {} };
     await assert.rejects(async () => {
-      await template.handlers.create?.({
+      await create({
         input,
         ctx,
         artifacts: createMockArtifacts(),
@@ -142,6 +157,9 @@ describe("template", () => {
 // ── glob ────────────────────────────────────────────────────────────────
 
 describe("glob", () => {
+  const create = glob.handlers.create;
+  assert.ok(create);
+
   let globDir: string;
 
   before(async () => {
@@ -156,53 +174,54 @@ describe("glob", () => {
 
   test("matches files by pattern", async () => {
     const input = { cwd: globDir, include: ["*.txt"] };
-    const result = (await glob.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { count: number; files: { path: string }[] };
-    assert.equal(result.count, 2);
-    const paths = result.files.map((f) => f.path);
+    });
+    assert.equal(output["count"], 2);
+    const files = outputFiles(output);
+    const paths = files.map((f) => f.path);
     assert.ok(paths.includes("a.txt"));
     assert.ok(paths.includes("b.txt"));
   });
 
   test("excludes files by pattern", async () => {
     const input = { cwd: globDir, include: ["**/*"], exclude: ["*.log"] };
-    const result = (await glob.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { files: { path: string }[] };
-    const paths = result.files.map((f) => f.path);
+    });
+    const files = outputFiles(output);
+    const paths = files.map((f) => f.path);
     assert.ok(!paths.includes("c.log"));
     assert.ok(paths.includes("a.txt"));
   });
 
   test("includes nested files with ** pattern", async () => {
     const input = { cwd: globDir, include: ["**/*.txt"] };
-    const result = (await glob.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { count: number; files: { path: string }[] };
-    assert.equal(result.count, 3);
-    const paths = result.files.map((f) => f.path);
+    });
+    assert.equal(output["count"], 3);
+    const files = outputFiles(output);
+    const paths = files.map((f) => f.path);
     assert.ok(paths.includes("sub/d.txt"));
   });
 
   test("per-file sha256 is correct", async () => {
     const input = { cwd: globDir, include: ["a.txt"] };
-    const result = (await glob.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as {
-      count: number;
-      files: { path: string; size: number; sha256: string }[];
-    };
-    assert.equal(result.count, 1);
-    const f = result.files[0];
+    });
+    assert.equal(output["count"], 1);
+    const files = outputFiles(output);
+    const f = files[0];
     assert.ok(f);
     assert.equal(f.path, "a.txt");
     assert.equal(f.size, 3);
@@ -211,11 +230,15 @@ describe("glob", () => {
 
   test("returns archive artifact ref", async () => {
     const input = { cwd: globDir, include: ["*.txt"] };
-    const result = (await glob.handlers.create?.({
+    const { output } = await create({
       input,
       ctx,
       artifacts: createMockArtifacts(),
-    })) as { archive: ArtifactRef };
-    assert.equal(result.archive.key, "archive");
+    });
+    const archive = output["archive"];
+    assert.ok(
+      archive != null && typeof archive === "object" && "key" in archive,
+    );
+    assert.equal(archive.key, "archive");
   });
 });

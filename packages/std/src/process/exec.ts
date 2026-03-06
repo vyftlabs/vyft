@@ -103,8 +103,10 @@ export const exec = t.resource
       const stderrRef = await artifacts.write("stderr", stderr);
 
       return {
-        stdout: stdoutRef,
-        stderr: stderrRef,
+        output: {
+          stdout: stdoutRef,
+          stderr: stderrRef,
+        },
       };
     },
   });

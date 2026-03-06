@@ -30,6 +30,6 @@ export const file = t.resource
       const sha256 = crypto.createHash("sha256").update(raw).digest("hex");
       const stat = await fs.stat(input.source);
 
-      return { content, sha256, size: stat.size };
+      return { output: { content, sha256, size: stat.size } };
     },
   });
