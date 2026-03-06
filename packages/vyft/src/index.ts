@@ -1,10 +1,10 @@
 import { Command } from "commander";
-import { context } from "./commands/context/index.ts";
-import { deploy } from "./commands/deploy.ts";
-import { destroy } from "./commands/destroy.ts";
-import { diff } from "./commands/diff.ts";
-import { local } from "./commands/local/index.ts";
-import { refresh } from "./commands/refresh.ts";
+import context from "./commands/context/index.ts";
+import deploy from "./commands/deploy.ts";
+import destroy from "./commands/destroy.ts";
+import diff from "./commands/diff.ts";
+import local from "./commands/local/index.ts";
+import refresh from "./commands/refresh.ts";
 
 const program = new Command("vyft").description("Vyft CLI").version("0.0.0");
 

@@ -34,6 +34,7 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/docker" },
     { "path": "packages/engine" },
     { "path": "packages/store" },
     { "path": "packages/runtime" },
@@ -43,6 +44,7 @@
     { "path": "packages/hcloud" },
     { "path": "packages/crypto" },
     { "path": "packages/fs" },
-    { "path": "packages/railpack" }
+    { "path": "packages/railpack" },
+    { "path": "packages/e2e" }
   ]
 }

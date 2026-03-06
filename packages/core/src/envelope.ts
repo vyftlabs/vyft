@@ -1,16 +1,12 @@
 import { type DeferredTemplate, isDeferred } from "./interpolate.ts";
 import { isRef, type Ref } from "./ref.ts";
-import { type Cipher, isSecret, SECRET, unwrap } from "./secret.ts";
-
-// ── Serialized envelopes ────────────────────────────────────────────────
-
-export interface EncryptedSecret {
-  kind: "secret";
-  ciphertext: string;
-  alg: string;
-  iv: string;
-  tag: string;
-}
+import {
+  type Cipher,
+  type EncryptedSecret,
+  isSecret,
+  SECRET,
+  unwrap,
+} from "./secret.ts";
 
 export interface SerializedRef {
   kind: "ref";

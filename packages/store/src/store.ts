@@ -1,58 +1,41 @@
-import { join } from "node:path";
-import { nodeFs } from "./fs/node.ts";
-import type { FileSystem } from "./fs/types.ts";
-import { Lock } from "./lock.ts";
+import type { StorageBackend } from "./backend/types.ts";
+import { StateCorruptedError } from "./error.ts";
+import { stateFileSchema } from "./schema.ts";
 import type { State } from "./state.ts";
-import { StateStore } from "./state.ts";
 import type { WALEntry } from "./wal.ts";
-import { apply, replay, WALog } from "./wal.ts";
+import { apply, parseWAL, replay } from "./wal.ts";
 
 export class Store {
   #state: State;
   #deleted = false;
   #disposed = false;
-  readonly #dir: string;
-  readonly #fs: FileSystem;
-  readonly #stateStore: StateStore;
-  readonly #wal: WALog;
-  readonly #lock: Lock;
+  readonly #backend: StorageBackend;
 
-  private constructor(
-    dir: string,
-    fs: FileSystem,
-    state: State,
-    stateStore: StateStore,
-    wal: WALog,
-    lock: Lock,
-  ) {
-    this.#dir = dir;
-    this.#fs = fs;
+  private constructor(backend: StorageBackend, state: State) {
+    this.#backend = backend;
     this.#state = state;
-    this.#stateStore = stateStore;
-    this.#wal = wal;
-    this.#lock = lock;
   }
 
-  static async open(dir: string, fs: FileSystem = nodeFs): Promise<Store> {
-    const lock = new Lock(join(dir, "lock"), fs);
-    await lock.acquire();
+  static async open(backend: StorageBackend): Promise<Store> {
+    await backend.lock();
 
     try {
-      const stateStore = new StateStore(join(dir, "state.json"), fs);
-      const wal = new WALog(join(dir, "wal.jsonl"), fs);
-
-      const snapshot = await stateStore.read();
-      const entries = await wal.read();
+      const snapshot = parseState(await backend.read("state.json"));
+      const walRaw = await backend.read("wal.jsonl");
+      const entries = walRaw ? parseWAL(walRaw) : [];
       const state = entries.length > 0 ? replay(snapshot, entries) : snapshot;
 
       if (entries.length > 0) {
-        await stateStore.write(state);
-        await wal.clear();
+        await backend.write(
+          "state.json",
+          `${JSON.stringify(Object.fromEntries(state), null, 2)}\n`,
+        );
+        await backend.delete("wal.jsonl");
       }
 
-      return new Store(dir, fs, state, stateStore, wal, lock);
+      return new Store(backend, state);
     } catch (err) {
-      await lock.release();
+      await backend.unlock();
       throw err;
     }
   }
@@ -76,18 +59,21 @@ export class Store {
   async append(entry: WALEntry): Promise<void> {
     if (this.#disposed) throw new Error("Store is disposed");
     if (this.#deleted) throw new Error("Store is deleted");
-    await this.#wal.append(entry);
+    await this.#backend.append("wal.jsonl", `${JSON.stringify(entry)}\n`);
     apply(this.#state, entry);
   }
 
   async #compact(): Promise<void> {
-    await this.#stateStore.write(this.#state);
-    await this.#wal.clear();
+    await this.#backend.write(
+      "state.json",
+      `${JSON.stringify(Object.fromEntries(this.#state), null, 2)}\n`,
+    );
+    await this.#backend.delete("wal.jsonl");
   }
 
   async delete(): Promise<void> {
     this.#deleted = true;
-    await this.#fs.rm(this.#dir, { recursive: true, force: true });
+    await this.#backend.deleteAll("");
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
@@ -100,7 +86,31 @@ export class Store {
     try {
       if (!this.#deleted) await this.#compact();
     } finally {
-      await this.#lock.release();
+      await this.#backend.unlock();
     }
   }
+}
+
+function parseState(raw: string | null): State {
+  if (raw === null) return new Map();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new StateCorruptedError("Invalid JSON in state file");
+  }
+
+  const result = stateFileSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new StateCorruptedError(
+      `Invalid state file: ${result.error.message}`,
+    );
+  }
+
+  const state: State = new Map();
+  for (const [key, value] of Object.entries(result.data)) {
+    state.set(key, value);
+  }
+  return state;
 }

@@ -1,18 +1,25 @@
-import type { State } from "@vyft/engine";
+import { type Action, execute, type State } from "@vyft/engine";
 import type { Context } from "./context.ts";
 import { plan } from "./plan.ts";
 import { resolve } from "./resolve.ts";
 
-export interface ApplyEvent {
-  urn: string;
-  action: string;
-  status: "pending" | "committed" | "failed";
-  externalId?: string;
-  output?: Record<string, unknown>;
-  error?: Error;
-}
+export type ApplyEvent =
+  | {
+      status: "pending";
+      urn: string;
+      action: Action;
+      input: Record<string, unknown> | undefined;
+    }
+  | {
+      status: "committed";
+      urn: string;
+      action: Action;
+      input: Record<string, unknown> | undefined;
+      externalId?: string | undefined;
+      output: Record<string, unknown>;
+    };
 
-export interface ApplyOptions {
+export interface ExecuteOptions {
   onEvent?: (event: ApplyEvent) => void;
 }
 
@@ -20,54 +27,43 @@ export async function apply(
   desired: State,
   current: State,
   ctx: Context,
-  options?: ApplyOptions,
+  options?: ExecuteOptions,
 ): Promise<void> {
   const steps = await plan(desired, current, ctx);
 
-  for (const step of steps) {
-    await Promise.all(
-      step.map(async (change) => {
-        const input =
-          desired.entries[change.urn]?.input ??
-          current.entries[change.urn]?.input;
+  await execute(steps, {
+    async dispatch(change) {
+      const input =
+        desired.entries[change.urn]?.input ??
+        current.entries[change.urn]?.input;
 
-        await ctx.store.append({
-          type: "set",
-          key: change.urn,
-          data: { status: "pending", action: change.action, input },
-        });
-
-        options?.onEvent?.({
-          urn: change.urn,
-          action: change.action,
+      {
+        const data: ApplyEvent = {
           status: "pending",
-        });
-
-        const result = await resolve(change, desired, current, ctx);
-
-        await ctx.store.append({
-          type: "set",
-          key: change.urn,
-          data: {
-            status: "committed",
-            action: change.action,
-            input: desired.entries[change.urn]?.input,
-            externalId: result.externalId,
-            output: result.output,
-          },
-        });
-
-        const committed: ApplyEvent = {
           urn: change.urn,
           action: change.action,
+          input,
+        };
+
+        await ctx.store.append({ type: "set", key: change.urn, data });
+        options?.onEvent?.(data);
+      }
+
+      const result = await resolve(change, desired, current, ctx);
+
+      {
+        const data: ApplyEvent = {
           status: "committed",
+          urn: change.urn,
+          action: change.action,
+          input: desired.entries[change.urn]?.input,
+          externalId: result.externalId,
           output: result.output,
         };
-        if (result.externalId) {
-          committed.externalId = result.externalId;
-        }
-        options?.onEvent?.(committed);
-      }),
-    );
-  }
+
+        await ctx.store.append({ type: "set", key: change.urn, data });
+        options?.onEvent?.(data);
+      }
+    },
+  });
 }

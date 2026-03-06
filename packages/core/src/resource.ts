@@ -1,5 +1,6 @@
 import type { Dependable } from "@vyft/engine";
 import type { z } from "zod";
+import type { Provider } from "./provider.ts";
 import type { URN } from "./urn.ts";
 import { urn } from "./urn.ts";
 
@@ -15,6 +16,7 @@ export interface ResourceOptions {
 export interface ResourceEntry<T = unknown> extends ResourceRef<T> {
   value: Record<string, unknown>;
   dependsOn?: Dependable[];
+  provider: Provider<unknown>;
 }
 
 export type HandlerName = "create" | "read" | "update" | "delete" | "diff";
@@ -75,6 +77,8 @@ export interface ResourceDefinition<TInput = unknown, TCtx = unknown> {
 }
 
 export function resource<C, T extends Record<string, unknown>>(
+  providerName: string,
+  providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => T,
 ): {
@@ -82,14 +86,18 @@ export function resource<C, T extends Record<string, unknown>>(
   (id: string): ResourceRef<T>;
 } {
   return ((id: string, config?: C, options?: ResourceOptions) => {
-    const resourceUrn = urn.build("resource", "custom", type, id);
+    const resourceUrn = urn.build("resource", providerName, type, id);
 
     if (config === undefined) {
       return { urn: resourceUrn } satisfies ResourceRef<T>;
     }
 
     const value = define(id, config);
-    const entry: ResourceEntry<T> = { urn: resourceUrn, value };
+    const entry: ResourceEntry<T> = {
+      urn: resourceUrn,
+      value,
+      provider: providerInstance,
+    };
     if (options?.dependsOn) {
       entry.dependsOn = options.dependsOn;
     }

@@ -36,11 +36,35 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
+  packages/docker:
+    dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vyft/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
+  packages/e2e:
+    dependencies:
+      vyft:
+        specifier: workspace:*
+        version: link:../vyft
+
   packages/engine: {}
 
   packages/errors: {}
 
   packages/provider:
+    dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+
+  packages/runtime:
     dependencies:
       '@vyft/core':
         specifier: workspace:*
@@ -82,9 +106,30 @@ importers:
 
   packages/vyft:
     dependencies:
+      '@clack/prompts':
+        specifier: ^1.1.0
+        version: 1.1.0
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vyft/docker':
+        specifier: workspace:*
+        version: link:../docker
+      '@vyft/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@vyft/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@vyft/store':
+        specifier: workspace:*
+        version: link:../store
       commander:
         specifier: ^14.0.3
         version: 14.0.3
+      jiti:
+        specifier: ^2.6.1
+        version: 2.6.1
 
 packages:
 
@@ -140,6 +185,12 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@clack/core@1.1.0':
+    resolution: {integrity: sha512-SVcm4Dqm2ukn64/8Gub2wnlA5nS2iWJyCkdNHcvNHPIeBTGojpdJ+9cZKwLfmqy7irD4N5qLteSilJlE0WLAtA==}
+
+  '@clack/prompts@1.1.0':
+    resolution: {integrity: sha512-pkqbPGtohJAvm4Dphs2M8xE29ggupihHdy1x84HNojZuMtFsHiUlRvqD24tM2+XmI+61LlfNceM3Wr7U5QES5g==}
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -522,6 +573,10 @@ packages:
     resolution: {integrity: sha512-dQHFo3Pt4/NLlG5z4PxZ/3yZTZ1C7s9hveiOj+GCN+uT109NC2QgsoVZsVOAvbJ3RgKkvyLGXZV9+piDpWbm6A==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
+  jiti@2.6.1:
+    resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
+    hasBin: true
+
   js-yaml@3.14.2:
     resolution: {integrity: sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg==}
     hasBin: true
@@ -661,6 +716,9 @@ packages:
 
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
+
+  sisteransi@1.0.5:
+    resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
   source-map@0.6.1:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
@@ -804,6 +862,15 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.4.4':
     optional: true
+
+  '@clack/core@1.1.0':
+    dependencies:
+      sisteransi: 1.0.5
+
+  '@clack/prompts@1.1.0':
+    dependencies:
+      '@clack/core': 1.1.0
+      sisteransi: 1.0.5
 
   '@emnapi/core@1.8.1':
     dependencies:
@@ -1139,6 +1206,8 @@ snapshots:
       chalk: 4.1.2
       pretty-format: 30.2.0
 
+  jiti@2.6.1: {}
+
   js-yaml@3.14.2:
     dependencies:
       argparse: 1.0.10
@@ -1302,6 +1371,8 @@ snapshots:
   semver@7.7.4: {}
 
   signal-exit@3.0.7: {}
+
+  sisteransi@1.0.5: {}
 
   source-map@0.6.1: {}
 

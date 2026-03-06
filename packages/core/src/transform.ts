@@ -40,6 +40,21 @@ export class StateBuilder {
   }
 }
 
+export function toState(entries: ResourceEntry[]): State {
+  const result: Record<string, Entry> = {};
+  for (const entry of entries) {
+    const engineEntry: Entry = {
+      urn: entry.urn,
+      input: sealInput(entry.value ?? {}),
+    };
+    if (entry.dependsOn) {
+      engineEntry.dependsOn = entry.dependsOn;
+    }
+    result[entry.urn] = engineEntry;
+  }
+  return { entries: result };
+}
+
 export function transform(current: State): StateBuilder {
   return new StateBuilder({ ...current.entries });
 }

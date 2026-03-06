@@ -1,8 +1,14 @@
 import * as crypto from "node:crypto";
 
-import type { EncryptedSecret } from "./envelope.ts";
-
 export const SECRET: unique symbol = Symbol("vyft.secret");
+
+export interface EncryptedSecret {
+  kind: "secret";
+  ciphertext: string;
+  alg: string;
+  iv: string;
+  tag: string;
+}
 
 interface SecretValue<T> {
   [SECRET]: true;
@@ -104,6 +110,7 @@ export class Cipher {
       N: SCRYPT_COST,
       r: SCRYPT_BLOCK_SIZE,
       p: SCRYPT_PARALLELIZATION,
+      maxmem: 128 * SCRYPT_COST * SCRYPT_BLOCK_SIZE * 2,
     });
   }
 

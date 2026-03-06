@@ -1,60 +1,29 @@
-import { dirname } from "node:path";
 import type { z } from "zod";
 import { WALCorruptedError } from "./error.ts";
-import type { FileSystem } from "./fs/types.ts";
 import { walEntrySchema } from "./schema.ts";
 import type { State } from "./state.ts";
 
 export type WALEntry = z.infer<typeof walEntrySchema>;
 
-export class WALog {
-  private readonly path: string;
-  private readonly fs: FileSystem;
+export function parseWAL(raw: string): WALEntry[] {
+  const entries: WALEntry[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
 
-  constructor(path: string, fs: FileSystem) {
-    this.path = path;
-    this.fs = fs;
-  }
-
-  async append(entry: WALEntry): Promise<void> {
-    await this.fs.mkdir(dirname(this.path), { recursive: true });
-    await this.fs.appendFile(this.path, `${JSON.stringify(entry)}\n`, "utf8");
-  }
-
-  async read(): Promise<WALEntry[]> {
-    let raw: string;
+    let parsed: unknown;
     try {
-      raw = await this.fs.readFile(this.path, "utf8");
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
-      throw err;
+      parsed = JSON.parse(line);
+    } catch {
+      break;
     }
 
-    const entries: WALEntry[] = [];
-    for (const line of raw.split("\n")) {
-      if (!line.trim()) continue;
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(line);
-      } catch {
-        break;
-      }
-
-      const result = walEntrySchema.safeParse(parsed);
-      if (!result.success) {
-        throw new WALCorruptedError(
-          `Invalid WAL entry: ${result.error.message}`,
-        );
-      }
-      entries.push(result.data);
+    const result = walEntrySchema.safeParse(parsed);
+    if (!result.success) {
+      throw new WALCorruptedError(`Invalid WAL entry: ${result.error.message}`);
     }
-    return entries;
+    entries.push(result.data);
   }
-
-  async clear(): Promise<void> {
-    await this.fs.unlink(this.path).catch(() => {});
-  }
+  return entries;
 }
 
 export function apply(state: State, entry: WALEntry): void {

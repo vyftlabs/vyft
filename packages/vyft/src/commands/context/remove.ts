@@ -1,8 +1,12 @@
 import { Command } from "commander";
+import { removeContext } from "../../contexts.ts";
 
-export const remove = new Command("remove")
+export default new Command("remove")
   .alias("rm")
   .description("Remove a context")
-  .action(() => {
-    throw new Error("not implemented");
+  .argument("<name>", "Context name")
+  .action(async (name: string) => {
+    const cwd = process.cwd();
+    await removeContext(cwd, name);
+    console.log(`Context "${name}" removed.`);
   });

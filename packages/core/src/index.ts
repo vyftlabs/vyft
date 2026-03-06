@@ -1,8 +1,7 @@
-export { type ApplyEvent, type ApplyOptions, apply } from "./apply.ts";
+export { type ApplyEvent, apply, type ExecuteOptions } from "./apply.ts";
 export type { Context } from "./context.ts";
 export { destroy } from "./destroy.ts";
 export type {
-  EncryptedSecret,
   Envelope,
   SerializedDeferred,
   SerializedRef,
@@ -50,11 +49,12 @@ export {
 } from "./resource.ts";
 export {
   Cipher,
+  type EncryptedSecret,
   generateSalt,
   isSecret,
   SECRET,
   secret,
   unwrap,
 } from "./secret.ts";
-export { StateBuilder, transform } from "./transform.ts";
+export { StateBuilder, toState, transform } from "./transform.ts";
 export { urn } from "./urn.ts";
