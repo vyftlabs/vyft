@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { intro, outro, select } from "@clack/prompts";
+import { intro, outro } from "@clack/prompts";
 import { Command } from "commander";
-import { addContext, readContexts } from "../contexts.ts";
 
 const CONFIG_TEMPLATE = `import { service } from "vyft";
 
@@ -34,27 +33,6 @@ export default new Command("init")
       console.log("  Created vyft.config.ts");
     } else {
       console.log("  vyft.config.ts already exists, skipping");
-    }
-
-    // Set up context if none exists
-    const contexts = await readContexts(cwd);
-    if (Object.keys(contexts.contexts).length === 0) {
-      const runtime = (await select({
-        message: "Select runtime",
-        options: [{ value: "docker", label: "Docker" }],
-      })) as string;
-
-      if (typeof runtime === "symbol") process.exit(1);
-
-      await addContext(cwd, "default", {
-        platform: "local",
-        runtime,
-      });
-      console.log("  Created context: default");
-    } else {
-      console.log(
-        `  Context already configured: ${contexts.current ?? Object.keys(contexts.contexts)[0]}`,
-      );
     }
 
     // Add .vyft to .gitignore

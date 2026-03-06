@@ -76,18 +76,21 @@ export async function useContext(cwd: string, name: string): Promise<void> {
   await writeContexts(cwd, data);
 }
 
+const DEFAULT_CONTEXT: ContextEntry = {
+  platform: "local",
+  runtime: "docker",
+};
+
 export async function getCurrentContext(
   cwd: string,
 ): Promise<{ name: string; entry: ContextEntry }> {
   const data = await readContexts(cwd);
-  if (!data.current) {
-    throw new Error(
-      "No context selected. Run: vyft context add <name> --platform <platform> --runtime <runtime>",
-    );
+
+  const name = data.current;
+  const entry = name ? data.contexts[name] : undefined;
+  if (!name || !entry) {
+    return { name: "default", entry: DEFAULT_CONTEXT };
   }
-  const entry = data.contexts[data.current];
-  if (!entry) {
-    throw new Error(`Current context "${data.current}" not found`);
-  }
-  return { name: data.current, entry };
+
+  return { name, entry };
 }
