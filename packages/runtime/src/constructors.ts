@@ -1,11 +1,11 @@
+import type { Linkable } from "@vyft/core";
 import {
+  createRef,
   type Provider,
   type ResourceEntry,
   type ResourceOptions,
-  createRef,
   resource,
 } from "@vyft/core";
-import type { Linkable } from "@vyft/core";
 import type { CronJobInput, ServiceInput, VolumeInput } from "./schemas.ts";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
