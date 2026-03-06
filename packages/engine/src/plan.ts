@@ -1,4 +1,4 @@
-import type { Change, EntryData, State } from "./types.ts";
+import type { Change, Entry, State } from "./types.ts";
 
 function collectImplicitDeps(
   data: unknown,
@@ -29,7 +29,7 @@ function collectImplicitDeps(
 
 function collectDeps(
   urn: string,
-  entry: EntryData,
+  entry: Entry,
   knownUrns: Set<string>,
 ): Set<string> {
   const deps = collectImplicitDeps(entry.input, knownUrns);
@@ -90,21 +90,17 @@ export function plan(desired: State, current: State): Change[][] {
   const updates: Change[] = [];
   const deletes: Change[] = [];
 
-  for (const [urn, { urn: _, ...data }] of Object.entries(desired.entries)) {
+  for (const urn of Object.keys(desired.entries)) {
     if (!(urn in current.entries)) {
-      creates.push({ urn, action: "create", new: data });
+      creates.push({ urn, action: "create" });
     } else {
-      const currentEntry = current.entries[urn];
-      if (currentEntry) {
-        const { urn: __, ...oldData } = currentEntry;
-        updates.push({ urn, action: "update", old: oldData, new: data });
-      }
+      updates.push({ urn, action: "update" });
     }
   }
 
-  for (const [urn, { urn: _, ...data }] of Object.entries(current.entries)) {
+  for (const urn of Object.keys(current.entries)) {
     if (!(urn in desired.entries)) {
-      deletes.push({ urn, action: "delete", old: data });
+      deletes.push({ urn, action: "delete" });
     }
   }
 
@@ -116,16 +112,18 @@ export function plan(desired: State, current: State): Change[][] {
   // Build dependency graph from desired entries (for creates/updates)
   const forwardDeps = new Map<string, Set<string>>();
   for (const change of [...creates, ...updates]) {
-    if (change.new) {
-      forwardDeps.set(change.urn, collectDeps(change.urn, change.new, allUrns));
+    const entry = desired.entries[change.urn];
+    if (entry) {
+      forwardDeps.set(change.urn, collectDeps(change.urn, entry, allUrns));
     }
   }
 
   // Deletes run in reverse dependency order — dependents first
   const reverseDeps = new Map<string, Set<string>>();
   for (const change of deletes) {
-    if (!change.old) continue;
-    const deps = collectDeps(change.urn, change.old, allUrns);
+    const entry = current.entries[change.urn];
+    if (!entry) continue;
+    const deps = collectDeps(change.urn, entry, allUrns);
     // Reverse: if A depends on B, A must be deleted before B
     // So B's reverse dep is A
     for (const dep of deps) {

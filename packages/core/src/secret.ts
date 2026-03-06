@@ -1,3 +1,7 @@
+import * as crypto from "node:crypto";
+
+import type { EncryptedSecret } from "./envelope.ts";
+
 export const SECRET: unique symbol = Symbol("vyft.secret");
 
 interface SecretValue<T> {
@@ -80,4 +84,59 @@ export function unwrap<T>(value: T): T {
     return wrapper.value;
   }
   return value;
+}
+
+// ── Cipher ──────────────────────────────────────────────────────────────
+
+export function generateSalt(): Buffer {
+  return crypto.randomBytes(16);
+}
+
+const SCRYPT_COST = 32768;
+const SCRYPT_BLOCK_SIZE = 8;
+const SCRYPT_PARALLELIZATION = 1;
+
+export class Cipher {
+  readonly #key: Buffer;
+
+  constructor(passphrase: string, salt: Buffer) {
+    this.#key = crypto.scryptSync(passphrase, salt, 32, {
+      N: SCRYPT_COST,
+      r: SCRYPT_BLOCK_SIZE,
+      p: SCRYPT_PARALLELIZATION,
+    });
+  }
+
+  async encrypt(plaintext: string): Promise<EncryptedSecret> {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.#key, iv);
+    const encrypted = Buffer.concat([
+      cipher.update(plaintext, "utf8"),
+      cipher.final(),
+    ]);
+    return {
+      kind: "secret",
+      ciphertext: encrypted.toString("base64"),
+      alg: "aes-256-gcm",
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
+    };
+  }
+
+  async decrypt(encrypted: EncryptedSecret): Promise<string> {
+    if (encrypted.alg !== "aes-256-gcm") {
+      throw new Error(`Unsupported algorithm: ${encrypted.alg}`);
+    }
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      this.#key,
+      Buffer.from(encrypted.iv, "base64"),
+    );
+    decipher.setAuthTag(Buffer.from(encrypted.tag, "base64"));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(encrypted.ciphertext, "base64")),
+      decipher.final(),
+    ]);
+    return decrypted.toString("utf8");
+  }
 }

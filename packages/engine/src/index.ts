@@ -8,12 +8,4 @@ export {
 } from "./brands.ts";
 export { execute } from "./execute.ts";
 export { plan } from "./plan.ts";
-export type {
-  Action,
-  Change,
-  Dispatcher,
-  Entry,
-  EntryData,
-  Result,
-  State,
-} from "./types.ts";
+export type { Action, Change, Dispatcher, Entry, State } from "./types.ts";

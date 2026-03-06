@@ -1,6 +1,13 @@
-export { apply } from "./apply.ts";
+export { type ApplyEvent, type ApplyOptions, apply } from "./apply.ts";
 export type { Context } from "./context.ts";
 export { destroy } from "./destroy.ts";
+export type {
+  EncryptedSecret,
+  Envelope,
+  SerializedDeferred,
+  SerializedRef,
+} from "./envelope.ts";
+export { isEnvelope, sealInput, sealOutput } from "./envelope.ts";
 export {
   DEFERRED,
   type DeferredTemplate,
@@ -41,6 +48,13 @@ export {
   resource,
   type UpdateArgs,
 } from "./resource.ts";
-export { isSecret, SECRET, secret, unwrap } from "./secret.ts";
+export {
+  Cipher,
+  generateSalt,
+  isSecret,
+  SECRET,
+  secret,
+  unwrap,
+} from "./secret.ts";
 export { StateBuilder, transform } from "./transform.ts";
 export { urn } from "./urn.ts";

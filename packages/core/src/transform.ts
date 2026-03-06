@@ -1,4 +1,5 @@
 import type { Entry, State } from "@vyft/engine";
+import { sealInput } from "./envelope.ts";
 import type { ResourceEntry, ResourceRef } from "./resource.ts";
 
 export class StateBuilder {
@@ -11,7 +12,7 @@ export class StateBuilder {
   add<T>(entry: ResourceEntry<T>): StateBuilder {
     const engineEntry: Entry = {
       urn: entry.urn,
-      input: entry.value ?? {},
+      input: sealInput(entry.value ?? {}),
     };
     if (entry.dependsOn) {
       engineEntry.dependsOn = entry.dependsOn;

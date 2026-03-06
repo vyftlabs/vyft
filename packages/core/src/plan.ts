@@ -14,7 +14,14 @@ export async function plan(
 
   for (const step of steps) {
     for (const change of step) {
-      if (change.action === "update" && change.old && change.new) {
+      if (change.action === "update") {
+        const oldEntry = current.entries[change.urn];
+        const newEntry = desired.entries[change.urn];
+        if (!oldEntry || !newEntry) {
+          resolved.push(change);
+          continue;
+        }
+
         const { provider: providerName, resource: resourceName } = urn.parse(
           change.urn,
         );
@@ -30,8 +37,8 @@ export async function plan(
         if (diffHandler) {
           const artifacts = ctx.createArtifacts(change.urn);
           const result = await diffHandler({
-            old: change.old.input,
-            new: change.new.input,
+            old: oldEntry.input,
+            new: newEntry.input,
             artifacts,
           });
           switch (result.action) {
@@ -41,16 +48,8 @@ export async function plan(
               resolved.push(change);
               break;
             case "recreate":
-              resolved.push({
-                urn: change.urn,
-                action: "delete",
-                old: change.old,
-              });
-              resolved.push({
-                urn: change.urn,
-                action: "create",
-                new: change.new,
-              });
+              resolved.push({ urn: change.urn, action: "delete" });
+              resolved.push({ urn: change.urn, action: "create" });
               break;
           }
         } else {

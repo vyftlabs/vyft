@@ -1,12 +1,7 @@
-import type { Change } from "@vyft/engine";
+import type { Change, State } from "@vyft/engine";
 
 import type { Context } from "./context.ts";
-import {
-  type DeferredTemplate,
-  isDeferred,
-  resolveDeferred,
-} from "./interpolate.ts";
-import { isRef, resolveRefs } from "./ref.ts";
+import { resolveValue, sealOutput } from "./envelope.ts";
 import type { CreateResult, ResourceDefinition } from "./resource.ts";
 import { urn } from "./urn.ts";
 
@@ -26,28 +21,24 @@ function collectOutputs(ctx: Context): Record<string, unknown> {
   return outputs;
 }
 
-function resolveInput(
+async function resolveInput(
   input: Record<string, unknown> | undefined,
   ctx: Context,
-): Record<string, unknown> | undefined {
+): Promise<Record<string, unknown> | undefined> {
   if (!input) return input;
 
   const outputs = collectOutputs(ctx);
   const resolved: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
-    if (isDeferred(value)) {
-      resolved[key] = resolveDeferred(value as DeferredTemplate, outputs);
-    } else if (isRef(value) || (typeof value === "object" && value !== null)) {
-      resolved[key] = resolveRefs(value, outputs);
-    } else {
-      resolved[key] = value;
-    }
+    resolved[key] = await resolveValue(value, outputs, ctx.cipher);
   }
   return resolved;
 }
 
 export async function resolve(
   change: Change,
+  desired: State,
+  current: State,
   ctx: Context,
 ): Promise<ResolvedResult> {
   const { provider: providerName, resource: resourceName } = urn.parse(
@@ -77,13 +68,14 @@ export async function resolve(
       const fn = resource.handlers.create;
       if (!fn)
         throw new Error(`create handler not implemented for ${change.urn}`);
-      const input = resolveInput(change.new?.input, ctx);
+      const input = await resolveInput(desired.entries[change.urn]?.input, ctx);
       const result: CreateResult = await fn({
         input,
         ctx: providerCtx,
         artifacts,
       });
-      const resolved: ResolvedResult = { output: result.output };
+      const output = await sealOutput(result.output, ctx.cipher);
+      const resolved: ResolvedResult = { output };
       if (result.externalId) {
         resolved.externalId = result.externalId;
       }
@@ -93,21 +85,22 @@ export async function resolve(
       const fn = resource.handlers.update;
       if (!fn)
         throw new Error(`update handler not implemented for ${change.urn}`);
-      const input = resolveInput(change.new?.input, ctx);
-      const old = resolveInput(change.old?.input, ctx);
-      const output = await fn({
+      const input = await resolveInput(desired.entries[change.urn]?.input, ctx);
+      const old = await resolveInput(current.entries[change.urn]?.input, ctx);
+      const rawOutput = await fn({
         input,
         old,
         ctx: providerCtx,
         artifacts,
       });
+      const output = await sealOutput(rawOutput, ctx.cipher);
       return { output };
     }
     case "delete": {
       const fn = resource.handlers.delete;
       if (!fn)
         throw new Error(`delete handler not implemented for ${change.urn}`);
-      const input = resolveInput(change.old?.input, ctx);
+      const input = await resolveInput(current.entries[change.urn]?.input, ctx);
       await fn({ input, ctx: providerCtx, artifacts });
       return { output: {} };
     }
