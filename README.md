@@ -45,13 +45,6 @@ app.get("/", async (c) => {
 export default app;
 ```
 
-## Features
-
-- **Infrastructure as code** — define services, databases, static sites, cron jobs, secrets, and volumes in TypeScript
-- **Typed resources** — access connection strings, URLs, and credentials with full type safety
-- **Multi-runtime** — deploy to Docker, Docker Swarm, Kubernetes, or Hetzner Cloud
-- **Extensible providers** — build custom providers using the `@vyft/provider` interface
-
 ## Quick Start
 
 ### Prerequisites
