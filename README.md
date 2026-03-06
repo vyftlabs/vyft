@@ -15,8 +15,7 @@ Vyft is an infrastructure-as-code framework that lets you define your entire dep
 ```ts
 // vyft.config.ts
 
-import { service } from "vyft";
-import { postgres, site } from "vyft/services";
+import { service, postgres, site } from "vyft";
 
 const db = postgres("db");
 
@@ -30,11 +29,11 @@ export const web = site("web", { path: "./apps/web", domain: "example.com" });
 
 // index.ts
 
-import { db, env } from "vyft/env";
+import { bindings } from "@vyft/client";
 import { Hono } from "hono";
 import postgres from "postgres";
 
-const sql = postgres(db.url);
+const sql = postgres(bindings.db.url);
 
 const app = new Hono();
 
@@ -63,19 +62,8 @@ export default app;
 ### Install
 
 ```sh
-npm install vyft
+npm install -g vyft
 ```
-
-## Packages
-
-| Package | Description |
-| --- | --- |
-| [`vyft`](https://www.npmjs.com/package/vyft) | CLI and SDK |
-| [`@vyft/core`](https://www.npmjs.com/package/@vyft/core) | Shared primitives and validation |
-| [`@vyft/provider`](https://www.npmjs.com/package/@vyft/provider) | Provider interface for building custom providers |
-| [`@vyft/platform`](https://www.npmjs.com/package/@vyft/platform) | Platform resource abstractions |
-| [`@vyft/runtime`](https://www.npmjs.com/package/@vyft/runtime) | Runtime implementations (Docker, Swarm, Kubernetes) |
-| [`@vyft/hcloud`](https://www.npmjs.com/package/@vyft/hcloud) | Hetzner Cloud provider |
 
 ## Documentation
 
