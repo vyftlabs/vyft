@@ -16,25 +16,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const VYFT_CLI = join(__dirname, "../../vyft/dist/index.js");
 const PACKAGES_DIR = join(__dirname, "../..");
 
-/**
- * Clean up any stale e2e docker resources from previous interrupted runs.
- * Call this before running tests.
- */
-export async function cleanupStaleResources(): Promise<void> {
-  const cleanup = (cmd: string) =>
-    exec(cmd, { cwd: process.cwd() }).catch(() => {});
-
-  await cleanup(
-    'docker ps -aq --filter "name=vyft-vyft-e2e" | xargs -r docker rm -f',
-  );
-  await cleanup(
-    'docker network ls -q --filter "name=vyft-vyft-e2e" | xargs -r docker network rm',
-  );
-  await cleanup(
-    'docker volume ls -q --filter "name=vyft-vyft-e2e" | xargs -r docker volume rm',
-  );
-}
-
 // =============================================================================
 // Types
 // =============================================================================
@@ -45,36 +26,11 @@ export interface ExecResult {
   stderr: string;
 }
 
-export interface Change {
-  resource: string;
-  action: "create" | "update" | "delete";
-}
-
-export interface DiffResult {
-  hasDrift: boolean;
-  resources: Array<{
-    id: string;
-    status: "missing" | "drifted" | "extra";
-  }>;
-}
-
-export interface OutputResult {
-  [resourceId: string]: {
-    host?: string;
-    port?: number;
-    url?: string;
-    [key: string]: unknown;
-  };
-}
-
 export interface Sandbox extends AsyncDisposable {
-  /** Unique ID for this sandbox */
   id: string;
-
-  /** Temp directory path */
+  project: string;
   tmpDir: string;
 
-  /** Filesystem operations */
   fs: {
     write(path: string, content: string | object): Promise<void>;
     read(path: string): Promise<string>;
@@ -82,31 +38,25 @@ export interface Sandbox extends AsyncDisposable {
     rm(path: string): Promise<void>;
   };
 
-  /** Vyft CLI operations */
+  /** Write a vyft.config.ts file */
+  writeConfig(code: string): Promise<void>;
+
   vyft: {
-    deploy(opts?: { verbose?: boolean; refresh?: boolean }): Promise<void>;
-    destroy(opts?: { verbose?: boolean }): Promise<void>;
-    refresh(): Promise<void>;
-    diff(): Promise<DiffResult>;
-
-    context: {
-      add(
-        name: string,
-        opts: { platform: string; runtime: string },
-      ): Promise<void>;
-      use(name: string): Promise<void>;
-      remove(name: string): Promise<void>;
-      list(): Promise<ExecResult>;
-    };
-
-    /** Run raw vyft command */
     raw(args: string): Promise<ExecResult>;
   };
 
-  /** Execute shell command */
-  exec(command: string): Promise<ExecResult>;
+  runtime: {
+    /** Assert a container with the given resource name is running */
+    assertRunning(name: string): Promise<void>;
+    /** Assert no containers exist for this sandbox's project */
+    assertNone(): Promise<void>;
+    /** Get the container ID for a resource name */
+    getId(name: string): Promise<string>;
+    /** List container names for this sandbox's project */
+    list(): Promise<string[]>;
+  };
 
-  /** Manual cleanup (called automatically with `using`) */
+  exec(command: string): Promise<ExecResult>;
   cleanup(): Promise<void>;
 }
 
@@ -140,25 +90,31 @@ function exec(
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+function dockerFilter(project: string): string {
+  return `docker ps -a --filter "label=vyft.managed=true" --filter "name=vyft-${project}" --format "{{.Names}}"`;
+}
+
+function dockerId(project: string, name: string): string {
+  return `docker ps --filter "name=vyft-${project}-production-${name}" --format "{{.ID}}"`;
+}
+
+// =============================================================================
 // Sandbox factory
 // =============================================================================
 
 export interface SandboxOptions {
-  /** Environment variables */
   env?: Record<string, string>;
 }
 
 export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
   const id = randomUUID().slice(0, 8);
+  const project = `e2e-${id}`;
   const tmpDir = join(tmpdir(), `vyft-e2e-${id}`);
   await mkdir(tmpDir, { recursive: true });
   const vyftRoot = join(tmpDir, ".vyft");
-
-  // Clean up any orphan containers from previous runs
-  await exec(
-    'docker ps -aq --filter "name=vyft-vyft-e2e" | xargs -r docker rm -f',
-    { cwd: tmpDir },
-  ).catch(() => {});
 
   // Create node_modules symlinks so config files can import packages
   const nodeModules = join(tmpDir, "node_modules");
@@ -179,13 +135,18 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
     join(nodeModules, "zod"),
   );
 
+  // Write package.json with unique project name
+  await writeFile(
+    join(tmpDir, "package.json"),
+    JSON.stringify({ name: project }),
+  );
+
   const env: Record<string, string> = {
     VYFT_PASSPHRASE: "test-passphrase",
     VYFT_ROOT: vyftRoot,
     ...opts.env,
   };
 
-  // Vyft CLI executor
   const vyftExec = async (args: string): Promise<ExecResult> => {
     return exec(`node ${VYFT_CLI} ${args}`, {
       cwd: tmpDir,
@@ -201,28 +162,33 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
     throw new Error(`Failed to create context: ${contextResult.stderr}`);
   }
 
-  // Cleanup function
   const cleanup = async () => {
-    // Destroy resources
     try {
       await vyftExec("destroy");
     } catch {
       // Best effort
     }
 
-    // Remove context
+    // Force-remove any leftover containers and network
+    await exec(
+      `docker ps -aq --filter "name=vyft-${project}" | xargs -r docker rm -f`,
+      { cwd: tmpDir },
+    ).catch(() => {});
+    await exec(`docker network rm vyft-${project}-production`, {
+      cwd: tmpDir,
+    }).catch(() => {});
+
     try {
       await vyftExec(`context remove ${id}`);
     } catch {
       // Context may not exist
     }
-
-    // Remove temp directory
     await rm(tmpDir, { recursive: true, force: true });
   };
 
   const box: Sandbox = {
     id,
+    project,
     tmpDir,
 
     fs: {
@@ -254,90 +220,47 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
       },
     },
 
+    async writeConfig(code: string) {
+      await writeFile(join(tmpDir, "vyft.config.ts"), code);
+    },
+
     vyft: {
-      async deploy(deployOpts) {
-        const flags: string[] = [];
-        if (deployOpts?.verbose) flags.push("--verbose");
-        if (deployOpts?.refresh) flags.push("--refresh");
-        const result = await vyftExec(`deploy ${flags.join(" ")}`);
-        if (result.code !== 0) {
-          throw new Error(`deploy failed: ${result.stderr}`);
-        }
-      },
-
-      async destroy(destroyOpts) {
-        const flags = destroyOpts?.verbose ? "--verbose " : "";
-        const result = await vyftExec(`destroy ${flags}`);
-        if (result.code !== 0) {
-          throw new Error(`destroy failed: ${result.stderr}`);
-        }
-      },
-
-      async refresh() {
-        const result = await vyftExec("refresh");
-        if (result.code !== 0) {
-          throw new Error(`refresh failed: ${result.stderr}`);
-        }
-      },
-
-      async diff() {
-        const result = await vyftExec("diff");
-        if (result.code > 1) {
-          throw new Error(`diff failed: ${result.stderr || result.stdout}`);
-        }
-
-        const resources: DiffResult["resources"] = [];
-        // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escape sequences
-        const stripped = result.stdout.replace(/\x1b\[[0-9;]*m/g, "");
-        const lines = stripped.split("\n");
-        for (const line of lines) {
-          const missingMatch = line.match(/\bmissing (\S+)/);
-          if (missingMatch?.[1]) {
-            resources.push({ id: missingMatch[1], status: "missing" });
-          }
-          const driftMatch = line.match(/\bdrift (\S+)/);
-          if (driftMatch?.[1] && !line.includes("no drift")) {
-            resources.push({ id: driftMatch[1], status: "drifted" });
-          }
-        }
-
-        return {
-          hasDrift: result.code === 1,
-          resources,
-        };
-      },
-
-      context: {
-        async add(name, addOpts) {
-          const result = await vyftExec(
-            `context add ${name} --platform ${addOpts.platform} --runtime ${addOpts.runtime}`,
-          );
-          if (result.code !== 0) {
-            throw new Error(`context add failed: ${result.stderr}`);
-          }
-        },
-
-        async use(name) {
-          const result = await vyftExec(`context use ${name}`);
-          if (result.code !== 0) {
-            throw new Error(`context use failed: ${result.stderr}`);
-          }
-        },
-
-        async remove(name) {
-          const result = await vyftExec(`context remove ${name}`);
-          if (result.code !== 0) {
-            throw new Error(`context remove failed: ${result.stderr}`);
-          }
-        },
-
-        async list() {
-          return vyftExec("context list");
-        },
-      },
-
       async raw(args) {
         return vyftExec(args);
+      },
+    },
+
+    runtime: {
+      async assertRunning(name: string) {
+        const result = await exec(dockerId(project, name), { cwd: tmpDir });
+        const cid = result.stdout.trim();
+        if (!cid) {
+          throw new Error(`Expected container "${name}" to be running but it was not found`);
+        }
+      },
+
+      async assertNone() {
+        const result = await exec(dockerFilter(project), { cwd: tmpDir });
+        const output = result.stdout.trim();
+        if (output) {
+          throw new Error(`Expected no containers but found: ${output}`);
+        }
+      },
+
+      async getId(name: string) {
+        const result = await exec(dockerId(project, name), { cwd: tmpDir });
+        const cid = result.stdout.trim();
+        if (!cid) {
+          throw new Error(`Container "${name}" not found`);
+        }
+        return cid;
+      },
+
+      async list() {
+        const result = await exec(dockerFilter(project), { cwd: tmpDir });
+        const output = result.stdout.trim();
+        if (!output) return [];
+        return output.split("\n").sort();
       },
     },
 

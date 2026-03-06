@@ -107,10 +107,18 @@ export async function createContainer(
   name: string,
   config: ContainerConfig,
 ): Promise<string> {
-  const res = await client.post<CreateContainerResponse>(
+  let res = await client.post<CreateContainerResponse>(
     `/containers/create?name=${encodeURIComponent(name)}`,
     config,
   );
+
+  if (res.status === 409) {
+    await removeContainer(client, name);
+    res = await client.post<CreateContainerResponse>(
+      `/containers/create?name=${encodeURIComponent(name)}`,
+      config,
+    );
+  }
 
   if (res.status !== 201) {
     throw new Error(
