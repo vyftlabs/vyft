@@ -1,5 +1,5 @@
 {
-  "name": "@vyft/core",
+  "name": "@vyft/provider",
   "version": "0.0.0",
   "type": "module",
   "exports": {
@@ -12,8 +12,7 @@
     "dist"
   ],
   "dependencies": {
-    "@vyft/engine": "workspace:*",
-    "@vyft/store": "workspace:*",
+    "@vyft/core": "workspace:*",
     "zod": "^4.3.6"
   },
   "scripts": {
