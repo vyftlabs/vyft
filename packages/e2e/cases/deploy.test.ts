@@ -52,7 +52,13 @@ export const api = service("api", { image: "nginx:alpine", port: 80 });
 
     const names = await box.runtime.list();
     assert.equal(names.length, 2, `expected 2 containers, got: ${names}`);
-    assert.ok(names.some((n) => n.includes("web")), "web container missing");
-    assert.ok(names.some((n) => n.includes("api")), "api container missing");
+    assert.ok(
+      names.some((n) => n.includes("web")),
+      "web container missing",
+    );
+    assert.ok(
+      names.some((n) => n.includes("api")),
+      "api container missing",
+    );
   });
 });

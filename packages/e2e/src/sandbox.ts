@@ -235,7 +235,9 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
         const result = await exec(dockerId(project, name), { cwd: tmpDir });
         const cid = result.stdout.trim();
         if (!cid) {
-          throw new Error(`Expected container "${name}" to be running but it was not found`);
+          throw new Error(
+            `Expected container "${name}" to be running but it was not found`,
+          );
         }
       },
 

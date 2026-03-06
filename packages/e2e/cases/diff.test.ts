@@ -14,8 +14,14 @@ describe("diff", () => {
 
     const diff = await box.vyft.raw("diff");
     assert.equal(diff.code, 0, `diff failed: ${diff.stderr}`);
-    assert.ok(diff.stdout.includes("+"), `should show create (+), got: ${diff.stdout}`);
-    assert.ok(diff.stdout.includes("service:api"), `should mention service:api, got: ${diff.stdout}`);
+    assert.ok(
+      diff.stdout.includes("+"),
+      `should show create (+), got: ${diff.stdout}`,
+    );
+    assert.ok(
+      diff.stdout.includes("service:api"),
+      `should mention service:api, got: ${diff.stdout}`,
+    );
   });
 
   it("shows recreate after deploy", async () => {
@@ -27,7 +33,10 @@ describe("diff", () => {
 
     const diff = await box.vyft.raw("diff");
     assert.equal(diff.code, 0, `diff failed: ${diff.stderr}`);
-    assert.ok(diff.stdout.includes("service:api"), `should reference service:api, got: ${diff.stdout}`);
+    assert.ok(
+      diff.stdout.includes("service:api"),
+      `should reference service:api, got: ${diff.stdout}`,
+    );
   });
 
   it("shows delete when resource removed from config", async () => {
@@ -41,6 +50,9 @@ describe("diff", () => {
 
     const diff = await box.vyft.raw("diff");
     assert.equal(diff.code, 0, `diff failed: ${diff.stderr}`);
-    assert.ok(diff.stdout.includes("-"), `should show delete (-), got: ${diff.stdout}`);
+    assert.ok(
+      diff.stdout.includes("-"),
+      `should show delete (-), got: ${diff.stdout}`,
+    );
   });
 });
