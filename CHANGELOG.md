@@ -1,3 +1,13 @@
+## 0.2.2 (2026-03-07)
+
+### 🩹 Fixes
+
+- **core:** make resource config optional ([280145e](https://github.com/vyftlabs/vyft/commit/280145e))
+
+### ❤️ Thank You
+
+- bytekai
+
 ## 0.2.1 (2026-03-07)
 
 ### 🩹 Fixes
