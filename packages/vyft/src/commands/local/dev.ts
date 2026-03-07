@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { spinner } from "@clack/prompts";
 import { type ApplyEvent, apply, toState } from "@vyft/core";
+import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
 import { loadConfig, resolveProjectName } from "../../config.ts";
@@ -12,6 +13,7 @@ import {
   loadSalt,
   openStore,
   resolvePassphrase,
+  resolvePlatformProvider,
   resolveRuntimeProvider,
   resolveStateDir,
 } from "../../runtime.ts";
@@ -33,6 +35,11 @@ async function deployOnce(cwd: string, project: string, stage: string) {
       context.entry.runtime,
       project,
       stage,
+    );
+  }
+  if (providers[PLATFORM_PROVIDER_NAME]) {
+    providers[PLATFORM_PROVIDER_NAME] = resolvePlatformProvider(
+      context.entry.platform,
     );
   }
 

@@ -6,7 +6,12 @@ import {
   type ResourceOptions,
   resource,
 } from "@vyft/core";
-import type { CronJobInput, ServiceInput, VolumeInput } from "./schemas.ts";
+import type {
+  CronJobInput,
+  JobInput,
+  ServiceInput,
+  VolumeInput,
+} from "./schemas.ts";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
 
@@ -43,6 +48,15 @@ export interface ServiceConfig {
 
 export interface VolumeConfig {
   size?: string;
+}
+
+export interface JobConfig {
+  image?: string;
+  path?: string;
+  cwd?: string;
+  command?: string[];
+  env?: Record<string, string>;
+  mounts?: Array<{ source: string; target: string }>;
 }
 
 export interface CronJobConfig {
@@ -131,6 +145,28 @@ export const volume: {
   (id, config) => ({
     name: id,
     size: config.size,
+  }),
+);
+
+export const job: {
+  (
+    id: string,
+    config: JobConfig,
+    options?: ResourceOptions,
+  ): ResourceEntry<JobInput>;
+  (id: string): { urn: string };
+} = resource<JobConfig, JobInput>(
+  RUNTIME_PROVIDER_NAME,
+  lazyProvider,
+  "job",
+  (id, config) => ({
+    name: id,
+    image: config.image,
+    path: config.path ?? (config.image ? undefined : "."),
+    cwd: config.cwd,
+    command: config.command,
+    env: config.env,
+    mounts: config.mounts,
   }),
 );
 

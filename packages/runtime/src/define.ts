@@ -1,12 +1,18 @@
 import type { Handlers, Provider } from "@vyft/core";
 import { RESOURCE } from "@vyft/core";
-import type { CronJobInput, ServiceInput, VolumeInput } from "./schemas.ts";
+import type {
+  CronJobInput,
+  JobInput,
+  ServiceInput,
+  VolumeInput,
+} from "./schemas.ts";
 
 export interface RuntimeConfig<TOpts, TCtx> {
   name: string;
   context: (opts: TOpts) => TCtx | Promise<TCtx>;
   handlers: {
     service: Handlers<ServiceInput, TCtx>;
+    job: Handlers<JobInput, TCtx>;
     volume: Handlers<VolumeInput, TCtx>;
     cronjob: Handlers<CronJobInput, TCtx>;
   };
@@ -23,6 +29,11 @@ export function defineRuntime<TOpts, TCtx>(
           [RESOURCE]: true,
           name: "service",
           handlers: config.handlers.service,
+        },
+        job: {
+          [RESOURCE]: true,
+          name: "job",
+          handlers: config.handlers.job,
         },
         volume: {
           [RESOURCE]: true,

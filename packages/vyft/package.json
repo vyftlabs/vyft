@@ -29,6 +29,8 @@
     "@vyft/provider": "workspace:*",
     "@vyft/docker": "workspace:*",
     "@vyft/engine": "workspace:*",
+    "@vyft/local": "workspace:*",
+    "@vyft/platform": "workspace:*",
     "@vyft/runtime": "workspace:*",
     "@vyft/std": "workspace:*",
     "@vyft/store": "workspace:*",

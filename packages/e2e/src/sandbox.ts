@@ -165,7 +165,7 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
 
   const cleanup = async () => {
     try {
-      await vyftExec("destroy");
+      await vyftExec("destroy -y");
     } catch {
       // Best effort
     }

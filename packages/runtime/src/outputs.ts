@@ -9,6 +9,12 @@ export interface VolumeOutput {
   name: string;
 }
 
+export interface JobOutput {
+  name: string;
+  exitCode?: number;
+  containerId?: string;
+}
+
 export interface CronJobOutput {
   name: string;
   containerId?: string;

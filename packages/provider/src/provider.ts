@@ -71,7 +71,7 @@ function flattenResources(
   return result;
 }
 
-const PLATFORM_RESOURCE_NAMES: PlatformResourceName[] = [
+const REQUIRED_PLATFORM_RESOURCES: PlatformResourceName[] = [
   "server",
   "volume",
   "network",
@@ -80,7 +80,9 @@ const PLATFORM_RESOURCE_NAMES: PlatformResourceName[] = [
 function validatePlatform<TCtx>(
   platform: Record<string, ResourceDefinition<unknown, TCtx>>,
 ): void {
-  const missing = PLATFORM_RESOURCE_NAMES.filter((key) => !(key in platform));
+  const missing = REQUIRED_PLATFORM_RESOURCES.filter(
+    (key) => !(key in platform),
+  );
   if (missing.length > 0) {
     throw new Error(
       `Platform is missing required resources: ${missing.join(", ")}`,

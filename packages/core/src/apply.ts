@@ -51,7 +51,16 @@ export async function apply(
 
       const result = await resolve(change, desired, current, ctx);
 
-      {
+      if (change.action === "delete") {
+        await ctx.store.append({ type: "remove", key: change.urn });
+        options?.onEvent?.({
+          status: "committed",
+          urn: change.urn,
+          action: "delete",
+          input: current.entries[change.urn]?.input,
+          output: {},
+        });
+      } else {
         const data: ApplyEvent = {
           status: "committed",
           urn: change.urn,

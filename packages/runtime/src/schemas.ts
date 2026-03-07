@@ -25,6 +25,16 @@ export interface VolumeInput {
   size?: string | undefined;
 }
 
+export interface JobInput {
+  name: string;
+  image?: string | undefined;
+  path?: string | undefined;
+  cwd?: string | undefined;
+  command?: string[] | undefined;
+  env?: Record<string, string> | undefined;
+  mounts?: Array<{ source: string; target: string }> | undefined;
+}
+
 export interface CronJobInput {
   name: string;
   schedule: string;

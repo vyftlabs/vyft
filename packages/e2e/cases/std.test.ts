@@ -78,7 +78,7 @@ export const token = std.crypto.randomBytes("token", { length: 16 });
     const deploy = await box.vyft.raw("deploy");
     assert.equal(deploy.code, 0, `deploy failed: ${deploy.stderr}`);
 
-    const destroy = await box.vyft.raw("destroy");
+    const destroy = await box.vyft.raw("destroy -y");
     assert.equal(destroy.code, 0, `destroy failed: ${destroy.stderr}`);
   });
 });

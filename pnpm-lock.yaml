@@ -61,6 +61,21 @@ importers:
 
   packages/errors: {}
 
+  packages/local:
+    dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vyft/platform':
+        specifier: workspace:*
+        version: link:../platform
+
+  packages/platform:
+    dependencies:
+      '@vyft/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/provider:
     dependencies:
       '@vyft/core':
@@ -114,6 +129,12 @@ importers:
       '@vyft/engine':
         specifier: workspace:*
         version: link:../engine
+      '@vyft/local':
+        specifier: workspace:*
+        version: link:../local
+      '@vyft/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@vyft/provider':
         specifier: workspace:*
         version: link:../provider

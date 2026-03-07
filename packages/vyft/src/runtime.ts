@@ -4,6 +4,7 @@ import { isCancel, password } from "@clack/prompts";
 import { Cipher, type Context, generateSalt, type Provider } from "@vyft/core";
 import docker from "@vyft/docker";
 import type { State } from "@vyft/engine";
+import local from "@vyft/local";
 import { LocalBackend, Store } from "@vyft/store";
 
 const VYFT_DIR = ".vyft";
@@ -126,5 +127,14 @@ export function resolveRuntimeProvider(
       return docker({ project, stage });
     default:
       throw new Error(`Unknown runtime: ${runtime}. Supported: docker`);
+  }
+}
+
+export function resolvePlatformProvider(platform: string): Provider<unknown> {
+  switch (platform) {
+    case "local":
+      return local({});
+    default:
+      throw new Error(`Unknown platform: ${platform}. Supported: local`);
   }
 }
