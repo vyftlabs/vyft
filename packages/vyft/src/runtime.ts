@@ -1,23 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { isCancel, password } from "@clack/prompts";
-import {
-  Cipher,
-  type Context,
-  generateSalt,
-  type Provider,
-  RESOURCE,
-  type ResourceDefinition,
-} from "@vyft/core";
-import docker, {
-  createDockerContext,
-  postgresHandlers,
-  redisHandlers,
-  siteHandlers,
-} from "@vyft/docker";
+import { Cipher, type Context, generateSalt, type Provider } from "@vyft/core";
 import type { State } from "@vyft/engine";
-import local from "@vyft/local";
 import { LocalBackend, Store } from "@vyft/store";
+import { platforms, runtimes } from "./providers.ts";
 
 const VYFT_DIR = ".vyft";
 
@@ -129,84 +116,28 @@ export function buildContext(
   };
 }
 
-async function importProvider(
-  pkg: string,
-): Promise<(opts: unknown) => Provider<unknown>> {
-  try {
-    const mod = await import(pkg);
-    const factory = mod.default;
-    if (typeof factory !== "function") {
-      throw new Error(`"${pkg}" does not export a valid provider`);
-    }
-    return factory;
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") {
-      throw new Error(
-        `Provider "${pkg}" is not installed. Run: pnpm add ${pkg}`,
-      );
-    }
-    throw err;
-  }
-}
-
-export async function resolveRuntimeProvider(
+export function resolveRuntimeProvider(
   runtime: string,
   project: string,
   stage: string,
-): Promise<Provider<unknown>> {
-  switch (runtime) {
-    case "docker":
-      return docker({ project, stage });
-    default: {
-      const factory = await importProvider(`@vyft/${runtime}`);
-      return factory({ project, stage });
-    }
+): Provider<unknown> {
+  const factory = runtimes.get(runtime);
+  if (!factory) {
+    const supported = [...runtimes.keys()].join(", ");
+    throw new Error(`Unknown runtime: "${runtime}". Supported: ${supported}`);
   }
+  return factory({ project, stage });
 }
 
-const FALLBACK_RESOURCES: Record<string, ResourceDefinition> = {
-  postgres: { [RESOURCE]: true, name: "postgres", handlers: postgresHandlers },
-  redis: { [RESOURCE]: true, name: "redis", handlers: redisHandlers },
-  site: { [RESOURCE]: true, name: "site", handlers: siteHandlers },
-};
-
-export async function resolvePlatformProvider(
+export function resolvePlatformProvider(
   platform: string,
   project: string,
   stage: string,
-): Promise<Provider<unknown>> {
-  let provider: Provider<unknown>;
-  switch (platform) {
-    case "remote":
-      provider = local({});
-      break;
-    default: {
-      const factory = await importProvider(`@vyft/${platform}`);
-      provider = factory({});
-      break;
-    }
+): Provider<unknown> {
+  const factory = platforms.get(platform);
+  if (!factory) {
+    const supported = [...platforms.keys()].join(", ");
+    throw new Error(`Unknown platform: "${platform}". Supported: ${supported}`);
   }
-
-  const resources = provider.config.resources ?? {};
-  const missing: Record<string, ResourceDefinition> = {};
-  for (const [name, def] of Object.entries(FALLBACK_RESOURCES)) {
-    if (!resources[name]) {
-      missing[name] = def;
-    }
-  }
-
-  if (Object.keys(missing).length === 0) return provider;
-
-  const originalContext = provider.config.context;
-  return {
-    config: {
-      ...provider.config,
-      context: async () => {
-        const platformCtx = await originalContext();
-        const dockerCtx = createDockerContext({ project, stage });
-        return Object.assign({}, platformCtx, dockerCtx);
-      },
-      resources: { ...resources, ...missing },
-    },
-  };
+  return factory({ project, stage });
 }

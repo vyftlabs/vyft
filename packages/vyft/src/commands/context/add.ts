@@ -1,18 +1,8 @@
-import { execSync } from "node:child_process";
-import { isCancel, select, spinner, text } from "@clack/prompts";
+import { isCancel, select, text } from "@clack/prompts";
 import { Command } from "commander";
 import type { ContextEntry } from "../../contexts.ts";
 import { addContext } from "../../contexts.ts";
-import { detectPackageManager } from "../../utils/pm.ts";
 import { cancel } from "../../utils/prompts.ts";
-
-const BUILTIN_PROVIDERS = new Set(["remote", "docker", "test"]);
-
-function packagesToInstall(providers: string[]): string[] {
-  return providers
-    .filter((p) => !BUILTIN_PROVIDERS.has(p))
-    .map((p) => `@vyft/${p}`);
-}
 
 interface Option {
   value: string;
@@ -119,20 +109,6 @@ export default new Command("add")
 
       const connection =
         platform === "remote" ? await promptConnection(runtime) : undefined;
-
-      const pkgs = packagesToInstall([platform, runtime]);
-      if (pkgs.length > 0) {
-        const pm = await detectPackageManager(cwd);
-        const s = spinner();
-        s.start(`Installing ${pkgs.join(", ")}`);
-        try {
-          execSync(`${pm} add ${pkgs.join(" ")}`, { cwd, stdio: "pipe" });
-          s.stop(`Installed ${pkgs.join(", ")}`);
-        } catch {
-          s.stop(`Failed to install ${pkgs.join(", ")}`);
-          process.exit(1);
-        }
-      }
 
       await addContext(cwd, name, { platform, runtime, connection });
       console.log(`Context "${name}" added.`);
