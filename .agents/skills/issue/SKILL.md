@@ -21,6 +21,13 @@ gh api graphql -f query='mutation { updateIssue(input: { id: "<issue_node_id>", 
 
 To get the issue node ID, run: `gh issue view <number> --json id -q .id`
 
-7. Confirm with the issue URL.
+7. Add the issue to the **Vyft** project and set the milestone:
+
+```
+gh issue edit <number> --milestone "v0.1"
+gh project item-add 5 --owner vyftlabs --url <issue_url>
+```
+
+8. Confirm with the issue URL.
 
 Keep the writing concise and technical. No fluff.
