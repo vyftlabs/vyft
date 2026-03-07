@@ -1,3 +1,13 @@
+## 0.2.1 (2026-03-07)
+
+### 🩹 Fixes
+
+- **vyft:** restore bun template package.json and exclude templates from workspace ([97986ae](https://github.com/vyftlabs/vyft/commit/97986ae))
+
+### ❤️ Thank You
+
+- bytekai
+
 ## 0.2.0 (2026-03-07)
 
 This was a version bump only for @vyft/docker to align it with other projects, there were no code changes.
