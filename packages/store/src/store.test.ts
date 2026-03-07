@@ -1,11 +1,46 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MemoryBackend } from "./backend/memory.ts";
+import type { StorageBackend } from "./backend/types.ts";
 import { LockError, StateCorruptedError, WALCorruptedError } from "./error.ts";
 import { Store } from "./store.ts";
+import { parseWAL } from "./wal.ts";
 
 function setup() {
   return new MemoryBackend();
+}
+
+class SlowAppendBackend implements StorageBackend {
+  readonly #inner = new MemoryBackend();
+  readonly #delayMs: number;
+
+  constructor(delayMs: number) {
+    this.#delayMs = delayMs;
+  }
+
+  read(key: string) {
+    return this.#inner.read(key);
+  }
+  write(key: string, data: string) {
+    return this.#inner.write(key, data);
+  }
+  async append(key: string, data: string): Promise<void> {
+    const current = (await this.#inner.read(key)) ?? "";
+    await new Promise((r) => setTimeout(r, this.#delayMs));
+    await this.#inner.write(key, current + data);
+  }
+  delete(key: string) {
+    return this.#inner.delete(key);
+  }
+  deleteAll(prefix: string) {
+    return this.#inner.deleteAll(prefix);
+  }
+  lock() {
+    return this.#inner.lock();
+  }
+  unlock() {
+    return this.#inner.unlock();
+  }
 }
 
 describe("Store", { concurrency: true }, () => {
@@ -145,6 +180,29 @@ describe("Store", { concurrency: true }, () => {
       const store = await Store.open(backend);
       assert.equal(store.get("a"), 1);
       assert.equal(store.get("b"), 2);
+      assert.equal(store.size, 2);
+      await store.dispose();
+    });
+
+    it("recovers data after mid-WAL corruption on full round-trip", async () => {
+      const backend = setup();
+      const wal =
+        [
+          JSON.stringify({ type: "set", key: "committed", data: "safe" }),
+          "{torn-write",
+          JSON.stringify({
+            type: "set",
+            key: "important",
+            data: "must not lose",
+          }),
+        ].join("\n") + "\n";
+
+      await backend.write("state.json", "{}");
+      await backend.write("wal.jsonl", wal);
+
+      const store = await Store.open(backend);
+      assert.equal(store.get("committed"), "safe");
+      assert.equal(store.get("important"), "must not lose");
       assert.equal(store.size, 2);
       await store.dispose();
     });
@@ -312,6 +370,22 @@ describe("Store", { concurrency: true }, () => {
       assert.equal(store.size, 3);
       await store.dispose();
     });
+
+    it("concurrent appends with slow backend preserve all WAL entries", async () => {
+      const backend = new SlowAppendBackend(10);
+      const store = await Store.open(backend);
+
+      await Promise.all([
+        store.append({ type: "set", key: "x", data: "first" }),
+        store.append({ type: "set", key: "x", data: "second" }),
+      ]);
+
+      const walRaw = await backend.read("wal.jsonl");
+      assert.notEqual(walRaw, null);
+      const walEntries = parseWAL(walRaw ?? "");
+      assert.equal(walEntries.length, 2);
+      await store.dispose();
+    });
   });
 
   describe("persistence", { concurrency: true }, () => {
@@ -417,6 +491,41 @@ describe("Store", { concurrency: true }, () => {
       await store2.dispose();
     });
 
+    it("wraps raw errors from lock() in LockError", async () => {
+      let callCount = 0;
+      const backend = setup();
+      const originalLock = backend.lock.bind(backend);
+      backend.lock = async () => {
+        callCount++;
+        if (callCount === 1) {
+          await originalLock();
+          return;
+        }
+        throw new Error("ENOENT: no such file or directory, open 'lock'");
+      };
+
+      const store1 = await Store.open(backend);
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof LockError,
+      );
+      await store1.dispose();
+    });
+
+    it("wraps SyntaxError from lock() in LockError", async () => {
+      const backend = setup();
+      const originalLock = backend.lock.bind(backend);
+      backend.lock = async () => {
+        await originalLock().catch(() => {});
+        throw new SyntaxError("Unexpected end of JSON input");
+      };
+
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof LockError,
+      );
+    });
+
     it("releases lock when state read fails during open", async () => {
       const backend = setup();
       await backend.write("state.json", "not json{{{");
@@ -518,6 +627,33 @@ describe("Store", { concurrency: true }, () => {
       await store.delete();
       await store.delete();
       await store.dispose();
+    });
+
+    it("preserves lock between delete() and dispose()", async () => {
+      const backend = setup();
+      const store1 = await Store.open(backend);
+      await store1.append({ type: "set", key: "k", data: "v" });
+
+      await store1.delete();
+
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof LockError,
+      );
+
+      await store1.dispose();
+    });
+
+    it("delete then dispose then reopen works cleanly", async () => {
+      const backend = setup();
+      const store1 = await Store.open(backend);
+      await store1.append({ type: "set", key: "k", data: "v" });
+      await store1.delete();
+      await store1.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.equal(store2.size, 0);
+      await store2.dispose();
     });
   });
 });
