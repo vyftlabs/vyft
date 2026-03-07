@@ -1,3 +1,13 @@
+## 0.3.0 (2026-03-07)
+
+### 🚀 Features
+
+- **vyft:** add tsconfig and typescript to bun template ([c86b486](https://github.com/vyftlabs/vyft/commit/c86b486))
+
+### ❤️ Thank You
+
+- bytekai
+
 ## 0.2.2 (2026-03-07)
 
 ### 🩹 Fixes
