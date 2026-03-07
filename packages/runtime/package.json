@@ -12,8 +12,7 @@
     "dist"
   ],
   "dependencies": {
-    "@vyft/core": "workspace:*",
-    "zod": "^4.3.6"
+    "@vyft/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc",

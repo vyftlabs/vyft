@@ -18,8 +18,7 @@
   "dependencies": {
     "@vyft/engine": "workspace:*",
     "@vyft/store": "workspace:*",
-    "jiti": "^2.4.2",
-    "zod": "^4.3.6"
+    "jiti": "^2.4.2"
   },
   "scripts": {
     "build": "tsc",

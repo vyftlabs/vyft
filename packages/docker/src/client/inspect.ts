@@ -1,5 +1,5 @@
 import type { ServiceInput } from "@vyft/runtime";
-import type { DockerClient } from "./client.ts";
+import type { DockerClient } from "./index.ts";
 
 interface DockerInspect {
   Id: string;

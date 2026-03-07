@@ -39,7 +39,7 @@ export async function plan(
           const result = await diffHandler({
             old: oldEntry.input,
             new: newEntry.input,
-            artifacts,
+            ctx: { artifacts },
           });
           switch (result.action) {
             case "none":

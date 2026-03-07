@@ -1,6 +1,6 @@
 import type { Linkable } from "@vyft/core";
 import {
-  createRef,
+  createOutput,
   type Provider,
   type ResourceEntry,
   type ResourceOptions,
@@ -88,15 +88,15 @@ export const service: {
       ...config.env,
     };
 
-    // Refs are branded objects that sealInput converts to serialized envelopes.
+    // Outputs are branded objects that sealInput converts to serialized envelopes.
     // They resolve to strings at deploy time, but at config time they aren't strings.
-    const envWithRefs = env as Record<string, unknown>;
+    const envWithOutputs = env as Record<string, unknown>;
     if (config.link) {
       for (const ref of config.link) {
         const prefix = linkEnvPrefix(ref.urn);
-        envWithRefs[`${prefix}_HOST`] = createRef(ref.urn, "host");
-        envWithRefs[`${prefix}_PORT`] = createRef(ref.urn, "port");
-        envWithRefs[`${prefix}_URL`] = createRef(ref.urn, "url");
+        envWithOutputs[`${prefix}_HOST`] = createOutput(ref.urn, "host");
+        envWithOutputs[`${prefix}_PORT`] = createOutput(ref.urn, "port");
+        envWithOutputs[`${prefix}_URL`] = createOutput(ref.urn, "url");
       }
     }
 

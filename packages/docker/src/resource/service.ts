@@ -6,11 +6,14 @@ import {
   createContainer,
   recreateContainer,
   removeContainer,
-} from "./container.ts";
-import type { DockerContext } from "./context.ts";
-import { pullImage } from "./image.ts";
-import { inspectContainer, normalizeDockerContainer } from "./inspect.ts";
-import { ensureNetwork } from "./network.ts";
+} from "../client/container.ts";
+import { pullImage } from "../client/image.ts";
+import {
+  inspectContainer,
+  normalizeDockerContainer,
+} from "../client/inspect.ts";
+import { ensureNetwork } from "../client/network.ts";
+import type { DockerContext } from "../context.ts";
 
 export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   async create({ input, ctx }) {

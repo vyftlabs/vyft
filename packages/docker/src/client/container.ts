@@ -1,7 +1,6 @@
-import type { DockerClient } from "./client.ts";
-import type { DockerContext } from "./context.ts";
+import type { DockerClient } from "./index.ts";
 
-export interface ContainerInput {
+interface ContainerInput {
   port: number;
   env?: Record<string, string> | undefined;
   command?: string[] | undefined;
@@ -50,7 +49,7 @@ export function buildContainerConfig(
   input: ContainerInput,
   name: string,
   image: string,
-  ctx: DockerContext,
+  ctx: { project: string; stage: string; networkName: string },
 ): ContainerConfig {
   const env = Object.entries(input.env ?? {}).map(([k, v]) => `${k}=${v}`);
 

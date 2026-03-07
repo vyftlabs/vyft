@@ -2,6 +2,8 @@ import * as crypto from "node:crypto";
 
 export const SECRET: unique symbol = Symbol("vyft.secret");
 
+export type Secret = string & { readonly [SECRET]: true };
+
 export interface EncryptedSecret {
   kind: "secret";
   ciphertext: string;

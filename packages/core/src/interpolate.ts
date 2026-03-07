@@ -1,4 +1,4 @@
-import { isRef, type Ref } from "./ref.ts";
+import { isOutput, type Output } from "./output.ts";
 import { isSecret, SECRET, unwrap } from "./secret.ts";
 
 const DEFERRED: unique symbol = Symbol("vyft.deferred");
@@ -29,15 +29,15 @@ function resolveExpression(expr: unknown): string {
   return String(expr);
 }
 
-function hasRefs(expressions: unknown[]): boolean {
-  return expressions.some((expr) => isRef(expr));
+function hasOutputs(expressions: unknown[]): boolean {
+  return expressions.some((expr) => isOutput(expr));
 }
 
 export function interpolate(
   strings: TemplateStringsArray,
   ...expressions: unknown[]
 ): string {
-  if (hasRefs(expressions)) {
+  if (hasOutputs(expressions)) {
     return {
       [DEFERRED]: true,
       strings: [...strings],
@@ -59,7 +59,7 @@ interpolate.secret = function secretInterpolate(
   strings: TemplateStringsArray,
   ...expressions: unknown[]
 ): string {
-  if (hasRefs(expressions)) {
+  if (hasOutputs(expressions)) {
     return {
       [DEFERRED]: true,
       [SECRET]: true,
@@ -90,13 +90,16 @@ interpolate.secret = function secretInterpolate(
   return wrapper as unknown as string;
 };
 
-function resolveRefValue(ref: Ref, outputs: Record<string, unknown>): unknown {
-  const output = outputs[ref.urn];
-  if (output === undefined) {
-    throw new Error(`Unresolved ref: ${ref.urn}.${ref.path}`);
+function resolveOutputValue(
+  output: Output,
+  outputs: Record<string, unknown>,
+): unknown {
+  const outputData = outputs[output.urn];
+  if (outputData === undefined) {
+    throw new Error(`Unresolved output: ${output.urn}.${output.path}`);
   }
-  const parts = ref.path.split(".");
-  let value: unknown = output;
+  const parts = output.path.split(".");
+  let value: unknown = outputData;
   for (const part of parts) {
     if (value === null || value === undefined) break;
     value = (value as Record<string, unknown>)[part];
@@ -113,8 +116,8 @@ export function resolveDeferred(
     result += template.strings[i];
     if (i < template.expressions.length) {
       const expr = template.expressions[i];
-      if (isRef(expr)) {
-        result += String(resolveRefValue(expr, outputs));
+      if (isOutput(expr)) {
+        result += String(resolveOutputValue(expr, outputs));
       } else {
         result += resolveExpression(expr);
       }

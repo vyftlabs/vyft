@@ -16,19 +16,18 @@ export {
   resolveDeferred,
   type SecretDeferredTemplate,
 } from "./interpolate.ts";
-export { plan } from "./plan.ts";
-export type { PlatformResourceName, PlatformSchemas } from "./platform.ts";
-export { platformSchemas } from "./platform.ts";
-export type { Provider, ProviderConfig } from "./provider.ts";
 export {
-  createRef,
-  createSecretRef,
-  isRef,
-  REF,
-  type Ref,
-  resolveRefs,
-  type SecretRef,
-} from "./ref.ts";
+  createOutput,
+  createSecretOutput,
+  isOutput,
+  OUTPUT,
+  type Output,
+  resolveOutputs,
+  type SecretOutput,
+} from "./output.ts";
+export { plan } from "./plan.ts";
+export type { PlatformResourceName } from "./platform.ts";
+export type { Provider, ProviderConfig } from "./provider.ts";
 export { refresh } from "./refresh.ts";
 export { type ResolvedResult, resolve } from "./resolve.ts";
 export {
@@ -41,6 +40,7 @@ export {
   type HandlerArgs,
   type HandlerName,
   type Handlers,
+  RESOURCE,
   type ResourceDefinition,
   type ResourceEntry,
   type ResourceOptions,
@@ -54,6 +54,7 @@ export {
   generateSalt,
   isSecret,
   SECRET,
+  type Secret,
   secret,
   unwrap,
 } from "./secret.ts";

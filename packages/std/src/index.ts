@@ -10,18 +10,27 @@ import { file, glob, template } from "./fs/index.ts";
 import { exec } from "./process/index.ts";
 import { ssh } from "./ssh.ts";
 
-export default createProvider({
+const std = createProvider({
+  name: "std",
   context: async () => ({}),
   resources: {
-    file,
-    glob,
-    template,
-    randomBytes,
-    randomInteger,
-    randomString,
-    randomUuid,
-    sshKeyPair,
-    exec,
+    fs: {
+      file,
+      glob,
+      template,
+    },
+    crypto: {
+      randomBytes,
+      randomInteger,
+      randomString,
+      randomUuid,
+      sshKeyPair,
+    },
+    process: {
+      exec,
+    },
     ssh,
   },
 });
+
+export default std;

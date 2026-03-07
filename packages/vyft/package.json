@@ -26,9 +26,11 @@
   "dependencies": {
     "@clack/prompts": "^1.1.0",
     "@vyft/core": "workspace:*",
+    "@vyft/provider": "workspace:*",
     "@vyft/docker": "workspace:*",
     "@vyft/engine": "workspace:*",
     "@vyft/runtime": "workspace:*",
+    "@vyft/std": "workspace:*",
     "@vyft/store": "workspace:*",
     "commander": "^14.0.3",
     "jiti": "^2.6.1"

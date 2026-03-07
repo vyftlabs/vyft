@@ -1,4 +1,4 @@
-import type { DockerClient } from "./client.ts";
+import type { DockerClient } from "./index.ts";
 
 export async function pullImage(
   client: DockerClient,
@@ -15,12 +15,4 @@ export async function pullImage(
   if (res.status !== 200) {
     throw new Error(`Failed to pull image ${image}: ${res.status}`);
   }
-}
-
-export async function imageExists(
-  client: DockerClient,
-  image: string,
-): Promise<boolean> {
-  const res = await client.get(`/images/${encodeURIComponent(image)}/json`);
-  return res.status === 200;
 }

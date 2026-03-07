@@ -128,10 +128,11 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
   await symlink(join(PACKAGES_DIR, "errors"), join(scopedDir, "errors"));
   await symlink(join(PACKAGES_DIR, "runtime"), join(scopedDir, "runtime"));
   await symlink(join(PACKAGES_DIR, "store"), join(scopedDir, "store"));
+  await symlink(join(PACKAGES_DIR, "std"), join(scopedDir, "std"));
 
   // Symlink zod from a package that depends on it (pnpm doesn't hoist)
   await symlink(
-    join(PACKAGES_DIR, "core", "node_modules", "zod"),
+    join(PACKAGES_DIR, "store", "node_modules", "zod"),
     join(nodeModules, "zod"),
   );
 

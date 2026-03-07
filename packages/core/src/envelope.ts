@@ -1,5 +1,5 @@
 import { type DeferredTemplate, isDeferred } from "./interpolate.ts";
-import { isRef, type Ref } from "./ref.ts";
+import { isOutput, type Output } from "./output.ts";
 import {
   type Cipher,
   type EncryptedSecret,
@@ -115,8 +115,8 @@ export async function resolveValue(
 
 // ── Seal (in-memory brands → serialized envelopes) ──────────────────────
 
-function sealRef(ref: Ref): SerializedRef {
-  return { kind: "ref", urn: ref.urn, path: ref.path };
+function sealOutputRef(output: Output): SerializedRef {
+  return { kind: "ref", urn: output.urn, path: output.path };
 }
 
 function sealDeferred(deferred: DeferredTemplate): SerializedDeferred {
@@ -132,8 +132,8 @@ function sealDeferred(deferred: DeferredTemplate): SerializedDeferred {
 }
 
 function sealValue(value: unknown): unknown {
-  if (isRef(value)) {
-    return sealRef(value);
+  if (isOutput(value)) {
+    return sealOutputRef(value);
   }
 
   if (isDeferred(value)) {

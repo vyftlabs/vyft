@@ -30,8 +30,6 @@ function createMockArtifacts(): Artifacts {
   };
 }
 
-const ctx = {} as never;
-
 let tmpDir: string;
 
 before(async () => {
@@ -55,8 +53,7 @@ describe("exec", () => {
     test("executes simple command and returns stdout artifact", async () => {
       const { output } = await create({
         input: { command: ["echo", "hello"] },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -65,8 +62,7 @@ describe("exec", () => {
     test("executes command with multiple arguments", async () => {
       const { output } = await create({
         input: { command: ["printf", "%s %s", "hello", "world"] },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -77,8 +73,7 @@ describe("exec", () => {
         input: {
           command: ["sh", "-c", "echo warn >&2; echo ok"],
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stderr"], "stderr");
@@ -92,8 +87,7 @@ describe("exec", () => {
           command: ["wc", "-c"],
           stdin: "hello",
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -108,8 +102,7 @@ describe("exec", () => {
           command: ["wc", "-c"],
           stdinFile: inputFile,
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -124,8 +117,7 @@ describe("exec", () => {
           stdinFile: "./relative.txt",
           cwd: tmpDir,
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -139,8 +131,7 @@ describe("exec", () => {
             stdinFile: "./nonexistent.txt",
             cwd: tmpDir,
           },
-          ctx,
-          artifacts: createMockArtifacts(),
+          ctx: { artifacts: createMockArtifacts() },
         });
       });
     });
@@ -154,8 +145,7 @@ describe("exec", () => {
               stdin: "literal",
               stdinFile: "./file.txt",
             },
-            ctx,
-            artifacts: createMockArtifacts(),
+            ctx: { artifacts: createMockArtifacts() },
           });
         },
         (err: Error) => {
@@ -173,8 +163,7 @@ describe("exec", () => {
           command: ["sh", "-c", "echo $MY_CUSTOM_VAR"],
           env: { MY_CUSTOM_VAR: "test_value" },
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -190,8 +179,7 @@ describe("exec", () => {
           command: ["ls", "cwd-test.txt"],
           cwd: tmpDir,
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -208,8 +196,7 @@ describe("exec", () => {
             command: ["ls", "not-here.txt"],
             cwd: otherDir,
           },
-          ctx,
-          artifacts: createMockArtifacts(),
+          ctx: { artifacts: createMockArtifacts() },
         });
       });
     });
@@ -224,8 +211,7 @@ describe("exec", () => {
               command: ["sleep", "10"],
               timeout: 100,
             },
-            ctx,
-            artifacts: createMockArtifacts(),
+            ctx: { artifacts: createMockArtifacts() },
           });
         },
         (err: Error) => {
@@ -241,8 +227,7 @@ describe("exec", () => {
           command: ["echo", "fast"],
           timeout: 5000,
         },
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
 
       assertArtifactRef(output["stdout"], "stdout");
@@ -255,8 +240,7 @@ describe("exec", () => {
         async () => {
           await create({
             input: { command: ["sh", "-c", "exit 1"] },
-            ctx,
-            artifacts: createMockArtifacts(),
+            ctx: { artifacts: createMockArtifacts() },
           });
         },
         (err: Error) => {
@@ -270,8 +254,7 @@ describe("exec", () => {
       await assert.rejects(async () => {
         await create({
           input: { command: ["this-command-does-not-exist-xyz"] },
-          ctx,
-          artifacts: createMockArtifacts(),
+          ctx: { artifacts: createMockArtifacts() },
         });
       });
     });
@@ -283,8 +266,7 @@ describe("exec", () => {
             input: {
               command: ["sh", "-c", "echo 'error message' >&2; exit 1"],
             },
-            ctx,
-            artifacts: createMockArtifacts(),
+            ctx: { artifacts: createMockArtifacts() },
           });
         },
         (err: Error) => {

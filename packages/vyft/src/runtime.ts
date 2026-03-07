@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { isCancel, password } from "@clack/prompts";
 import { Cipher, type Context, generateSalt, type Provider } from "@vyft/core";
-import { createDockerProvider } from "@vyft/docker";
+import docker from "@vyft/docker";
 import type { State } from "@vyft/engine";
 import { LocalBackend, Store } from "@vyft/store";
 
@@ -123,7 +123,7 @@ export function resolveRuntimeProvider(
 ): Provider<unknown> {
   switch (runtime) {
     case "docker":
-      return createDockerProvider({ project, stage });
+      return docker({ project, stage });
     default:
       throw new Error(`Unknown runtime: ${runtime}. Supported: docker`);
   }

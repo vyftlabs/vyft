@@ -71,8 +71,7 @@ export async function resolve(
       const input = await resolveInput(desired.entries[change.urn]?.input, ctx);
       const result: CreateResult = await fn({
         input,
-        ctx: providerCtx,
-        artifacts,
+        ctx: Object.assign({}, providerCtx, { artifacts }),
       });
       const output = await sealOutput(result.output, ctx.cipher);
       const resolved: ResolvedResult = { output };
@@ -90,8 +89,7 @@ export async function resolve(
       const rawOutput = await fn({
         input,
         old,
-        ctx: providerCtx,
-        artifacts,
+        ctx: Object.assign({}, providerCtx, { artifacts }),
       });
       const output = await sealOutput(rawOutput, ctx.cipher);
       return { output };
@@ -101,7 +99,7 @@ export async function resolve(
       if (!fn)
         throw new Error(`delete handler not implemented for ${change.urn}`);
       const input = await resolveInput(current.entries[change.urn]?.input, ctx);
-      await fn({ input, ctx: providerCtx, artifacts });
+      await fn({ input, ctx: Object.assign({}, providerCtx, { artifacts }) });
       return { output: {} };
     }
   }

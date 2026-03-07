@@ -41,9 +41,6 @@ importers:
       jiti:
         specifier: ^2.4.2
         version: 2.6.1
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/docker:
     dependencies:
@@ -69,18 +66,12 @@ importers:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/runtime:
     dependencies:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/std:
     dependencies:
@@ -99,10 +90,6 @@ importers:
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
-    devDependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/store:
     dependencies:
@@ -127,9 +114,15 @@ importers:
       '@vyft/engine':
         specifier: workspace:*
         version: link:../engine
+      '@vyft/provider':
+        specifier: workspace:*
+        version: link:../provider
       '@vyft/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@vyft/std':
+        specifier: workspace:*
+        version: link:../std
       '@vyft/store':
         specifier: workspace:*
         version: link:../store

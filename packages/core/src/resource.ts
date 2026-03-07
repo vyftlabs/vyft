@@ -1,8 +1,9 @@
 import { DEPENDABLE, type Dependable, LINKABLE } from "@vyft/engine";
-import type { z } from "zod";
 import type { Provider } from "./provider.ts";
 import type { URN } from "./urn.ts";
 import { urn } from "./urn.ts";
+
+export const RESOURCE: unique symbol = Symbol("vyft.resource");
 
 export interface ResourceRef<T = unknown> {
   urn: URN;
@@ -36,21 +37,19 @@ export interface Artifacts {
 
 export interface HandlerArgs<TInput, TCtx> {
   input: TInput;
-  ctx: TCtx;
-  artifacts: Artifacts;
+  ctx: TCtx & { artifacts: Artifacts };
 }
 
 export interface UpdateArgs<TInput, TCtx> {
   input: TInput;
   old: unknown;
-  ctx: TCtx;
-  artifacts: Artifacts;
+  ctx: TCtx & { artifacts: Artifacts };
 }
 
 export interface DiffArgs<TInput> {
   old: TInput;
   new: TInput;
-  artifacts: Artifacts;
+  ctx: { artifacts: Artifacts };
 }
 
 export type DiffAction = "update" | "recreate" | "none";
@@ -74,11 +73,12 @@ export interface Handlers<TInput, TCtx> {
 }
 
 export interface ResourceDefinition<TInput = unknown, TCtx = unknown> {
-  schema: z.ZodType<TInput>;
+  [RESOURCE]: true;
+  name: string;
   handlers: Handlers<TInput, TCtx>;
 }
 
-export function resource<C, T extends Record<string, unknown>>(
+export function resource<C, T>(
   providerName: string,
   providerInstance: Provider<unknown>,
   type: string,

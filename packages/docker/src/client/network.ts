@@ -1,4 +1,4 @@
-import type { DockerClient } from "./client.ts";
+import type { DockerClient } from "./index.ts";
 
 interface NetworkInfo {
   Id: string;
@@ -28,11 +28,4 @@ export async function ensureNetwork(
   }
 
   return res.body.Id;
-}
-
-export async function removeNetwork(
-  client: DockerClient,
-  name: string,
-): Promise<void> {
-  await client.del(`/networks/${name}`);
 }

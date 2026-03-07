@@ -10,8 +10,7 @@ import {
   sshKeyPair,
 } from "./index.ts";
 
-const ctx = {} as never;
-const artifacts = {} as Artifacts;
+const ctx = { artifacts: {} as Artifacts };
 
 // ── randomString ────────────────────────────────────────────────────────
 
@@ -21,14 +20,14 @@ describe("randomString", () => {
 
   test("generates string of requested length with default alphabet", async () => {
     const input = { length: 32 };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.equal(String(output["result"]).length, 32);
     assert.match(String(output["result"]), /^[a-zA-Z0-9]+$/);
   });
 
   test("generates string with custom alphabet", async () => {
     const input = { length: 16, alphabet: "abc" };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.equal(String(output["result"]).length, 16);
     assert.match(String(output["result"]), /^[abc]+$/);
   });
@@ -40,14 +39,14 @@ describe("randomString", () => {
       numbers: false,
       uppercase: false,
     };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.equal(String(output["result"]).length, 64);
     assert.match(String(output["result"]), /^[a-z]+$/);
   });
 
   test("includes special characters when requested", async () => {
     const input = { length: 200, special: true, lowercase: true };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.equal(String(output["result"]).length, 200);
     assert.match(String(output["result"]), /[^a-zA-Z0-9]/);
   });
@@ -61,7 +60,7 @@ describe("sshKeyPair", () => {
 
   test("generates ed25519 key pair", async () => {
     const input = { type: "ed25519" } as const;
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.ok(String(output["privateKeyPem"]).includes("BEGIN PRIVATE KEY"));
     assert.ok(String(output["publicKeyPem"]).includes("BEGIN PUBLIC KEY"));
     assert.ok(String(output["fingerprint"]).startsWith("SHA256:"));
@@ -69,7 +68,7 @@ describe("sshKeyPair", () => {
 
   test("generates RSA key pair", async () => {
     const input = { type: "rsa", rsaBits: 2048 } as const;
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.ok(String(output["privateKeyPem"]).includes("BEGIN PRIVATE KEY"));
     assert.ok(String(output["publicKeyPem"]).includes("BEGIN PUBLIC KEY"));
     assert.ok(String(output["fingerprint"]).startsWith("SHA256:"));
@@ -84,7 +83,7 @@ describe("randomUuid", () => {
 
   test("generates a valid UUID v4", async () => {
     const input = {};
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.match(
       String(output["result"]),
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
@@ -93,8 +92,8 @@ describe("randomUuid", () => {
 
   test("generates unique values", async () => {
     const input = {};
-    const a = await create({ input, ctx, artifacts });
-    const b = await create({ input, ctx, artifacts });
+    const a = await create({ input, ctx });
+    const b = await create({ input, ctx });
     assert.notEqual(a.output["result"], b.output["result"]);
   });
 });
@@ -107,7 +106,7 @@ describe("randomInteger", () => {
 
   test("generates integer within range", async () => {
     const input = { min: 10, max: 20 };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.ok(Number(output["result"]) >= 10);
     assert.ok(Number(output["result"]) <= 20);
     assert.equal(
@@ -125,14 +124,14 @@ describe("randomBytes", () => {
 
   test("generates hex-encoded bytes by default", async () => {
     const input = { length: 16 };
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.equal(String(output["result"]).length, 32);
     assert.match(String(output["result"]), /^[0-9a-f]+$/);
   });
 
   test("generates base64-encoded bytes", async () => {
     const input = { length: 16, encoding: "base64" } as const;
-    const { output } = await create({ input, ctx, artifacts });
+    const { output } = await create({ input, ctx });
     assert.match(String(output["result"]), /^[A-Za-z0-9+/=]+$/);
   });
 });

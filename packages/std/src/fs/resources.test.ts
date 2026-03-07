@@ -30,8 +30,6 @@ function createMockArtifacts(): Artifacts {
   };
 }
 
-const ctx = {} as never;
-
 let tmpDir: string;
 
 before(async () => {
@@ -64,8 +62,7 @@ describe("file", () => {
     const input = { source: filePath };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["content"], "hello world");
     assert.equal(output["size"], 11);
@@ -81,8 +78,7 @@ describe("file", () => {
     const input = { source: filePath, encoding: "base64" } as const;
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["content"], buf.toString("base64"));
     assert.equal(output["size"], 3);
@@ -96,13 +92,11 @@ describe("file", () => {
 
     const resA = await create({
       input: { source: a },
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     const resB = await create({
       input: { source: b },
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(resA.output["sha256"], resB.output["sha256"]);
   });
@@ -118,8 +112,7 @@ describe("template", () => {
     const input = { content: "Hello, {{name}}!", vars: { name: "World" } };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["content"], "Hello, World!");
     assert.equal(typeof output["sha256"], "string");
@@ -136,8 +129,7 @@ describe("template", () => {
     };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["content"], "Hi Alice, welcome to Wonderland.");
   });
@@ -147,8 +139,7 @@ describe("template", () => {
     await assert.rejects(async () => {
       await create({
         input,
-        ctx,
-        artifacts: createMockArtifacts(),
+        ctx: { artifacts: createMockArtifacts() },
       });
     });
   });
@@ -176,8 +167,7 @@ describe("glob", () => {
     const input = { cwd: globDir, include: ["*.txt"] };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["count"], 2);
     const files = outputFiles(output);
@@ -190,8 +180,7 @@ describe("glob", () => {
     const input = { cwd: globDir, include: ["**/*"], exclude: ["*.log"] };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     const files = outputFiles(output);
     const paths = files.map((f) => f.path);
@@ -203,8 +192,7 @@ describe("glob", () => {
     const input = { cwd: globDir, include: ["**/*.txt"] };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["count"], 3);
     const files = outputFiles(output);
@@ -216,8 +204,7 @@ describe("glob", () => {
     const input = { cwd: globDir, include: ["a.txt"] };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     assert.equal(output["count"], 1);
     const files = outputFiles(output);
@@ -232,8 +219,7 @@ describe("glob", () => {
     const input = { cwd: globDir, include: ["*.txt"] };
     const { output } = await create({
       input,
-      ctx,
-      artifacts: createMockArtifacts(),
+      ctx: { artifacts: createMockArtifacts() },
     });
     const archive = output["archive"];
     assert.ok(

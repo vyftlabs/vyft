@@ -22,8 +22,7 @@ export async function refresh(current: State, ctx: Context): Promise<void> {
     const artifacts = ctx.createArtifacts(key);
     const output = await resource.handlers.read({
       input: entry.input,
-      ctx: providerCtx,
-      artifacts,
+      ctx: Object.assign({}, providerCtx, { artifacts }),
     });
 
     const sealed = await sealOutput(output, ctx.cipher);

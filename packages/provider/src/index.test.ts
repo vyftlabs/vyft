@@ -1,153 +1,122 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { z } from "zod";
-import { createProvider, initProvider } from "./index.ts";
+import { RESOURCE } from "@vyft/core";
+import { createProvider, defineResource } from "./index.ts";
 
-interface TestCtx {
-  userId: string;
-}
+describe("defineResource", () => {
+  it("creates a resource definition with RESOURCE brand", () => {
+    interface FileInput {
+      path: string;
+    }
 
-describe("initProvider", () => {
-  it("creates a builder with resource and platform entrypoints", () => {
-    const t = initProvider<TestCtx>();
-    assert.ok(t.resource);
-    assert.ok(t.platform);
-    assert.ok(t.platform.server);
-    assert.ok(t.platform.volume);
-    assert.ok(t.platform.network);
-  });
-});
-
-describe("resource builder", () => {
-  it("defines a resource with input and handlers", () => {
-    const t = initProvider<TestCtx>();
-
-    const snapshot = t.resource
-      .input(z.object({ serverId: z.string() }))
-      .handle({
-        async create({ input, ctx }) {
-          return {
-            output: { id: `snap-${input.serverId}`, user: ctx.userId },
-          };
-        },
-      });
-
-    assert.ok(snapshot.schema);
-    assert.ok(snapshot.handlers.create);
-  });
-});
-
-describe("platform builder", () => {
-  it("defines a platform resource with base schema", () => {
-    const t = initProvider<TestCtx>();
-
-    const server = t.platform.server.handle({
+    const file = defineResource<FileInput>("file", {
       async create({ input }) {
-        return { output: { id: `srv-${input.name}`, size: input.size } };
+        return { output: { path: input.path } };
       },
     });
 
-    assert.ok(server.schema);
-    assert.ok(server.handlers.create);
+    assert.equal(file[RESOURCE], true);
+    assert.equal(file.name, "file");
+    assert.ok(file.handlers.create);
   });
 
-  it("extends platform resource with provider-specific input", () => {
-    const t = initProvider<TestCtx>();
-
-    const server = t.platform.server
-      .input(z.object({ region: z.string() }))
-      .handle({
-        async create({ input }) {
-          return {
-            output: {
-              name: input.name,
-              size: input.size,
-              region: input.provider.region,
-            },
-          };
-        },
-      });
-
-    assert.ok(server.schema);
-    assert.ok(server.handlers.create);
+  it("creates a resource definition without handlers", () => {
+    const empty = defineResource<Record<string, never>>("empty", {});
+    assert.equal(empty[RESOURCE], true);
+    assert.equal(empty.name, "empty");
   });
 });
 
 describe("createProvider", () => {
-  it("creates a provider with platform and resources", () => {
-    const t = initProvider<TestCtx>();
+  it("creates constructors from resources", () => {
+    interface SnapshotInput {
+      serverId: string;
+    }
 
-    const server = t.platform.server.handle({
+    const snapshot = defineResource<SnapshotInput>("snapshot", {
       async create({ input }) {
-        return { output: { id: input.name } };
+        return { output: { id: input.serverId } };
       },
     });
-
-    const volume = t.platform.volume.handle({
-      async create({ input }) {
-        return { output: { id: `vol-${input.size}` } };
-      },
-    });
-
-    const network = t.platform.network.handle({
-      async create({ input }) {
-        return { output: { id: input.cidr } };
-      },
-    });
-
-    const snapshot = t.resource
-      .input(z.object({ serverId: z.string() }))
-      .handle({
-        async create({ input }) {
-          return { output: { id: input.serverId } };
-        },
-      });
 
     const provider = createProvider({
+      name: "test",
       context: async () => ({ userId: "test" }),
-      platform: { server, volume, network },
       resources: { snapshot },
     });
 
-    assert.ok(provider.config);
-    assert.ok(provider.config.platform);
-    assert.ok(provider.config.resources);
+    assert.equal(typeof provider.snapshot, "function");
   });
 
-  it("throws if platform is missing required resources", () => {
-    const t = initProvider<TestCtx>();
-
-    const server = t.platform.server.handle({
+  it("preserves nested namespace structure", () => {
+    const file = defineResource<{ path: string }>("file", {
       async create({ input }) {
-        return { output: { id: input.name } };
+        return { output: { path: input.path } };
+      },
+    });
+
+    const uuid = defineResource<Record<string, never>>("uuid", {
+      async create() {
+        return { output: { id: "test" } };
+      },
+    });
+
+    const provider = createProvider({
+      name: "test",
+      context: async () => ({ userId: "test" }),
+      resources: {
+        fs: { file },
+        crypto: { uuid },
+      },
+    });
+
+    assert.equal(typeof provider.fs.file, "function");
+    assert.equal(typeof provider.crypto.uuid, "function");
+  });
+
+  it("constructors produce ResourceEntry objects", () => {
+    const snapshot = defineResource<{ serverId: string }>("snapshot", {
+      async create({ input }) {
+        return { output: { id: input.serverId } };
+      },
+    });
+
+    const provider = createProvider({
+      name: "test",
+      context: async () => ({ userId: "test" }),
+      resources: { snapshot },
+    });
+
+    const entry = provider.snapshot("my-snap", { serverId: "srv-1" });
+    assert.ok(entry.urn);
+    assert.ok(entry.urn.includes("test"));
+    assert.ok(entry.urn.includes("snapshot"));
+    assert.ok(entry.urn.includes("my-snap"));
+    assert.ok(entry.value);
+  });
+
+  it("throws on duplicate resource names across namespaces", () => {
+    const file = defineResource<{ path: string }>("file", {
+      async create({ input }) {
+        return { output: { path: input.path } };
+      },
+    });
+
+    const file2 = defineResource<{ path: string }>("file", {
+      async create({ input }) {
+        return { output: { path: input.path } };
       },
     });
 
     assert.throws(() => {
       createProvider({
+        name: "test",
         context: async () => ({ userId: "test" }),
-        // @ts-expect-error -- intentionally missing volume and network
-        platform: { server },
-        resources: {},
+        resources: {
+          fs: { file },
+          other: { file: file2 },
+        },
       });
-    }, /missing required resources.*volume.*network/i);
-  });
-
-  it("creates a provider with only resources (no platform)", () => {
-    const t = initProvider<TestCtx>();
-
-    const glob = t.resource.input(z.object({ pattern: z.string() })).handle({
-      async create({ input }) {
-        return { output: { matched: [input.pattern] } };
-      },
-    });
-
-    const provider = createProvider({
-      context: async () => ({ userId: "test" }),
-      resources: { glob },
-    });
-
-    assert.ok(provider.config);
-    assert.equal(provider.config.platform, undefined);
+    }, /Duplicate resource name/);
   });
 });

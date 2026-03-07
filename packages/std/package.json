@@ -23,10 +23,5 @@
     "tar": "^7",
     "tinyglobby": "^0.2.15"
   },
-  "peerDependencies": {
-    "zod": ">=3.0.0"
-  },
-  "devDependencies": {
-    "zod": "^4.3.6"
-  }
+  "devDependencies": {}
 }

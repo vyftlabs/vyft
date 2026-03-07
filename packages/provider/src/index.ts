@@ -8,13 +8,16 @@ export {
   type HandlerName,
   type Handlers,
   type PlatformResourceName,
-  type PlatformSchemas,
   type Provider,
   type ProviderConfig,
-  platformSchemas,
+  RESOURCE,
   type ResourceDefinition,
   type UpdateArgs,
 } from "@vyft/core";
-export type { ProviderBuilder } from "./builder.ts";
-export { initProvider } from "./builder.ts";
-export { createProvider } from "./provider.ts";
+export { defineResource } from "./define.ts";
+export {
+  type CreateProviderConfig,
+  createProvider,
+  type ResourceTree,
+  type ToConstructors,
+} from "./provider.ts";

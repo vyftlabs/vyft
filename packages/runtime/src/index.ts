@@ -18,8 +18,3 @@ export type {
   ServiceInput,
   VolumeInput,
 } from "./schemas.ts";
-export {
-  cronJobInput,
-  serviceInput,
-  volumeInput,
-} from "./schemas.ts";

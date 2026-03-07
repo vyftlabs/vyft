@@ -1,11 +1,2 @@
-import { initProvider } from "@vyft/provider";
-import type { Context } from "./context";
-
-export const t = initProvider.context<Context>().create();
-
-// middleware support
-t.resource.use((opts) => {
-  opts.ctx;
-
-  return opts.next();
-});
+// This file is no longer needed — defineResource replaces initProvider.
+// Resources are defined inline with defineResource<Input>("name", handlers).

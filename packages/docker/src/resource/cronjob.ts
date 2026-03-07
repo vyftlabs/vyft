@@ -6,13 +6,12 @@ import {
   createContainer,
   recreateContainer,
   removeContainer,
-} from "./container.ts";
-import type { DockerContext } from "./context.ts";
-import { pullImage } from "./image.ts";
-import { ensureNetwork } from "./network.ts";
+} from "../client/container.ts";
+import { pullImage } from "../client/image.ts";
+import { ensureNetwork } from "../client/network.ts";
+import type { DockerContext } from "../context.ts";
 
 function buildCronCommand(schedule: string, command: string[]): string[] {
-  // Use supercronic-style wrapper: write crontab, run supercronic
   const crontab = `${schedule} ${command.join(" ")}`;
   return [
     "sh",

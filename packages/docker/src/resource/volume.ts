@@ -1,30 +1,10 @@
 import type { Handlers } from "@vyft/core";
 import type { VolumeInput } from "@vyft/runtime";
-import type { DockerClient } from "./client.ts";
-import type { DockerContext } from "./context.ts";
+import { createVolume, removeVolume } from "../client/volume.ts";
+import type { DockerContext } from "../context.ts";
 
 function volumeName(project: string, stage: string, id: string): string {
   return `vyft-${project}-${stage}-${id}`;
-}
-
-export async function createVolume(
-  client: DockerClient,
-  name: string,
-): Promise<void> {
-  const res = await client.post("/volumes/create", {
-    Name: name,
-    Driver: "local",
-  });
-  if (res.status !== 201) {
-    throw new Error(`Failed to create volume ${name}: ${res.status}`);
-  }
-}
-
-export async function removeVolume(
-  client: DockerClient,
-  name: string,
-): Promise<void> {
-  await client.del(`/volumes/${name}`);
 }
 
 export const volumeHandlers: Handlers<VolumeInput, DockerContext> = {
