@@ -4,6 +4,10 @@ import path from "node:path";
 export interface ContextEntry {
   platform: string;
   runtime: string;
+  connection?: {
+    host?: string | undefined;
+    endpoint?: string | undefined;
+  } | undefined;
 }
 
 export interface ContextsFile {
@@ -77,7 +81,7 @@ export async function useContext(cwd: string, name: string): Promise<void> {
 }
 
 const DEFAULT_CONTEXT: ContextEntry = {
-  platform: "local",
+  platform: "remote",
   runtime: "docker",
 };
 

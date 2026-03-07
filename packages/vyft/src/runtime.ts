@@ -174,7 +174,7 @@ export async function resolvePlatformProvider(
 ): Promise<Provider<unknown>> {
   let provider: Provider<unknown>;
   switch (platform) {
-    case "local":
+    case "remote":
       provider = local({});
       break;
     default: {
