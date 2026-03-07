@@ -7,6 +7,10 @@
       "types": "./dist/lib.d.ts",
       "default": "./dist/lib.js"
     },
+    "./services": {
+      "types": "./dist/services.d.ts",
+      "default": "./dist/services.js"
+    },
     "./cli": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"

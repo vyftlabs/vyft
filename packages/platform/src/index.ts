@@ -9,8 +9,10 @@ export type {
   ServerOutput,
   VolumeOutput,
 } from "./outputs.ts";
-export { postgres, redis, site } from "./resources/platform.ts";
+export type { BucketArgs } from "./resources/bucket.ts";
+export { bucket, postgres, queue, redis, site } from "./resources/platform.ts";
 export type { PostgresArgs } from "./resources/postgres.ts";
+export type { QueueArgs } from "./resources/queue.ts";
 export type { RedisArgs } from "./resources/redis.ts";
 export type { SiteArgs } from "./resources/site.ts";
 export type {
