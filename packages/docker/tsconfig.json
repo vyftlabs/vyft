@@ -5,5 +5,9 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../runtime" }, { "path": "../platform" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../runtime" },
+    { "path": "../platform" }
+  ]
 }

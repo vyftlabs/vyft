@@ -10,10 +10,15 @@ import local from "./commands/local/index.ts";
 import refresh from "./commands/refresh.ts";
 
 const pkg = JSON.parse(
-  fs.readFileSync(path.resolve(import.meta.dirname, "..", "package.json"), "utf8"),
+  fs.readFileSync(
+    path.resolve(import.meta.dirname, "..", "package.json"),
+    "utf8",
+  ),
 ) as { version: string };
 
-const program = new Command("vyft").description("Vyft CLI").version(pkg.version);
+const program = new Command("vyft")
+  .description("Vyft CLI")
+  .version(pkg.version);
 
 program.addCommand(init);
 program.addCommand(deploy);

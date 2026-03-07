@@ -11,7 +11,9 @@ const LOCK_FILES: [string, PackageManager][] = [
   ["package-lock.json", "npm"],
 ];
 
-export async function detectPackageManager(cwd: string): Promise<PackageManager> {
+export async function detectPackageManager(
+  cwd: string,
+): Promise<PackageManager> {
   for (const [file, pm] of LOCK_FILES) {
     if (await fileExists(path.join(cwd, file))) return pm;
   }

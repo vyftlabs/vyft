@@ -1,9 +1,5 @@
 import type { Linkable } from "@vyft/core";
-import {
-  createOutput,
-  type Provider,
-  resource,
-} from "@vyft/core";
+import { createOutput, type Provider, resource } from "@vyft/core";
 import type {
   CronJobInput,
   JobInput,

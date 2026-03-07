@@ -4,21 +4,20 @@ import { isCancel, password } from "@clack/prompts";
 import {
   Cipher,
   type Context,
-  RESOURCE,
-  type ResourceDefinition,
   generateSalt,
   type Provider,
+  RESOURCE,
+  type ResourceDefinition,
 } from "@vyft/core";
-import {
+import docker, {
   createDockerContext,
   postgresHandlers,
   redisHandlers,
   siteHandlers,
 } from "@vyft/docker";
-import docker from "@vyft/docker";
 import type { State } from "@vyft/engine";
 import local from "@vyft/local";
-import { LocalBackend, Store } from "@vyft/store";
+import { LocalBackend, Store } from "../../../store/src/index.ts";
 
 const VYFT_DIR = ".vyft";
 
@@ -130,7 +129,9 @@ export function buildContext(
   };
 }
 
-async function importProvider(pkg: string): Promise<(opts: unknown) => Provider<unknown>> {
+async function importProvider(
+  pkg: string,
+): Promise<(opts: unknown) => Provider<unknown>> {
   try {
     const mod = await import(pkg);
     const factory = mod.default;
@@ -140,7 +141,9 @@ async function importProvider(pkg: string): Promise<(opts: unknown) => Provider<
     return factory;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") {
-      throw new Error(`Provider "${pkg}" is not installed. Run: pnpm add ${pkg}`);
+      throw new Error(
+        `Provider "${pkg}" is not installed. Run: pnpm add ${pkg}`,
+      );
     }
     throw err;
   }

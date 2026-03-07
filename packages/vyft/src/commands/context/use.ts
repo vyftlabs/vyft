@@ -12,7 +12,9 @@ export default new Command("use")
     const names = Object.keys(data.contexts);
 
     if (names.length === 0) {
-      console.log("No contexts configured. Run `vyft context add` to create one.");
+      console.log(
+        "No contexts configured. Run `vyft context add` to create one.",
+      );
       return;
     }
 

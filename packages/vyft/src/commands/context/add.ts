@@ -103,7 +103,10 @@ export default new Command("add")
       const runtime =
         opts.runtime ??
         (await (async () => {
-          if (runtimeOptions.length === 1) return runtimeOptions[0]!.value;
+          if (runtimeOptions.length === 1) {
+            const [option] = runtimeOptions;
+            return option.value;
+          }
           if (runtimeOptions.length === 0) {
             cancel(`No known runtimes for platform "${platform}".`);
           }

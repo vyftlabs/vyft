@@ -9,7 +9,9 @@ export default new Command("list")
     const data = await readContexts(cwd);
 
     if (Object.keys(data.contexts).length === 0) {
-      console.log("No contexts configured. Run `vyft context add` to create one.");
+      console.log(
+        "No contexts configured. Run `vyft context add` to create one.",
+      );
       return;
     }
 

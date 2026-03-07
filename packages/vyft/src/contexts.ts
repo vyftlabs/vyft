@@ -4,10 +4,12 @@ import path from "node:path";
 export interface ContextEntry {
   platform: string;
   runtime: string;
-  connection?: {
-    host?: string | undefined;
-    endpoint?: string | undefined;
-  } | undefined;
+  connection?:
+    | {
+        host?: string | undefined;
+        endpoint?: string | undefined;
+      }
+    | undefined;
 }
 
 export interface ContextsFile {
