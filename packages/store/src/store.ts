@@ -9,6 +9,7 @@ export class Store {
   #state: State;
   #deleted = false;
   #disposed = false;
+  #dirtyWAL = false;
   #appendQueue: Promise<void> = Promise.resolve();
   readonly #backend: StorageBackend;
 
@@ -43,7 +44,11 @@ export class Store {
 
       return new Store(backend, state);
     } catch (err) {
-      await backend.unlock();
+      try {
+        await backend.unlock();
+      } catch {
+        // Unlock failed, but the original error is more important
+      }
       throw err;
     }
   }
@@ -53,15 +58,23 @@ export class Store {
   }
 
   get(key: string): unknown {
-    return this.#state.get(key);
+    const value = this.#state.get(key);
+    if (value === null || typeof value !== "object") return value;
+    return JSON.parse(JSON.stringify(value));
   }
 
   has(key: string): boolean {
     return this.#state.has(key);
   }
 
-  entries(): IterableIterator<[string, unknown]> {
-    return this.#state.entries();
+  *entries(): IterableIterator<[string, unknown]> {
+    for (const [key, value] of this.#state) {
+      if (value === null || typeof value !== "object") {
+        yield [key, value];
+      } else {
+        yield [key, JSON.parse(JSON.stringify(value))];
+      }
+    }
   }
 
   async append(entry: WALEntry): Promise<void> {
@@ -70,13 +83,23 @@ export class Store {
     if (entry.type === "set" && entry.data === undefined) {
       throw new Error("Cannot store undefined — use null instead");
     }
+    // Snapshot eagerly to prevent caller mutation after append() returns
+    const serialized = JSON.stringify(entry);
+    const key = entry.key;
+    const type = entry.type;
+    const data =
+      type === "set"
+        ? (JSON.parse(serialized) as { data: unknown }).data
+        : undefined;
     const op = this.#appendQueue.then(async () => {
-      const line = `${JSON.stringify(entry)}\n`;
-      await this.#backend.append("wal.jsonl", line);
-      if (entry.type === "set") {
-        this.#state.set(entry.key, JSON.parse(JSON.stringify(entry.data)));
+      const prefix = this.#dirtyWAL ? "\n" : "";
+      this.#dirtyWAL = true;
+      await this.#backend.append("wal.jsonl", `${prefix}${serialized}\n`);
+      this.#dirtyWAL = false;
+      if (type === "set") {
+        this.#state.set(key, data);
       } else {
-        this.#state.delete(entry.key);
+        this.#state.delete(key);
       }
     });
     this.#appendQueue = op.catch(() => {});
@@ -106,11 +129,19 @@ export class Store {
   async dispose(): Promise<void> {
     if (this.#disposed) return;
     this.#disposed = true;
+    let compactError: unknown;
     try {
       if (!this.#deleted) await this.#compact();
-    } finally {
-      await this.#backend.unlock();
+    } catch (err) {
+      compactError = err;
     }
+    try {
+      await this.#backend.unlock();
+    } catch (err) {
+      if (!compactError) throw err;
+      // Both failed — compact error is more important
+    }
+    if (compactError) throw compactError;
   }
 }
 

@@ -167,7 +167,7 @@ describe("Store", { concurrency: true }, () => {
       await store.dispose();
     });
 
-    it("skips malformed JSON lines and recovers valid entries after them", async () => {
+    it("throws WALCorruptedError on mid-WAL corruption", async () => {
       const backend = setup();
       await backend.write("state.json", "{}");
       const lines = [
@@ -177,23 +177,17 @@ describe("Store", { concurrency: true }, () => {
       ].join("\n");
       await backend.write("wal.jsonl", `${lines}\n`);
 
-      const store = await Store.open(backend);
-      assert.equal(store.get("a"), 1);
-      assert.equal(store.get("b"), 2);
-      assert.equal(store.size, 2);
-      await store.dispose();
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof WALCorruptedError,
+      );
     });
 
-    it("recovers data after mid-WAL corruption on full round-trip", async () => {
+    it("tolerates truncated last line (crash recovery)", async () => {
       const backend = setup();
       const wal = `${[
         JSON.stringify({ type: "set", key: "committed", data: "safe" }),
-        "{torn-write",
-        JSON.stringify({
-          type: "set",
-          key: "important",
-          data: "must not lose",
-        }),
+        '{"type":"set","key":"torn","da',
       ].join("\n")}\n`;
 
       await backend.write("state.json", "{}");
@@ -201,8 +195,8 @@ describe("Store", { concurrency: true }, () => {
 
       const store = await Store.open(backend);
       assert.equal(store.get("committed"), "safe");
-      assert.equal(store.get("important"), "must not lose");
-      assert.equal(store.size, 2);
+      assert.equal(store.has("torn"), false);
+      assert.equal(store.size, 1);
       await store.dispose();
     });
 
@@ -330,6 +324,59 @@ describe("Store", { concurrency: true }, () => {
       const complex = { nested: { array: [1, { deep: true }] } };
       await store.append({ type: "set", key: "obj", data: complex });
       assert.deepEqual(store.get("obj"), complex);
+      await store.dispose();
+    });
+
+    it("get() returns defensive copy of objects", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "obj", data: { a: 1, b: 2 } });
+
+      const ref = store.get("obj") as Record<string, unknown>;
+      ref["a"] = 999;
+      ref["c"] = "injected";
+
+      assert.deepEqual(store.get("obj"), { a: 1, b: 2 });
+      await store.dispose();
+    });
+
+    it("get() returns defensive copy of arrays", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "arr", data: [1, 2, 3] });
+
+      const ref = store.get("arr") as number[];
+      ref.push(4);
+      ref[0] = 999;
+
+      assert.deepEqual(store.get("arr"), [1, 2, 3]);
+      await store.dispose();
+    });
+
+    it("mutating get() result does not corrupt persisted state", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "obj", data: { a: 1 } });
+
+      const ref = store.get("obj") as Record<string, unknown>;
+      ref["a"] = 999;
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.deepEqual(store2.get("obj"), { a: 1 });
+      await store2.dispose();
+    });
+
+    it("entries() returns defensive copies", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "obj", data: { a: 1 } });
+
+      for (const [, value] of store.entries()) {
+        (value as Record<string, unknown>)["a"] = 999;
+      }
+
+      assert.deepEqual(store.get("obj"), { a: 1 });
       await store.dispose();
     });
 
@@ -465,6 +512,43 @@ describe("Store", { concurrency: true }, () => {
       assert.equal(s2.get("n"), null);
       await s2.dispose();
     });
+
+    it("recovers after partial WAL write", async () => {
+      const inner = new MemoryBackend();
+      let failNext = true;
+      const backend: StorageBackend = {
+        read: (k) => inner.read(k),
+        write: (k, d) => inner.write(k, d),
+        delete: (k) => inner.delete(k),
+        deleteAll: (p) => inner.deleteAll(p),
+        lock: () => inner.lock(),
+        unlock: () => inner.unlock(),
+        append: async (key: string, data: string) => {
+          if (failNext) {
+            failNext = false;
+            const current = (await inner.read(key)) ?? "";
+            await inner.write(key, current + data.slice(0, 20));
+            throw new Error("Simulated I/O failure");
+          }
+          const current = (await inner.read(key)) ?? "";
+          await inner.write(key, current + data);
+        },
+      };
+
+      const store = await Store.open(backend);
+
+      await assert.rejects(() =>
+        store.append({ type: "set", key: "a", data: 1 }),
+      );
+
+      await store.append({ type: "set", key: "b", data: 2 });
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.equal(store2.has("b"), true);
+      assert.equal(store2.get("b"), 2);
+      await store2.dispose();
+    });
   });
 
   describe("locking", { concurrency: true }, () => {
@@ -558,6 +642,22 @@ describe("Store", { concurrency: true }, () => {
       const store = await Store.open(backend);
       await store.dispose();
     });
+
+    it("preserves original error when unlock fails during open", async () => {
+      const backend = setup();
+      await backend.write("state.json", "not json{{{");
+
+      const originalUnlock = backend.unlock.bind(backend);
+      backend.unlock = async () => {
+        await originalUnlock();
+        throw new Error("unlock disk failure");
+      };
+
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof StateCorruptedError,
+      );
+    });
   });
 
   describe("dispose", { concurrency: true }, () => {
@@ -591,6 +691,52 @@ describe("Store", { concurrency: true }, () => {
         () => store.append({ type: "set", key: "a", data: 1 }),
         (err: unknown) =>
           err instanceof Error && err.message === "Store is disposed",
+      );
+    });
+
+    it("propagates unlock errors", async () => {
+      const backend = setup();
+      const originalUnlock = backend.unlock.bind(backend);
+      backend.unlock = async () => {
+        await originalUnlock();
+        const err = new Error("EPERM: operation not permitted");
+        (err as NodeJS.ErrnoException).code = "EPERM";
+        throw err;
+      };
+
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "a", data: 1 });
+
+      await assert.rejects(
+        () => store.dispose(),
+        (err: unknown) => err instanceof Error && err.message.includes("EPERM"),
+      );
+    });
+
+    it("preserves compact error when unlock also fails", async () => {
+      const inner = new MemoryBackend();
+      const backend: StorageBackend = {
+        read: (k) => inner.read(k),
+        write: (key: string, data: string) => {
+          if (key === "state.json") throw new Error("disk full");
+          return inner.write(key, data);
+        },
+        append: (k, d) => inner.append(k, d),
+        delete: (k) => inner.delete(k),
+        deleteAll: (p) => inner.deleteAll(p),
+        lock: () => inner.lock(),
+        unlock: async () => {
+          await inner.unlock();
+          throw new Error("unlock also failed");
+        },
+      };
+
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "a", data: 1 });
+
+      await assert.rejects(
+        () => store.dispose(),
+        (err: unknown) => err instanceof Error && err.message === "disk full",
       );
     });
   });
@@ -754,6 +900,24 @@ describe("Store", { concurrency: true }, () => {
         null,
         "Should remain null after round-trip",
       );
+      await store2.dispose();
+    });
+
+    it("append() snapshots data eagerly before queuing", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+
+      const data = { x: 1, nested: { y: 2 } };
+      const promise = store.append({ type: "set", key: "a", data });
+      data.x = 999;
+      data.nested.y = 999;
+      await promise;
+
+      assert.deepEqual(store.get("a"), { x: 1, nested: { y: 2 } });
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.deepEqual(store2.get("a"), { x: 1, nested: { y: 2 } });
       await store2.dispose();
     });
 

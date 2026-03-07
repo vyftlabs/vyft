@@ -6,15 +6,32 @@ import type { State } from "./state.ts";
 export type WALEntry = z.infer<typeof walEntrySchema>;
 
 export function parseWAL(raw: string): WALEntry[] {
+  const lines = raw.split("\n");
   const entries: WALEntry[] = [];
-  for (const line of raw.split("\n")) {
-    if (!line.trim()) continue;
+
+  // Find the last non-empty line index (for crash-truncation tolerance)
+  let lastNonEmpty = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const l = lines[i];
+    if (l?.trim()) {
+      lastNonEmpty = i;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trim()) continue;
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(line);
     } catch {
-      continue;
+      // Only tolerate a malformed last line (crash truncation)
+      if (i === lastNonEmpty) continue;
+      throw new WALCorruptedError(
+        `Corrupt WAL entry at line ${i + 1}: invalid JSON`,
+      );
     }
 
     const result = walEntrySchema.safeParse(parsed);

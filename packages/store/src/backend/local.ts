@@ -109,8 +109,9 @@ export class LocalBackend implements StorageBackend {
   async unlock(): Promise<void> {
     try {
       await unlink(this.#lockPath);
-    } catch {
-      // silent on missing
+    } catch (err: unknown) {
+      if (isErrnoException(err) && err.code === "ENOENT") return;
+      throw err;
     }
   }
 }

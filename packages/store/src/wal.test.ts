@@ -24,41 +24,43 @@ describe("parseWAL", () => {
     assert.deepEqual(parseWAL("\n\n\n"), []);
   });
 
-  it("skips malformed JSON lines and recovers valid entries after them", () => {
+  it("throws WALCorruptedError on mid-WAL corruption", () => {
     const lines = [
       JSON.stringify({ type: "set", key: "a", data: 1 }),
       "CORRUPT LINE",
       JSON.stringify({ type: "set", key: "b", data: 2 }),
     ].join("\n");
 
-    const entries = parseWAL(lines);
-    assert.equal(entries.length, 2);
-    assert.equal(entries[0]?.key, "a");
-    assert.equal(entries[1]?.key, "b");
+    assert.throws(
+      () => parseWAL(lines),
+      (err: unknown) => err instanceof WALCorruptedError,
+    );
   });
 
-  it("recovers valid entries after corrupt first line", () => {
+  it("throws WALCorruptedError on corrupt first line when followed by valid entries", () => {
     const lines = [
       "CORRUPT FIRST LINE",
       JSON.stringify({ type: "set", key: "a", data: 1 }),
       JSON.stringify({ type: "set", key: "b", data: 2 }),
     ].join("\n");
 
-    const entries = parseWAL(lines);
-    assert.equal(entries.length, 2);
+    assert.throws(
+      () => parseWAL(lines),
+      (err: unknown) => err instanceof WALCorruptedError,
+    );
   });
 
-  it("recovers valid entries scattered around multiple corrupt lines", () => {
+  it("tolerates truncated last line (crash recovery)", () => {
     const lines = [
       JSON.stringify({ type: "set", key: "a", data: 1 }),
       JSON.stringify({ type: "set", key: "b", data: 2 }),
-      "CORRUPT",
-      JSON.stringify({ type: "set", key: "c", data: 3 }),
-      JSON.stringify({ type: "set", key: "d", data: 4 }),
+      '{"type":"set","key":"c","da',
     ].join("\n");
 
     const entries = parseWAL(lines);
-    assert.equal(entries.length, 4);
+    assert.equal(entries.length, 2);
+    assert.equal(entries[0]?.key, "a");
+    assert.equal(entries[1]?.key, "b");
   });
 
   it("throws WALCorruptedError on valid JSON with wrong schema", () => {
