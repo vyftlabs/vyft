@@ -18,3 +18,7 @@ export type {
   ServerInput,
   VolumeInput,
 } from "./schemas.ts";
+export { postgres, redis, site } from "./resources/platform.ts";
+export type { PostgresArgs } from "./resources/postgres.ts";
+export type { RedisArgs } from "./resources/redis.ts";
+export type { SiteArgs } from "./resources/site.ts";

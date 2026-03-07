@@ -74,6 +74,9 @@ importers:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
+      '@vyft/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@vyft/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -102,6 +105,9 @@ importers:
       '@vyft/core':
         specifier: workspace:*
         version: link:../core
+      '@vyft/provider':
+        specifier: workspace:*
+        version: link:../provider
 
   packages/provider:
     dependencies:

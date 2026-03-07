@@ -109,7 +109,6 @@ export function plan(desired: State, current: State): Change[][] {
     ...Object.keys(current.entries),
   ]);
 
-  // Build dependency graph from desired entries (for creates/updates)
   const forwardDeps = new Map<string, Set<string>>();
   for (const change of [...creates, ...updates]) {
     const entry = desired.entries[change.urn];
@@ -118,21 +117,18 @@ export function plan(desired: State, current: State): Change[][] {
     }
   }
 
-  // Deletes run in reverse dependency order — dependents first
   const reverseDeps = new Map<string, Set<string>>();
   for (const change of deletes) {
     const entry = current.entries[change.urn];
     if (!entry) continue;
     const deps = collectDeps(change.urn, entry, allUrns);
-    // Reverse: if A depends on B, A must be deleted before B
-    // So B's reverse dep is A
     for (const dep of deps) {
       const set = reverseDeps.get(dep) ?? new Set<string>();
       set.add(change.urn);
       reverseDeps.set(dep, set);
     }
   }
-  // Ensure all deletes have an entry in the map
+
   for (const change of deletes) {
     if (!reverseDeps.has(change.urn)) reverseDeps.set(change.urn, new Set());
   }
@@ -140,6 +136,5 @@ export function plan(desired: State, current: State): Change[][] {
   const deleteSteps = topoSort(deletes, reverseDeps);
   const createUpdateSteps = topoSort([...creates, ...updates], forwardDeps);
 
-  // Deletes first, then creates/updates
   return [...deleteSteps, ...createUpdateSteps];
 }

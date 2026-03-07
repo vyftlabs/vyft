@@ -13,6 +13,7 @@ import {
 } from "@clack/prompts";
 import { Command } from "commander";
 import { addGitignoreEntry, fileExists, isEmptyDir } from "../utils/fs.ts";
+import { detectPackageManager } from "../utils/pm.ts";
 import { cancel } from "../utils/prompts.ts";
 import { copyTemplate, listTemplates } from "../utils/templates.ts";
 
@@ -83,13 +84,15 @@ export default new Command("init")
       s.stop("Git repository initialized");
     }
 
+    const pm = await detectPackageManager(dir);
+
     if (installDeps) {
       s.start("Installing dependencies");
       const { execFile } = await import("node:child_process");
       const { promisify } = await import("node:util");
       const exec = promisify(execFile);
       try {
-        await exec("bun", ["install"], { cwd: dir });
+        await exec(pm, ["install"], { cwd: dir });
         s.stop("Dependencies installed");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -100,7 +103,7 @@ export default new Command("init")
 
     const nextSteps = [
       ...(isCurrentDir ? [] : [`cd ${name}`]),
-      ...(!installDeps ? ["bun install"] : []),
+      ...(!installDeps ? [`${pm} install`] : []),
       "vyft deploy",
     ];
 

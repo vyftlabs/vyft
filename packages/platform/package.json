@@ -15,7 +15,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@vyft/core": "workspace:*"
+    "@vyft/core": "workspace:*",
+    "@vyft/provider": "workspace:*"
   },
   "scripts": {
     "build": "tsc",

@@ -31,15 +31,17 @@ async function deployOnce(cwd: string, project: string, stage: string) {
   const stateDir = resolveStateDir(cwd, context.name, project, stage);
 
   if (providers[RUNTIME_PROVIDER_NAME]) {
-    providers[RUNTIME_PROVIDER_NAME] = resolveRuntimeProvider(
+    providers[RUNTIME_PROVIDER_NAME] = await resolveRuntimeProvider(
       context.entry.runtime,
       project,
       stage,
     );
   }
   if (providers[PLATFORM_PROVIDER_NAME]) {
-    providers[PLATFORM_PROVIDER_NAME] = resolvePlatformProvider(
+    providers[PLATFORM_PROVIDER_NAME] = await resolvePlatformProvider(
       context.entry.platform,
+      project,
+      stage,
     );
   }
 

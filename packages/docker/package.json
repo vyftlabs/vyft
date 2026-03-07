@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@vyft/core": "workspace:*",
+    "@vyft/platform": "workspace:*",
     "@vyft/runtime": "workspace:*"
   },
   "scripts": {

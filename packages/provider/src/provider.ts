@@ -98,7 +98,7 @@ function buildConstructors(
         name,
         provider,
         value.name,
-        (_id, config) => config,
+        (id, config) => ({ name: id, ...config }),
       );
     } else {
       result[key] = buildConstructors(
