@@ -180,7 +180,7 @@ export async function sandbox(opts: SandboxOptions = {}): Promise<Sandbox> {
     }).catch(() => {});
 
     try {
-      await vyftExec(`context remove ${id}`);
+      await vyftExec(`context remove ${id} -y`);
     } catch {
       // Context may not exist
     }
