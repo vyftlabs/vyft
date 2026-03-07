@@ -2,8 +2,6 @@ import type { Linkable } from "@vyft/core";
 import {
   createOutput,
   type Provider,
-  type ResourceEntry,
-  type ResourceOptions,
   resource,
 } from "@vyft/core";
 import type {
@@ -84,14 +82,7 @@ function linkEnvPrefix(urn: string): string {
   return id.toUpperCase().replace(/-/g, "_");
 }
 
-export const service: {
-  (
-    id: string,
-    config: ServiceConfig,
-    options?: ResourceOptions,
-  ): ResourceEntry<ServiceInput>;
-  (id: string): { urn: string };
-} = resource<ServiceConfig, ServiceInput>(
+export const service = resource<ServiceConfig, ServiceInput>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "service",
@@ -131,14 +122,7 @@ export const service: {
   },
 );
 
-export const volume: {
-  (
-    id: string,
-    config: VolumeConfig,
-    options?: ResourceOptions,
-  ): ResourceEntry<VolumeInput>;
-  (id: string): { urn: string };
-} = resource<VolumeConfig, VolumeInput>(
+export const volume = resource<VolumeConfig, VolumeInput>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "volume",
@@ -148,14 +132,7 @@ export const volume: {
   }),
 );
 
-export const job: {
-  (
-    id: string,
-    config: JobConfig,
-    options?: ResourceOptions,
-  ): ResourceEntry<JobInput>;
-  (id: string): { urn: string };
-} = resource<JobConfig, JobInput>(
+export const job = resource<JobConfig, JobInput>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "job",
@@ -170,14 +147,7 @@ export const job: {
   }),
 );
 
-export const cronjob: {
-  (
-    id: string,
-    config: CronJobConfig,
-    options?: ResourceOptions,
-  ): ResourceEntry<CronJobInput>;
-  (id: string): { urn: string };
-} = resource<CronJobConfig, CronJobInput>(
+export const cronjob = resource<CronJobConfig, CronJobInput>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "cronjob",

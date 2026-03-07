@@ -4,7 +4,6 @@ export type {
   Output,
   ResourceEntry,
   ResourceOptions,
-  ResourceRef,
   SecretOutput,
 } from "@vyft/core";
 export { createOutput, createSecretOutput, resource, secret } from "@vyft/core";

@@ -5,7 +5,6 @@ import {
   type ResourceDefinition,
   type ResourceEntry,
   type ResourceOptions,
-  type ResourceRef,
   resource,
 } from "@vyft/core";
 
@@ -20,10 +19,7 @@ export type ResourceTree =
 /** Converts a ResourceDefinition to a callable constructor. */
 type ResourceConstructor<D> =
   D extends ResourceDefinition<infer I>
-    ? {
-        (id: string, input: I, options?: ResourceOptions): ResourceEntry<I>;
-        (id: string): ResourceRef<I>;
-      }
+    ? (id: string, input: I, options?: ResourceOptions) => ResourceEntry<I>
     : never;
 
 /** Recursively maps a resource tree to constructor functions. */

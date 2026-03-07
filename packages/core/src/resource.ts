@@ -83,17 +83,9 @@ export function resource<C, T>(
   providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => T,
-): {
-  (id: string, config: C, options?: ResourceOptions): ResourceEntry<T>;
-  (id: string): ResourceRef<T>;
-} {
-  return ((id: string, config?: C, options?: ResourceOptions) => {
+): (id: string, config: C, options?: ResourceOptions) => ResourceEntry<T> {
+  return (id: string, config: C, options?: ResourceOptions) => {
     const resourceUrn = urn.build("resource", providerName, type, id);
-
-    if (config === undefined) {
-      return { urn: resourceUrn } satisfies ResourceRef<T>;
-    }
-
     const value = define(id, config);
     const entry = {
       [DEPENDABLE]: true,
@@ -106,8 +98,5 @@ export function resource<C, T>(
       entry.dependsOn = options.dependsOn;
     }
     return entry;
-  }) as {
-    (id: string, config: C, options?: ResourceOptions): ResourceEntry<T>;
-    (id: string): ResourceRef<T>;
   };
 }
