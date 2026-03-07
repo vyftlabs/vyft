@@ -17,7 +17,7 @@ import docker, {
 } from "@vyft/docker";
 import type { State } from "@vyft/engine";
 import local from "@vyft/local";
-import { LocalBackend, Store } from "../../../store/src/index.ts";
+import { LocalBackend, Store } from "@vyft/store";
 
 const VYFT_DIR = ".vyft";
 
