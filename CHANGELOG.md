@@ -1,3 +1,13 @@
+## 0.3.1 (2026-03-07)
+
+### 🩹 Fixes
+
+- **vyft:** resolve CLI version dynamically from package.json ([2962d25](https://github.com/vyftlabs/vyft/commit/2962d25))
+
+### ❤️ Thank You
+
+- bytekai
+
 ## 0.3.0 (2026-03-07)
 
 ### 🚀 Features
