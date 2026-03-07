@@ -6,7 +6,7 @@ import { addContext } from "../../contexts.ts";
 import { detectPackageManager } from "../../utils/pm.ts";
 import { cancel } from "../../utils/prompts.ts";
 
-const BUILTIN_PROVIDERS = new Set(["remote", "docker"]);
+const BUILTIN_PROVIDERS = new Set(["remote", "docker", "test"]);
 
 function packagesToInstall(providers: string[]): string[] {
   return providers
