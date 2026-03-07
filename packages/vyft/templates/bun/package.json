@@ -1,0 +1,25 @@
+{
+  "name": "@vyft/monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "nx run-many -t build --outputStyle stream",
+    "test": "nx run-many -t test --outputStyle stream",
+    "lint": "biome check . --fix"
+  },
+  "pnpm": {
+    "overrides": {
+      "minimatch@>=5.0.0 <5.1.8": "^5.1.8"
+    }
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@nx/js": "^22.5.4",
+    "@types/node": "^25.3.0",
+    "nx": "^22.5.3",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,52 +1,109 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { intro, outro } from "@clack/prompts";
+import {
+  confirm,
+  intro,
+  isCancel,
+  log,
+  note,
+  outro,
+  select,
+  spinner,
+  text,
+} from "@clack/prompts";
 import { Command } from "commander";
-
-const CONFIG_TEMPLATE = `import { service } from "vyft";
-
-export const api = service("api", {
-  path: ".",
-  port: 3000,
-});
-`;
+import { addGitignoreEntry, fileExists, isEmptyDir } from "../utils/fs.ts";
+import { cancel } from "../utils/prompts.ts";
+import { copyTemplate, listTemplates } from "../utils/templates.ts";
 
 export default new Command("init")
   .description("Initialize a new vyft project")
-  .action(async () => {
-    const cwd = process.cwd();
+  .argument("[name]", "Project name")
+  .action(async (nameArg?: string) => {
     intro("vyft init");
 
-    // Check if config already exists
-    const configPath = path.join(cwd, "vyft.config.ts");
-    let configExists = false;
-    try {
-      await fs.access(configPath);
-      configExists = true;
-    } catch {
-      // Does not exist
+    const name =
+      nameArg ??
+      (await (async () => {
+        const answer = await text({
+          message: "Project name",
+          placeholder: "my-app",
+        });
+        if (isCancel(answer)) cancel();
+        return answer;
+      })());
+
+    const dir = path.resolve(name);
+    const isCurrentDir = name === ".";
+
+    if (!(await isEmptyDir(dir))) {
+      const overwrite = await confirm({
+        message: `Directory "${isCurrentDir ? "." : name}" is not empty. Continue anyway?`,
+      });
+      if (isCancel(overwrite) || !overwrite) cancel();
     }
 
-    // Write config file
-    if (!configExists) {
-      await fs.writeFile(configPath, CONFIG_TEMPLATE);
-      console.log("  Created vyft.config.ts");
-    } else {
-      console.log("  vyft.config.ts already exists, skipping");
+    const templates = await listTemplates();
+    const template = await select({
+      message: "Template",
+      options: templates.map((t) => ({ value: t, label: t })),
+    });
+    if (isCancel(template)) cancel();
+
+    const installDeps = await confirm({
+      message: "Install dependencies?",
+    });
+    if (isCancel(installDeps)) cancel();
+
+    let initGit = false;
+    if (!(await fileExists(path.join(dir, ".git")))) {
+      const gitAnswer = await confirm({
+        message: "Initialize a git repository?",
+      });
+      if (isCancel(gitAnswer)) cancel();
+      initGit = gitAnswer;
     }
 
-    // Add .vyft to .gitignore
-    const gitignorePath = path.join(cwd, ".gitignore");
-    try {
-      const content = await fs.readFile(gitignorePath, "utf8");
-      if (!content.includes(".vyft")) {
-        await fs.appendFile(gitignorePath, "\n.vyft/\n");
-        console.log("  Added .vyft/ to .gitignore");
+    await fs.mkdir(dir, { recursive: true });
+
+    const s = spinner();
+
+    s.start("Scaffolding project");
+    await copyTemplate(template, dir);
+    s.stop("Project scaffolded");
+
+    await addGitignoreEntry(dir);
+
+    if (initGit) {
+      s.start("Initializing git repository");
+      const { execFile } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      const exec = promisify(execFile);
+      await exec("git", ["init"], { cwd: dir });
+      s.stop("Git repository initialized");
+    }
+
+    if (installDeps) {
+      s.start("Installing dependencies");
+      const { execFile } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      const exec = promisify(execFile);
+      try {
+        await exec("bun", ["install"], { cwd: dir });
+        s.stop("Dependencies installed");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        s.stop("Failed to install dependencies");
+        log.warn(msg);
       }
-    } catch {
-      await fs.writeFile(gitignorePath, ".vyft/\n");
-      console.log("  Created .gitignore with .vyft/");
     }
 
-    outro("Ready! Run `vyft deploy` to deploy.");
+    const nextSteps = [
+      ...(isCurrentDir ? [] : [`cd ${name}`]),
+      ...(!installDeps ? ["bun install"] : []),
+      "vyft deploy",
+    ];
+
+    note(nextSteps.join("\n"), "Next steps");
+    outro("You're all set!");
   });
