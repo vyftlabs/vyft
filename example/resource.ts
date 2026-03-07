@@ -1,59 +1,64 @@
-import { resource, secret } from "@vyft/core";
+import { resource, secret, std, interpolate } from "vyft";
+import { resolve } from "path";
+import { resolvePackageJson, resolvePackageManager } from "./helpers";
 
-/**
- * Example: define a custom composite resource.
- *
- * `resource()` creates a factory function that returns
- * a ResourceEntry (with config) or ResourceRef (without).
- */
+type SiteArgs = {
+  cwd?: string;
+  path?: string;
+  domain?: string;
+  spa?: boolean;
+  input?: string[];
+  output?: string[];
+};
 
-// A database resource with a generated password
-const database = resource(
-  "database",
-  (id, config: { name: string; engine: "postgres" | "mysql" }) => ({
-    name: config.name,
-    engine: config.engine,
-    connectionString: secret(
-      `${config.engine}://admin:s3cret@${id}.db.internal:5432/${config.name}`,
-    ),
-  }),
-);
+export const site = resource("site", async (id, config: SiteArgs, ctx) => {
+  const {
+    cwd = process.cwd(),
+    path = ".",
+    spa = true,
+    input = ["src/**", "public/**", "package.json"],
+    output = ["dist/**"],
+  } = config;
+  const pkg = await resolvePackageJson(resolve(cwd, path));
+  const pm = await resolvePackageManager(pkg.path);
+  await std.process.exec(`${pm} run build`, { cwd: pkg.path });
 
-// A cache resource
-const cache = resource("cache", (id, config: { maxMemoryMb: number }) => ({
-  host: `${id}.cache.internal`,
-  port: 6379,
-  maxMemoryMb: config.maxMemoryMb,
-}));
+  const archive = await std.fs.glob({
+    include: output,
+    cwd: pkg.path,
+  });
 
-// A web service that composes a database and cache
-const webService = resource(
-  "web_service",
-  (id, config: { name: string; replicas: number }) => ({
-    name: config.name,
-    replicas: config.replicas,
-    image: `registry.internal/${config.name}:latest`,
-    apiKey: secret(`key-${id}-${Date.now()}`),
-  }),
-);
+  const archiveRef = await ctx.artifacts.write("archive", archive);
 
-// ── Usage with transform ────────────────────────────────────────────────
+  const nginxConfig = interpolate`
+  server {
+    listen       80;
+    server_name  localhost;
+    root   /usr/share/nginx/html;
 
-// import { transform } from "@vyft/core";
-// const current = { entries: {} }; // from store
-//
-// const desired = transform(current)
-//   .add(database("prod", { name: "myapp", engine: "postgres" }))
-//   .add(cache("prod", { maxMemoryMb: 512 }))
-//   .add(webService("prod", { name: "api", replicas: 3 }));
-//
-// // Update — only needs the ref (no config), prev is typed
-// const updated = transform(current)
-//   .update(webService("prod"), (prev) => ({ ...prev, replicas: 5 }));
-//
-// // Remove — only needs the ref
-// const cleaned = transform(current)
-//   .remove(database("staging"))
-//   .remove(cache("staging"));
+    location / {
+      try_files $uri $uri/ ${spa ? "/index.html" : ""};
+    }
+  }
+  `;
 
-export { cache, database, webService };
+  const nginx = service(`${id}-nginx`, {
+    image: "nginx:alpine",
+    port: 80,
+    route: config.domain ? `https://${config.domain}` : undefined,
+    mounts: [
+      { source: archiveRef, target: "/usr/share/nginx/html" },
+      { source: nginxConfig, target: "/etc/nginx/conf.d/default.conf" },
+    ],
+  });
+
+  ctx.runtime.exec(nginx, {
+    command: ["nginx", "-t"],
+    cwd: "/etc/nginx",
+  });
+
+  return {
+    children: [nginx],
+    output: {},
+  };
+});

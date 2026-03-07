@@ -82,6 +82,8 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/railpack: {}
+
   packages/runtime:
     dependencies:
       '@vyft/core':
