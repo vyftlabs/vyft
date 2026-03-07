@@ -67,15 +67,26 @@ async function promptConnection(
 export default new Command("add")
   .alias("a")
   .description("Add a context")
-  .argument("<name>", "Context name")
+  .argument("[name]", "Context name")
   .option("--platform <platform>", "Platform (e.g. remote, hetzner, aws, gcp)")
   .option("--runtime <runtime>", "Runtime (e.g. docker, ecs, k8s)")
   .action(
     async (
-      name: string,
+      nameArg: string | undefined,
       opts: { platform?: string; runtime?: string },
     ) => {
       const cwd = process.cwd();
+
+      const name =
+        nameArg ??
+        (await (async () => {
+          const answer = await text({
+            message: "Context name",
+            placeholder: "production",
+          });
+          if (isCancel(answer)) cancel();
+          return answer;
+        })());
 
       const platform =
         opts.platform ??
