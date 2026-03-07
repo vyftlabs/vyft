@@ -1,18 +1,1 @@
-- [x] Delete WAL bug
-- [x] Destroy confirmation (-y flag)
-- [ ] Fingerprinting / change detection
-- [ ] Deploy --refresh flag
-- [ ] Diff --live flag
-- [ ] vyft output command
-- [ ] vyft variable set/get/ls/rm
-- [ ] vyft stage ls/rm
-- [ ] vyft generate command
-- [ ] local env command
-- [ ] local up
-- [ ] local down
-- [ ] local reset
-- [ ] Taint mechanism
-- [ ] Two-phase destruction
-- [ ] Service classification utility
-- [ ] Deterministic port assignment
-- [ ] Host replacement for dev mode
+- [ ] Automate package publishing when repository tags are created
