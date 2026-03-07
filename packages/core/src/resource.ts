@@ -83,10 +83,10 @@ export function resource<C, T>(
   providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => T,
-): (id: string, config: C, options?: ResourceOptions) => ResourceEntry<T> {
-  return (id: string, config: C, options?: ResourceOptions) => {
+): (id: string, config?: C, options?: ResourceOptions) => ResourceEntry<T> {
+  return (id: string, config?: C, options?: ResourceOptions) => {
     const resourceUrn = urn.build("resource", providerName, type, id);
-    const value = define(id, config);
+    const value = define(id, config ?? ({} as C));
     const entry = {
       [DEPENDABLE]: true,
       [LINKABLE]: true,
