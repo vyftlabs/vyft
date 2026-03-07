@@ -28,11 +28,17 @@
   "release": {
     "projects": ["packages/*", "!packages/e2e"],
     "version": {
-      "conventionalCommits": true
+      "conventionalCommits": true,
+      "generatorOptions": {
+        "updateDependents": "auto"
+      }
     },
     "changelog": {
       "workspaceChangelog": true,
       "projectChangelogs": true
+    },
+    "git": {
+      "commitMessage": "chore(release): {version}"
     }
   }
 }
