@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - apps/marketing/**
       - apps/docs/**
   workflow_dispatch:
 
@@ -31,11 +32,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @vyft/docs build
+      - run: pnpm --filter @vyft/marketing --filter @vyft/docs build
 
       - name: Combine build outputs
         run: |
           mkdir -p _site/docs
+          cp -r apps/marketing/dist/* _site/
           cp -r apps/docs/dist/* _site/docs/
 
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
