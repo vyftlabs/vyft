@@ -14,7 +14,7 @@ export function parseWAL(raw: string): WALEntry[] {
     try {
       parsed = JSON.parse(line);
     } catch {
-      break;
+      continue;
     }
 
     const result = walEntrySchema.safeParse(parsed);

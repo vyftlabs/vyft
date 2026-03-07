@@ -1,5 +1,5 @@
 import type { StorageBackend } from "./backend/types.ts";
-import { StateCorruptedError } from "./error.ts";
+import { LockError, StateCorruptedError } from "./error.ts";
 import { stateFileSchema } from "./schema.ts";
 import type { State } from "./state.ts";
 import type { WALEntry } from "./wal.ts";
@@ -9,6 +9,7 @@ export class Store {
   #state: State;
   #deleted = false;
   #disposed = false;
+  #appendQueue: Promise<void> = Promise.resolve();
   readonly #backend: StorageBackend;
 
   private constructor(backend: StorageBackend, state: State) {
@@ -17,7 +18,14 @@ export class Store {
   }
 
   static async open(backend: StorageBackend): Promise<Store> {
-    await backend.lock();
+    try {
+      await backend.lock();
+    } catch (err) {
+      if (err instanceof LockError) throw err;
+      throw new LockError(
+        `Failed to acquire lock: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     try {
       const snapshot = parseState(await backend.read("state.json"));
@@ -59,11 +67,19 @@ export class Store {
   async append(entry: WALEntry): Promise<void> {
     if (this.#disposed) throw new Error("Store is disposed");
     if (this.#deleted) throw new Error("Store is deleted");
-    await this.#backend.append("wal.jsonl", `${JSON.stringify(entry)}\n`);
-    apply(this.#state, entry);
+    if (entry.type === "set" && entry.data === undefined) {
+      throw new Error("Cannot store undefined — use null instead");
+    }
+    const op = this.#appendQueue.then(async () => {
+      await this.#backend.append("wal.jsonl", `${JSON.stringify(entry)}\n`);
+      apply(this.#state, entry);
+    });
+    this.#appendQueue = op.catch(() => {});
+    await op;
   }
 
   async #compact(): Promise<void> {
+    await this.#appendQueue;
     await this.#backend.write(
       "state.json",
       `${JSON.stringify(Object.fromEntries(this.#state), null, 2)}\n`,
@@ -73,7 +89,8 @@ export class Store {
 
   async delete(): Promise<void> {
     this.#deleted = true;
-    await this.#backend.deleteAll("");
+    await this.#backend.delete("state.json");
+    await this.#backend.delete("wal.jsonl");
   }
 
   async [Symbol.asyncDispose](): Promise<void> {

@@ -27,7 +27,7 @@ export class LocalBackend implements StorageBackend {
     try {
       return await readFile(join(this.#dir, key), "utf8");
     } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+      if (isErrnoException(err) && err.code === "ENOENT") return null;
       throw err;
     }
   }
@@ -48,7 +48,7 @@ export class LocalBackend implements StorageBackend {
     try {
       await unlink(join(this.#dir, key));
     } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+      if (isErrnoException(err) && err.code === "ENOENT") return;
       throw err;
     }
   }
@@ -71,18 +71,38 @@ export class LocalBackend implements StorageBackend {
     try {
       await writeFile(this.#lockPath, payload, { flag: "wx" });
     } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      if (!isErrnoException(err) || err.code !== "EEXIST") throw err;
 
-      const existing = lockPayloadSchema.parse(
-        JSON.parse(await readFile(this.#lockPath, "utf8")),
-      );
-      if (isProcessAlive(existing.pid)) {
-        throw new LockError(
-          `State is locked by PID ${existing.pid}. The process is still running.`,
-        );
+      try {
+        const raw = await readFile(this.#lockPath, "utf8");
+        const existing = lockPayloadSchema.parse(JSON.parse(raw));
+        if (isProcessAlive(existing.pid)) {
+          throw new LockError(
+            `State is locked by PID ${existing.pid}. The process is still running.`,
+          );
+        }
+      } catch (innerErr) {
+        if (innerErr instanceof LockError) throw innerErr;
+        // Lock file disappeared or is corrupt — treat as stale
       }
 
-      await writeFile(this.#lockPath, payload, "utf8");
+      // Stale lock: remove and retry with exclusive create
+      try {
+        await unlink(this.#lockPath);
+      } catch {
+        // Already removed by another process
+      }
+
+      try {
+        await writeFile(this.#lockPath, payload, { flag: "wx" });
+      } catch (retryErr: unknown) {
+        if (isErrnoException(retryErr) && retryErr.code === "EEXIST") {
+          throw new LockError(
+            "Lock was taken by another process during takeover",
+          );
+        }
+        throw retryErr;
+      }
     }
   }
 
@@ -102,4 +122,8 @@ function isProcessAlive(pid: number): boolean {
   } catch {
     return false;
   }
+}
+
+function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && "code" in err;
 }

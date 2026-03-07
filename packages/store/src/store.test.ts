@@ -132,7 +132,7 @@ describe("Store", { concurrency: true }, () => {
       await store.dispose();
     });
 
-    it("silently drops entries after a malformed JSON line", async () => {
+    it("skips malformed JSON lines and recovers valid entries after them", async () => {
       const backend = setup();
       await backend.write("state.json", "{}");
       const lines = [
@@ -144,8 +144,8 @@ describe("Store", { concurrency: true }, () => {
 
       const store = await Store.open(backend);
       assert.equal(store.get("a"), 1);
-      assert.equal(store.has("b"), false);
-      assert.equal(store.size, 1);
+      assert.equal(store.get("b"), 2);
+      assert.equal(store.size, 2);
       await store.dispose();
     });
 
@@ -246,14 +246,15 @@ describe("Store", { concurrency: true }, () => {
       await store.dispose();
     });
 
-    it("set(key, undefined) is distinguishable via has()", async () => {
+    it("rejects undefined data with a clear error", async () => {
       const backend = setup();
       const store = await Store.open(backend);
-      await store.append({ type: "set", key: "u", data: undefined });
-      assert.equal(store.has("u"), true);
-      assert.equal(store.get("u"), undefined);
-      assert.equal(store.has("missing"), false);
-      assert.equal(store.get("missing"), undefined);
+      await assert.rejects(
+        () => store.append({ type: "set", key: "u", data: undefined }),
+        (err: unknown) =>
+          err instanceof Error &&
+          err.message === "Cannot store undefined — use null instead",
+      );
       await store.dispose();
     });
 
@@ -377,16 +378,18 @@ describe("Store", { concurrency: true }, () => {
       await store2.dispose();
     });
 
-    it("set(key, undefined) does not survive persistence round-trip", async () => {
+    it("null values persist correctly across round-trips", async () => {
       const backend = setup();
 
       const s1 = await Store.open(backend);
-      await s1.append({ type: "set", key: "u", data: undefined });
-      assert.equal(s1.has("u"), true);
+      await s1.append({ type: "set", key: "n", data: null });
+      assert.equal(s1.has("n"), true);
+      assert.equal(s1.get("n"), null);
       await s1.dispose();
 
       const s2 = await Store.open(backend);
-      assert.equal(s2.has("u"), false);
+      assert.equal(s2.has("n"), true);
+      assert.equal(s2.get("n"), null);
       await s2.dispose();
     });
   });
