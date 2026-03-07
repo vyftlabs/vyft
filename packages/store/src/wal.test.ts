@@ -69,4 +69,13 @@ describe("parseWAL", () => {
       (err: unknown) => err instanceof WALCorruptedError,
     );
   });
+
+  it("should reject set entry with missing data field", () => {
+    const walLine = JSON.stringify({ type: "set", key: "ghost" });
+
+    assert.throws(
+      () => parseWAL(walLine),
+      (err: unknown) => err instanceof WALCorruptedError,
+    );
+  });
 });

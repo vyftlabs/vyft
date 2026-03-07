@@ -3,7 +3,7 @@ import { LockError, StateCorruptedError } from "./error.ts";
 import { stateFileSchema } from "./schema.ts";
 import type { State } from "./state.ts";
 import type { WALEntry } from "./wal.ts";
-import { apply, parseWAL, replay } from "./wal.ts";
+import { parseWAL, replay } from "./wal.ts";
 
 export class Store {
   #state: State;
@@ -71,8 +71,13 @@ export class Store {
       throw new Error("Cannot store undefined — use null instead");
     }
     const op = this.#appendQueue.then(async () => {
-      await this.#backend.append("wal.jsonl", `${JSON.stringify(entry)}\n`);
-      apply(this.#state, entry);
+      const line = `${JSON.stringify(entry)}\n`;
+      await this.#backend.append("wal.jsonl", line);
+      if (entry.type === "set") {
+        this.#state.set(entry.key, JSON.parse(JSON.stringify(entry.data)));
+      } else {
+        this.#state.delete(entry.key);
+      }
     });
     this.#appendQueue = op.catch(() => {});
     await op;
@@ -89,6 +94,7 @@ export class Store {
 
   async delete(): Promise<void> {
     this.#deleted = true;
+    await this.#appendQueue;
     await this.#backend.delete("state.json");
     await this.#backend.delete("wal.jsonl");
   }

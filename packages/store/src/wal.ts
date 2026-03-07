@@ -21,6 +21,11 @@ export function parseWAL(raw: string): WALEntry[] {
     if (!result.success) {
       throw new WALCorruptedError(`Invalid WAL entry: ${result.error.message}`);
     }
+    if (result.data.type === "set" && result.data.data === undefined) {
+      throw new WALCorruptedError(
+        "Invalid WAL entry: data is required for set entries",
+      );
+    }
     entries.push(result.data);
   }
   return entries;

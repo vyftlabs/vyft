@@ -186,16 +186,15 @@ describe("Store", { concurrency: true }, () => {
 
     it("recovers data after mid-WAL corruption on full round-trip", async () => {
       const backend = setup();
-      const wal =
-        [
-          JSON.stringify({ type: "set", key: "committed", data: "safe" }),
-          "{torn-write",
-          JSON.stringify({
-            type: "set",
-            key: "important",
-            data: "must not lose",
-          }),
-        ].join("\n") + "\n";
+      const wal = `${[
+        JSON.stringify({ type: "set", key: "committed", data: "safe" }),
+        "{torn-write",
+        JSON.stringify({
+          type: "set",
+          key: "important",
+          data: "must not lose",
+        }),
+      ].join("\n")}\n`;
 
       await backend.write("state.json", "{}");
       await backend.write("wal.jsonl", wal);
@@ -654,6 +653,123 @@ describe("Store", { concurrency: true }, () => {
       const store2 = await Store.open(backend);
       assert.equal(store2.size, 0);
       await store2.dispose();
+    });
+
+    it("delete() should not allow in-flight appends to resurrect data", async () => {
+      const backend = new SlowAppendBackend(50);
+      const store = await Store.open(backend);
+
+      // Start a slow append — don't await it
+      const appendPromise = store.append({
+        type: "set",
+        key: "zombie",
+        data: "should be gone",
+      });
+
+      // Delete immediately while append is in-flight
+      await store.delete();
+      await store.dispose();
+
+      // Wait for the append to settle (it may reject or resolve)
+      await appendPromise.catch(() => {});
+
+      // Reopen — the "zombie" key must NOT exist
+      const store2 = await Store.open(backend);
+      assert.equal(
+        store2.has("zombie"),
+        false,
+        "Data resurrected after delete — delete() did not drain appendQueue",
+      );
+      assert.equal(store2.size, 0);
+      await store2.dispose();
+    });
+  });
+
+  describe("round-trip integrity", { concurrency: true }, () => {
+    it("nested undefined should be normalized on append", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+
+      await store.append({
+        type: "set",
+        key: "obj",
+        data: { a: undefined, b: 1 },
+      });
+
+      const before = store.get("obj") as Record<string, unknown>;
+      assert.equal(
+        "a" in before,
+        false,
+        "undefined fields should be stripped on append",
+      );
+      assert.deepEqual(before, { b: 1 });
+
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      const after = store2.get("obj") as Record<string, unknown>;
+
+      assert.deepEqual(
+        before,
+        after,
+        "Value should be consistent after round-trip",
+      );
+      await store2.dispose();
+    });
+
+    it("NaN should be normalized to null on append", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+
+      await store.append({ type: "set", key: "nan", data: NaN });
+      assert.equal(store.get("nan"), null, "NaN should be normalized to null");
+
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.equal(
+        store2.get("nan"),
+        null,
+        "Should remain null after round-trip",
+      );
+      await store2.dispose();
+    });
+
+    it("Infinity should be normalized to null on append", async () => {
+      const backend = setup();
+      const store = await Store.open(backend);
+
+      await store.append({ type: "set", key: "inf", data: Infinity });
+      assert.equal(
+        store.get("inf"),
+        null,
+        "Infinity should be normalized to null",
+      );
+
+      await store.dispose();
+
+      const store2 = await Store.open(backend);
+      assert.equal(
+        store2.get("inf"),
+        null,
+        "Should remain null after round-trip",
+      );
+      await store2.dispose();
+    });
+
+    it("set entry without data in WAL should be rejected", async () => {
+      const backend = setup();
+
+      await backend.write("state.json", "{}");
+      await backend.write(
+        "wal.jsonl",
+        `${JSON.stringify({ type: "set", key: "ghost" })}\n`,
+      );
+
+      await assert.rejects(
+        () => Store.open(backend),
+        (err: unknown) => err instanceof WALCorruptedError,
+      );
     });
   });
 });
