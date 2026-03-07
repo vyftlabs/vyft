@@ -1,1 +1,0 @@
-- [ ] Automate package publishing when repository tags are created

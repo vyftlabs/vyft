@@ -13,6 +13,9 @@
     "dist",
     "postinstall.js"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "postinstall": "node postinstall.js"
   },
