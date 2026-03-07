@@ -29,7 +29,7 @@ export interface ServiceConfig {
   path?: string;
   cwd?: string;
   port?: number;
-  route?: string;
+  domain?: string;
   env?: Record<string, string>;
   command?: string[];
   mounts?: Array<{ source: string; target: string }>;
@@ -111,7 +111,7 @@ export const service = resource<ServiceConfig, ServiceInput>(
       path: config.path ?? (config.image ? undefined : "."),
       cwd: config.cwd,
       port: config.port ?? 3000,
-      route: config.route,
+      domain: config.domain,
       env,
       command: config.command,
       mounts: config.mounts,

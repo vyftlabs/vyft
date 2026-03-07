@@ -4,7 +4,7 @@ export interface ServiceInput {
   path?: string | undefined;
   cwd?: string | undefined;
   port: number;
-  route?: string | undefined;
+  domain?: string | undefined;
   env?: Record<string, string> | undefined;
   command?: string[] | undefined;
   mounts?: Array<{ source: string; target: string }> | undefined;
