@@ -31,14 +31,14 @@
       "conventionalCommits": true,
       "generatorOptions": {
         "updateDependents": "auto"
+      },
+      "git": {
+        "commitMessage": "chore(release): {version}"
       }
     },
     "changelog": {
       "workspaceChangelog": true,
       "projectChangelogs": true
-    },
-    "git": {
-      "commitMessage": "chore(release): {version}"
     }
   }
 }
