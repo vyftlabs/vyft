@@ -11,7 +11,8 @@
       "!!**/dist",
       "!!.nx",
       "!!packages/hcloud/assets/openapi.json",
-      "!!packages/hcloud/src/schema.d.ts"
+      "!!packages/hcloud/src/schema.d.ts",
+      "!!apps/marketing/**/*.astro"
     ]
   },
   "formatter": {
@@ -32,6 +33,24 @@
       "quoteStyle": "double"
     }
   },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "tailwindDirectives": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/marketing/**/*.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {
