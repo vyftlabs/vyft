@@ -8,7 +8,6 @@ import {
 } from "./crypto/index.ts";
 import { file, glob, template } from "./fs/index.ts";
 import { exec } from "./process/index.ts";
-import { ssh } from "./ssh.ts";
 
 const std = createProvider({
   name: "std",
@@ -29,7 +28,6 @@ const std = createProvider({
     process: {
       exec,
     },
-    ssh,
   },
 });
 
