@@ -1,56 +1,125 @@
 @import "tailwindcss";
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/geist-sans/600.css";
+@import "@fontsource/geist-sans/700.css";
+@import "@fontsource/geist-sans/800.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
 
 @theme {
-	--font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-		"Segoe UI", Roboto, sans-serif;
-	--font-mono: ui-monospace, "Geist Mono", "SF Mono", "Cascadia Code",
+	--font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system,
+		BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code",
 		"Fira Code", monospace;
 
-	--color-bg: #09090b;
-	--color-surface: #18181b;
-	--color-border: #27272a;
-	--color-text: #fafafa;
-	--color-muted: #a1a1aa;
-	--color-accent: #7c3aed;
-	--color-accent-light: #a78bfa;
+	--color-bg: oklch(0.145 0 0);
+	--color-surface: oklch(0.185 0 0);
+	--color-border: oklch(1 0 0 / 8%);
+	--color-text: oklch(0.985 0 0);
+	--color-muted: oklch(0.556 0 0);
 }
 
-/* Code syntax highlighting */
+/* ── Structural grid ────────────────────────────────────────────── */
+
+/* Vertical rails — two lines at the content max-width edges */
+.grid-frame {
+	position: absolute;
+	inset: 0;
+	max-width: 1024px;
+	margin: 0 auto;
+	border-inline: 1px solid var(--color-border);
+	pointer-events: none;
+	z-index: 0;
+}
+
+/* Horizontal section divider spanning full viewport */
+.section-rule {
+	position: relative;
+	border-top: 1px solid var(--color-border);
+}
+
+
+/* ── Code syntax ────────────────────────────────────────────────── */
+
 .code-kw {
-	color: #a78bfa;
+	color: oklch(0.7 0.1 280);
 }
 .code-fn {
-	color: #67e8f9;
+	color: oklch(0.8 0.12 195);
 }
 .code-str {
-	color: #fbbf24;
+	color: oklch(0.75 0.1 85);
 }
 .code-num {
-	color: #fb923c;
+	color: oklch(0.75 0.12 50);
 }
 .code-punct {
-	color: #71717a;
+	color: oklch(0.45 0 0);
+}
+.code-comment {
+	color: oklch(0.4 0 0);
 }
 
-@keyframes pulse-dot {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.4;
+/* ── Feature column dividers ────────────────────────────────────── */
+
+.feature-divider {
+	border-top: 1px solid var(--color-border);
+	border-bottom: 1px solid var(--color-border);
+}
+
+@media (min-width: 640px) {
+	.feature-divider {
+		border-top: none;
+		border-bottom: none;
+		border-left: 1px solid var(--color-border);
+		border-right: 1px solid var(--color-border);
 	}
 }
 
-@keyframes bounce-y {
-	0%,
-	100% {
-		transform: translateX(-50%) translateY(0);
-	}
-	50% {
-		transform: translateX(-50%) translateY(6px);
-	}
+/* ── Links ──────────────────────────────────────────────────────── */
+
+.nav-link {
+	color: var(--color-text);
+	text-decoration: none;
 }
+
+.nav-link-muted {
+	color: var(--color-muted);
+	text-decoration: none;
+}
+.nav-link-muted:hover {
+	color: var(--color-text);
+}
+
+.footer-link {
+	color: var(--color-muted);
+}
+.footer-link:hover {
+	color: var(--color-text);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+
+.btn-primary {
+	background: var(--color-text);
+	color: var(--color-bg);
+}
+.btn-primary:hover {
+	background: oklch(0.85 0 0);
+}
+
+.btn-ghost {
+	background: transparent;
+	color: var(--color-muted);
+	border: 1px solid var(--color-border);
+}
+.btn-ghost:hover {
+	color: var(--color-text);
+	border-color: oklch(1 0 0 / 20%);
+}
+
+/* ── Base ───────────────────────────────────────────────────────── */
 
 * {
 	box-sizing: border-box;
@@ -61,9 +130,18 @@ html {
 }
 
 body {
+	position: relative;
 	background-color: var(--color-bg);
 	color: var(--color-text);
 	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0.01ms !important;
+	}
 }
