@@ -1,3 +1,4 @@
+import { durationToNanos } from "@vyft/runtime";
 import type { DockerClient } from "./index.ts";
 
 interface ContainerInput {
@@ -89,6 +90,12 @@ export function buildContainerConfig(
         `curl -f http://localhost:${input.port}${input.health.path} || exit 1`,
       ],
     };
+    if (input.health.interval !== undefined) {
+      config.Healthcheck.Interval = durationToNanos(input.health.interval);
+    }
+    if (input.health.timeout !== undefined) {
+      config.Healthcheck.Timeout = durationToNanos(input.health.timeout);
+    }
     if (input.health.retries !== undefined) {
       config.Healthcheck.Retries = input.health.retries;
     }
