@@ -1,481 +1,272 @@
 ---
 import "../styles/global.css";
 
-const logoPath =
+const logo =
 	"M10.4916 3.47575C7.87926 5.50306 4.39535 11.0053 2.65381 15.3497C-0.829266 24.9066 -0.829244 73.2714 2.3633 121.925C4.39537 150.886 5.84718 157.546 13.1039 170.579C17.4585 179.267 26.7481 190.272 33.134 195.486C39.5208 200.698 93.2237 229.079 152.732 258.909C256.075 310.749 275.524 322.333 275.524 333.628C275.524 341.448 250.269 356.797 149.829 409.505C32.2633 471.769 22.1029 478.723 8.75002 506.814C1.49251 522.16 1.20281 524.771 0.331213 588.776C-0.539557 634.241 0.331212 657.7 2.65381 663.201C7.00848 673.629 17.168 678.26 28.7802 674.787C39.5208 671.601 178.278 599.779 466.825 448.022C538.528 410.374 557.104 388.364 559.425 338.841C562.042 284.685 543.458 256.592 486.273 227.922C209.919 89.7789 27.0378 0 21.8132 0C18.3293 0 13.1039 1.73829 10.4916 3.47575Z";
+
+const codeLines = [
+	{ n: 1, html: `<span class="code-kw">import</span> <span class="code-punct">{</span> service<span class="code-punct">,</span> site<span class="code-punct">,</span> postgres<span class="code-punct">,</span> redis <span class="code-punct">}</span> <span class="code-kw">from</span> <span class="code-str">"vyft"</span><span class="code-punct">;</span>` },
+	{ n: 2, html: `` },
+	{ n: 3, html: `<span class="code-kw">const</span> db <span class="code-punct">=</span> <span class="code-fn">postgres</span><span class="code-punct">(</span><span class="code-str">"db"</span><span class="code-punct">);</span>` },
+	{ n: 4, html: `<span class="code-kw">const</span> cache <span class="code-punct">=</span> <span class="code-fn">redis</span><span class="code-punct">(</span><span class="code-str">"cache"</span><span class="code-punct">);</span>` },
+	{ n: 5, html: `` },
+	{ n: 6, html: `<span class="code-kw">export const</span> api <span class="code-punct">=</span> <span class="code-fn">service</span><span class="code-punct">(</span><span class="code-str">"api"</span><span class="code-punct">,</span> <span class="code-punct">{</span>` },
+	{ n: 7, html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com/api/*"</span><span class="code-punct">,</span>` },
+	{ n: 8, html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/api"</span><span class="code-punct">,</span>` },
+	{ n: 9, html: `  depends<span class="code-punct">:</span> <span class="code-punct">[</span>db<span class="code-punct">,</span> cache<span class="code-punct">],</span>` },
+	{ n: 10, html: `<span class="code-punct">});</span>` },
+	{ n: 11, html: `` },
+	{ n: 12, html: `<span class="code-kw">export const</span> web <span class="code-punct">=</span> <span class="code-fn">site</span><span class="code-punct">(</span><span class="code-str">"web"</span><span class="code-punct">,</span> <span class="code-punct">{</span>` },
+	{ n: 13, html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com"</span><span class="code-punct">,</span>` },
+	{ n: 14, html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/web"</span><span class="code-punct">,</span>` },
+	{ n: 15, html: `<span class="code-punct">});</span>` },
+];
 ---
 
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
+		<meta name="theme-color" content="#252525" />
 		<meta
 			name="description"
-			content="Vyft — infrastructure as code for TypeScript. Deploy, scale, and manage infrastructure directly from TypeScript."
+			content="Vyft — infrastructure as code for TypeScript. Define services, volumes, and jobs as code, then deploy with a single command."
 		/>
+		<meta property="og:title" content="Vyft — Infrastructure as Code for TypeScript" />
+		<meta property="og:description" content="Define your services, volumes, and jobs as typed TypeScript code. Deploy with a single command." />
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://vyft.dev" />
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="Vyft — Infrastructure as Code for TypeScript" />
+		<meta name="twitter:description" content="Define your services, volumes, and jobs as typed TypeScript code. Deploy with a single command." />
 		<title>Vyft — Infrastructure as Code for TypeScript</title>
 	</head>
 	<body>
-		<!-- Nav -->
+		<!-- Vertical rail lines -->
+		<div class="grid-frame" aria-hidden="true"></div>
+
+		<!-- ─── Nav ─────────────────────────────────────────────────── -->
 		<header
-			style="border-bottom: 1px solid var(--color-border); background: rgba(9,9,11,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);"
 			class="fixed top-0 left-0 right-0 z-50"
+			style="background: oklch(0.145 0 0 / 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--color-border);"
 		>
-			<nav
-				class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
-			>
-				<a
-					href="/"
-					class="flex items-center gap-2.5"
-					style="color: var(--color-text); text-decoration: none;"
-				>
-					<svg
-						height="20"
-						viewBox="0 0 560 676"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						aria-hidden="true"
-					>
-						<path d={logoPath} fill="currentColor"></path>
+			<nav class="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
+				<a href="/" class="nav-link flex items-center gap-2.5">
+					<svg height="22" viewBox="0 0 560 676" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+						<path d={logo} fill="currentColor" />
 					</svg>
-					<span class="text-base font-semibold tracking-tight">vyft</span>
+					<span class="text-base font-bold tracking-tight">vyft</span>
 				</a>
-				<div class="flex items-center gap-6">
+				<div class="flex items-center gap-5">
+					<a
+						href="/docs"
+						class="nav-link-muted py-2 px-1 text-sm transition-colors duration-150"
+					>
+						Docs
+					</a>
 					<a
 						href="https://github.com/vyftlabs/vyft"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="flex items-center gap-1.5 text-sm transition-colors duration-150"
-						style="color: var(--color-muted);"
-						onmouseover="this.style.color='var(--color-text)'"
-						onmouseout="this.style.color='var(--color-muted)'"
+						class="nav-link-muted flex items-center gap-1.5 py-2 px-1 text-sm transition-colors duration-150"
 					>
-						<svg
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="currentColor"
-							aria-hidden="true"
-						>
-							<path
-								d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"
-							></path>
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+							<path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
 						</svg>
 						GitHub
-					</a>
-					<a
-						href="/docs"
-						class="text-sm transition-colors duration-150"
-						style="color: var(--color-muted);"
-						onmouseover="this.style.color='var(--color-text)'"
-						onmouseout="this.style.color='var(--color-muted)'"
-					>
-						Docs
 					</a>
 				</div>
 			</nav>
 		</header>
 
-		<!-- Hero -->
 		<main>
-			<section
-				class="relative flex min-h-screen flex-col items-center justify-center px-6 text-center"
-				style="background-image: radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 32px 32px;"
-			>
-				<!-- Ambient glow -->
+			<!-- ─── Hero ────────────────────────────────────────────── -->
+			<section class="relative z-10 flex flex-col items-center justify-center px-6 pt-44 pb-28 text-center">
 				<div
+					class="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[800px]"
+					style="background: radial-gradient(ellipse at center, oklch(0.3 0 0 / 0.4) 0%, transparent 70%);"
 					aria-hidden="true"
-					style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 45% at 50% 20%, rgba(124,58,237,0.14) 0%, transparent 65%), radial-gradient(ellipse 40% 30% at 50% 10%, rgba(167,139,250,0.06) 0%, transparent 60%);"
-				>
-				</div>
+				></div>
 
-				<div class="relative z-10 max-w-3xl">
-					<!-- Logo mark -->
-					<div class="mb-8 flex justify-center">
-						<div style="position: relative; display: inline-block;">
-							<div
-								aria-hidden="true"
-								style="position: absolute; inset: -24px; background: radial-gradient(circle, rgba(124,58,237,0.35) 0%, transparent 70%); filter: blur(20px); border-radius: 50%;"
-							>
-							</div>
-							<svg
-								height="72"
-								viewBox="0 0 560 676"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-								aria-label="Vyft"
-								style="position: relative; z-index: 1; filter: drop-shadow(0 0 18px rgba(167,139,250,0.45));"
-							>
-								<path d={logoPath} fill="var(--color-accent-light)"></path>
-							</svg>
-						</div>
-					</div>
-
-					<!-- Badge -->
-					<div class="mb-8 flex justify-center">
-						<span
-							class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
-							style="background: rgba(124,58,237,0.1); color: var(--color-accent-light); border: 1px solid rgba(124,58,237,0.25); font-family: var(--font-mono);"
-						>
-							<span
-								class="inline-block h-1.5 w-1.5 rounded-full"
-								style="background: var(--color-accent-light); animation: pulse-dot 2s ease-in-out infinite;"
-							></span>
-							Open Source
-						</span>
-					</div>
-
-					<!-- Headline -->
+				<div class="relative max-w-3xl">
 					<h1
-						class="mb-6 text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
-						style="color: var(--color-text);"
+						class="mb-6 text-5xl font-bold leading-[1.08] sm:text-6xl lg:text-7xl"
+						style="color: var(--color-text); letter-spacing: -0.04em;"
 					>
-						Infrastructure as code<br />
-						<span style="color: var(--color-accent-light);">for TypeScript.</span
-						>
+						Infrastructure as code<br />for TypeScript.
 					</h1>
 
-					<!-- Subtext -->
 					<p
-						class="mx-auto mb-10 max-w-xl text-lg leading-relaxed sm:text-xl"
+						class="mx-auto mb-10 max-w-md text-base leading-relaxed sm:text-lg"
 						style="color: var(--color-muted);"
 					>
-						Deploy, scale, and manage infrastructure directly from TypeScript —
-						no YAML, no cloud console, no config drift.
+						Define your services, volumes, and jobs as typed code. Deploy with a single command.
 					</p>
 
-					<!-- CTAs -->
-					<div
-						class="flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
-					>
+					<div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+						<a
+							href="/docs"
+							class="btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors duration-150"
+						>
+							Get Started
+							<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+								<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</a>
 						<a
 							href="https://github.com/vyftlabs/vyft"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-150"
-							style="background: var(--color-accent); color: #fff;"
-							onmouseover="this.style.background='#6d28d9'"
-							onmouseout="this.style.background='var(--color-accent)'"
+							class="btn-ghost inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors duration-150"
 						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								aria-hidden="true"
-							>
-								<path
-									d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"
-								></path>
-							</svg>
 							View on GitHub
-						</a>
-						<a
-							href="/docs"
-							class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-150"
-							style="background: transparent; color: var(--color-text); border: 1px solid var(--color-border);"
-							onmouseover="this.style.borderColor='var(--color-accent-light)'; this.style.color='var(--color-accent-light)'"
-							onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-text)'"
-						>
-							Read the docs
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 16 16"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.5"
-								aria-hidden="true"
-							>
-								<path
-									d="M3 8h10M9 4l4 4-4 4"
-									stroke-linecap="round"
-									stroke-linejoin="round"></path>
-							</svg>
 						</a>
 					</div>
 				</div>
-
-				<!-- Scroll indicator -->
-				<div
-					class="absolute bottom-10 left-1/2 -translate-x-1/2"
-					style="color: var(--color-border); animation: bounce-y 2s ease-in-out infinite;"
-					aria-hidden="true"
-				>
-					<svg
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.5"
-					>
-						<path
-							d="M12 5v14M5 12l7 7 7-7"
-							stroke-linecap="round"
-							stroke-linejoin="round"></path>
-					</svg>
-				</div>
 			</section>
 
-			<!-- Code example -->
-			<section class="px-6 py-24">
-				<div class="mx-auto max-w-5xl">
-					<div
-						class="mb-16 flex flex-col items-center gap-4 text-center lg:flex-row lg:items-start lg:text-left"
-					>
-						<div class="flex-1">
+			<!-- ─── Code ────────────────────────────────────────────── -->
+			<section class="section-rule relative z-10">
+					<div class="mx-auto max-w-5xl px-6 py-24">
+					<div class="flex flex-col items-center gap-14 lg:flex-row lg:items-start">
+						<div class="flex-1 text-center lg:text-left">
 							<p
-								class="mb-3 text-xs font-semibold uppercase tracking-widest"
-								style="color: var(--color-accent-light); font-family: var(--font-mono);"
+								class="mb-3 text-xs font-medium uppercase tracking-widest"
+								style="color: var(--color-muted); font-family: var(--font-mono);"
 							>
 								See it in action
 							</p>
 							<h2
-								class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl"
-								style="color: var(--color-text);"
+								class="mb-4 text-3xl font-bold sm:text-4xl"
+								style="color: var(--color-text); letter-spacing: -0.03em;"
 							>
 								Your infrastructure.<br />Your language.
 							</h2>
 							<p
-								class="max-w-sm text-base leading-relaxed"
+								class="mx-auto max-w-sm text-sm leading-relaxed lg:mx-0"
 								style="color: var(--color-muted);"
 							>
-								Define infrastructure as typed TypeScript modules. Import,
-								compose, and deploy — the same mental model you use every day.
+								Services, volumes, jobs, and cron schedules. Typed, composable, and colocated with your app.
 							</p>
 						</div>
 
-						<!-- Code window -->
 						<div class="w-full max-w-lg flex-shrink-0 lg:max-w-xl">
 							<div
-								class="overflow-hidden rounded-xl text-sm"
-								style="background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 24px 64px rgba(0,0,0,0.5);"
+								class="overflow-hidden"
+								style="border: 1px solid var(--color-border);"
 							>
-								<!-- Title bar -->
 								<div
-									class="flex items-center gap-2 px-4 py-3"
-									style="border-bottom: 1px solid var(--color-border); background: rgba(0,0,0,0.2);"
+									class="flex items-center px-4 py-2"
+									style="border-bottom: 1px solid var(--color-border);"
 								>
 									<span
-										class="h-3 w-3 rounded-full"
-										style="background: #ff5f57;"></span>
-									<span
-										class="h-3 w-3 rounded-full"
-										style="background: #febc2e;"></span>
-									<span
-										class="h-3 w-3 rounded-full"
-										style="background: #28c840;"></span>
-									<span
-										class="ml-3 text-xs"
+										class="text-xs"
 										style="color: var(--color-muted); font-family: var(--font-mono);"
-										>infra.ts</span
-									>
+									>vyft.config.ts</span>
 								</div>
-								<!-- Code -->
-								<pre
-									class="overflow-x-auto p-5 leading-relaxed"
-									style="font-family: var(--font-mono); font-size: 0.8125rem; color: var(--color-text);"><code><span class="code-kw">import</span> <span class="code-punct">{"{"}</span> deploy<span class="code-punct">,</span> vpc<span class="code-punct">,</span> service <span class="code-punct">{"}"}</span> <span class="code-kw">from</span> <span class="code-str">"@vyft/engine"</span><span class="code-punct">;</span>
-
-<span class="code-kw">const</span> network <span class="code-punct">=</span> <span class="code-fn">vpc</span><span class="code-punct">({"{"}</span>
-  cidr<span class="code-punct">:</span> <span class="code-str">"10.0.0.0/16"</span><span class="code-punct">,</span>
-  zones<span class="code-punct">:</span> <span class="code-num">3</span><span class="code-punct">,</span>
-<span class="code-punct">{"}"}</span><span class="code-punct">);</span>
-
-<span class="code-kw">export default</span> <span class="code-fn">deploy</span><span class="code-punct">({"{"}</span>
-  network<span class="code-punct">,</span>
-  api<span class="code-punct">:</span> <span class="code-fn">service</span><span class="code-punct">({"{"}</span>
-    image<span class="code-punct">:</span> <span class="code-str">"my-api:latest"</span><span class="code-punct">,</span>
-    replicas<span class="code-punct">:</span> <span class="code-num">3</span><span class="code-punct">,</span>
-    env<span class="code-punct">:</span> <span class="code-punct">{"{"}</span>
-      DATABASE_URL<span class="code-punct">:</span> network<span class="code-punct">.</span>db<span class="code-punct">.</span>url<span class="code-punct">,</span>
-    <span class="code-punct">{"}"}</span><span class="code-punct">,</span>
-  <span class="code-punct">{"}"}</span><span class="code-punct">),</span>
-<span class="code-punct">{"}"}</span><span class="code-punct">);</span></code></pre>
+								<div class="overflow-x-auto" style="font-family: var(--font-mono); font-size: 0.8125rem;">
+									<table class="w-full" style="border-collapse: collapse;">
+										<tbody>
+											{codeLines.map(({ n, html }, i) => (
+												<tr>
+													<td
+														class="select-none text-right align-top"
+														style={`color: oklch(1 0 0 / 15%); padding: ${i === 0 ? '1.25rem' : '0'} 1rem ${i === codeLines.length - 1 ? '1.25rem' : '0'} 1.25rem; width: 1%; white-space: nowrap; user-select: none;`}
+													>{n}</td>
+													<td
+														class="align-top"
+														style={`color: var(--color-text); padding: ${i === 0 ? '1.25rem' : '0'} 1.25rem ${i === codeLines.length - 1 ? '1.25rem' : '0'} 0; white-space: pre;`}
+													><Fragment set:html={html || '&nbsp;'} /></td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</section>
 
-			<!-- Features -->
-			<section class="px-6 pb-24">
-				<div class="mx-auto max-w-5xl">
-					<div
-						class="grid grid-cols-1 gap-px sm:grid-cols-3"
-						style="background: var(--color-border); border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden;"
-					>
-						<!-- Feature 1 -->
-						<div
-							class="flex flex-col gap-4 p-8"
-							style="background: var(--color-bg);"
-						>
+			<!-- ─── Features ────────────────────────────────────────── -->
+			<section class="section-rule relative z-10">
+					<div class="mx-auto max-w-5xl px-6 py-24">
+					<div class="grid grid-cols-1 sm:grid-cols-3">
+						<div class="py-6 sm:pr-10 sm:py-0">
 							<div
-								class="flex h-10 w-10 items-center justify-center rounded-lg"
-								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
+								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
 							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="var(--color-accent-light)"
-									stroke-width="1.75"
-									aria-hidden="true"
-								>
-									<polyline points="16 18 22 12 16 6"></polyline>
-									<polyline points="8 6 2 12 8 18"></polyline>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
+									<polyline points="16 18 22 12 16 6" />
+									<polyline points="8 6 2 12 8 18" />
 								</svg>
 							</div>
-							<div>
-								<h3
-									class="mb-2 text-base font-semibold"
-									style="color: var(--color-text);"
-								>
-									TypeScript-native
-								</h3>
-								<p
-									class="text-sm leading-relaxed"
-									style="color: var(--color-muted);"
-								>
-									Write infrastructure the same way you write application code.
-									Full type safety, autocomplete, and IDE refactoring support.
-								</p>
-							</div>
+							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
+								TypeScript native
+							</h3>
+							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
+								Typed, autocompleted, colocated with your app. No YAML, no DSLs.
+							</p>
 						</div>
 
-						<!-- Feature 2 -->
-						<div
-							class="flex flex-col gap-4 p-8"
-							style="background: var(--color-bg);"
-						>
+						<div class="feature-divider py-6 sm:px-10 sm:py-0">
 							<div
-								class="flex h-10 w-10 items-center justify-center rounded-lg"
-								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
+								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
 							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="var(--color-accent-light)"
-									stroke-width="1.75"
-									aria-hidden="true"
-								>
-									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-									></path>
-									<polyline points="14 2 14 8 20 8"></polyline>
-									<line x1="9" y1="15" x2="15" y2="15"></line>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
+									<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.611a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.16 8.84c.232-.232.32-.56.276-.837-.07-.471-.48-.802-.925-.968a2.501 2.501 0 1 1 3.214-3.214c.166.446.497.855.968.925.277.044.605-.044.837-.276l1.655-1.655A2.403 2.403 0 0 1 11.886 2c.618 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.969a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.968 1.02Z" stroke-linecap="round" stroke-linejoin="round" />
 								</svg>
 							</div>
-							<div>
-								<h3
-									class="mb-2 text-base font-semibold"
-									style="color: var(--color-text);"
-								>
-									No YAML, ever
-								</h3>
-								<p
-									class="text-sm leading-relaxed"
-									style="color: var(--color-muted);"
-								>
-									No configuration files, no cloud consoles, no config drift.
-									Infrastructure defined as composable TypeScript modules.
-								</p>
-							</div>
+							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
+								Simple primitives
+							</h3>
+							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
+								Services, jobs, cron, and volumes. Compose them together, link services, mount data.
+							</p>
 						</div>
 
-						<!-- Feature 3 -->
-						<div
-							class="flex flex-col gap-4 p-8"
-							style="background: var(--color-bg);"
-						>
+						<div class="py-6 sm:pl-10 sm:py-0">
 							<div
-								class="flex h-10 w-10 items-center justify-center rounded-lg"
-								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
+								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
 							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="var(--color-accent-light)"
-									stroke-width="1.75"
-									aria-hidden="true"
-								>
-									<circle cx="12" cy="12" r="10"></circle>
-									<line x1="2" y1="12" x2="22" y2="12"></line>
-									<path
-										d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-									></path>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
+									<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
 								</svg>
 							</div>
-							<div>
-								<h3
-									class="mb-2 text-base font-semibold"
-									style="color: var(--color-text);"
-								>
-									Deploy anywhere
-								</h3>
-								<p
-									class="text-sm leading-relaxed"
-									style="color: var(--color-muted);"
-								>
-									Target AWS, GCP, Azure, or self-hosted clusters. Same
-									TypeScript, any cloud — one command to deploy.
-								</p>
-							</div>
+							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
+								Single command deploys
+							</h3>
+							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
+								<code style="font-family: var(--font-mono); font-size: 0.8125rem;">vyft deploy</code> diffs, orders, and executes. Preview changes before they land.
+							</p>
 						</div>
 					</div>
 				</div>
 			</section>
 		</main>
 
-		<!-- Footer -->
-		<footer
-			style="border-top: 1px solid var(--color-border);"
-			class="px-6 py-8"
-		>
-			<div
-				class="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-sm sm:flex-row"
-				style="color: var(--color-muted);"
-			>
-				<div class="flex items-center gap-2.5">
-					<svg
-						height="16"
-						viewBox="0 0 560 676"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						aria-hidden="true"
-					>
-						<path d={logoPath} fill="currentColor"></path>
-					</svg>
-					<span>© {new Date().getFullYear()} Vyft</span>
-				</div>
-				<div class="flex items-center gap-6">
-					<a
-						href="https://github.com/vyftlabs/vyft"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="transition-colors duration-150"
-						style="color: var(--color-muted);"
-						onmouseover="this.style.color='var(--color-text)'"
-						onmouseout="this.style.color='var(--color-muted)'"
-					>
-						GitHub
-					</a>
-					<a
-						href="/docs"
-						class="transition-colors duration-150"
-						style="color: var(--color-muted);"
-						onmouseover="this.style.color='var(--color-text)'"
-						onmouseout="this.style.color='var(--color-muted)'"
-					>
-						Docs
-					</a>
+		<!-- ─── Footer ──────────────────────────────────────────────── -->
+		<footer class="section-rule relative z-10">
+			<div class="mx-auto max-w-5xl px-6 py-8">
+				<div
+					class="flex flex-col items-center justify-between gap-4 text-sm sm:flex-row"
+					style="color: var(--color-muted);"
+				>
+					<div class="flex items-center gap-2">
+						<svg height="14" viewBox="0 0 560 676" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+							<path d={logo} fill="currentColor" />
+						</svg>
+						<span>&copy; {new Date().getFullYear()} Vyft</span>
+					</div>
+					<div class="flex items-center gap-5">
+						<a href="https://github.com/vyftlabs/vyft" target="_blank" rel="noopener noreferrer" class="footer-link transition-colors duration-150">GitHub</a>
+						<a href="/docs" class="footer-link transition-colors duration-150">Docs</a>
+					</div>
 				</div>
 			</div>
 		</footer>
