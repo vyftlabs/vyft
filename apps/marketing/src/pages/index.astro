@@ -1,5 +1,8 @@
 ---
 import "../styles/global.css";
+
+const logoPath =
+	"M10.4916 3.47575C7.87926 5.50306 4.39535 11.0053 2.65381 15.3497C-0.829266 24.9066 -0.829244 73.2714 2.3633 121.925C4.39537 150.886 5.84718 157.546 13.1039 170.579C17.4585 179.267 26.7481 190.272 33.134 195.486C39.5208 200.698 93.2237 229.079 152.732 258.909C256.075 310.749 275.524 322.333 275.524 333.628C275.524 341.448 250.269 356.797 149.829 409.505C32.2633 471.769 22.1029 478.723 8.75002 506.814C1.49251 522.16 1.20281 524.771 0.331213 588.776C-0.539557 634.241 0.331212 657.7 2.65381 663.201C7.00848 673.629 17.168 678.26 28.7802 674.787C39.5208 671.601 178.278 599.779 466.825 448.022C538.528 410.374 557.104 388.364 559.425 338.841C562.042 284.685 543.458 256.592 486.273 227.922C209.919 89.7789 27.0378 0 21.8132 0C18.3293 0 13.1039 1.73829 10.4916 3.47575Z";
 ---
 
 <html lang="en">
@@ -26,10 +29,19 @@ import "../styles/global.css";
 			>
 				<a
 					href="/"
-					class="text-base font-semibold tracking-tight"
-					style="color: var(--color-text);"
+					class="flex items-center gap-2.5"
+					style="color: var(--color-text); text-decoration: none;"
 				>
-					vyft
+					<svg
+						height="20"
+						viewBox="0 0 560 676"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						aria-hidden="true"
+					>
+						<path d={logoPath} fill="currentColor"></path>
+					</svg>
+					<span class="text-base font-semibold tracking-tight">vyft</span>
 				</a>
 				<div class="flex items-center gap-6">
 					<a
@@ -71,15 +83,37 @@ import "../styles/global.css";
 		<main>
 			<section
 				class="relative flex min-h-screen flex-col items-center justify-center px-6 text-center"
+				style="background-image: radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 32px 32px;"
 			>
 				<!-- Ambient glow -->
 				<div
 					aria-hidden="true"
-					style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 80% 50% at 50% 20%, rgba(124,58,237,0.08) 0%, transparent 70%);"
+					style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 45% at 50% 20%, rgba(124,58,237,0.14) 0%, transparent 65%), radial-gradient(ellipse 40% 30% at 50% 10%, rgba(167,139,250,0.06) 0%, transparent 60%);"
 				>
 				</div>
 
 				<div class="relative z-10 max-w-3xl">
+					<!-- Logo mark -->
+					<div class="mb-8 flex justify-center">
+						<div style="position: relative; display: inline-block;">
+							<div
+								aria-hidden="true"
+								style="position: absolute; inset: -24px; background: radial-gradient(circle, rgba(124,58,237,0.35) 0%, transparent 70%); filter: blur(20px); border-radius: 50%;"
+							>
+							</div>
+							<svg
+								height="72"
+								viewBox="0 0 560 676"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+								aria-label="Vyft"
+								style="position: relative; z-index: 1; filter: drop-shadow(0 0 18px rgba(167,139,250,0.45));"
+							>
+								<path d={logoPath} fill="var(--color-accent-light)"></path>
+							</svg>
+						</div>
+					</div>
+
 					<!-- Badge -->
 					<div class="mb-8 flex justify-center">
 						<span
@@ -88,7 +122,8 @@ import "../styles/global.css";
 						>
 							<span
 								class="inline-block h-1.5 w-1.5 rounded-full"
-								style="background: var(--color-accent-light);"></span>
+								style="background: var(--color-accent-light); animation: pulse-dot 2s ease-in-out infinite;"
+							></span>
 							Open Source
 						</span>
 					</div>
@@ -99,7 +134,8 @@ import "../styles/global.css";
 						style="color: var(--color-text);"
 					>
 						Infrastructure as code<br />
-						<span style="color: var(--color-accent-light);">for TypeScript.</span>
+						<span style="color: var(--color-accent-light);">for TypeScript.</span
+						>
 					</h1>
 
 					<!-- Subtext -->
@@ -162,6 +198,239 @@ import "../styles/global.css";
 						</a>
 					</div>
 				</div>
+
+				<!-- Scroll indicator -->
+				<div
+					class="absolute bottom-10 left-1/2 -translate-x-1/2"
+					style="color: var(--color-border); animation: bounce-y 2s ease-in-out infinite;"
+					aria-hidden="true"
+				>
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
+						<path
+							d="M12 5v14M5 12l7 7 7-7"
+							stroke-linecap="round"
+							stroke-linejoin="round"></path>
+					</svg>
+				</div>
+			</section>
+
+			<!-- Code example -->
+			<section class="px-6 py-24">
+				<div class="mx-auto max-w-5xl">
+					<div
+						class="mb-16 flex flex-col items-center gap-4 text-center lg:flex-row lg:items-start lg:text-left"
+					>
+						<div class="flex-1">
+							<p
+								class="mb-3 text-xs font-semibold uppercase tracking-widest"
+								style="color: var(--color-accent-light); font-family: var(--font-mono);"
+							>
+								See it in action
+							</p>
+							<h2
+								class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl"
+								style="color: var(--color-text);"
+							>
+								Your infrastructure.<br />Your language.
+							</h2>
+							<p
+								class="max-w-sm text-base leading-relaxed"
+								style="color: var(--color-muted);"
+							>
+								Define infrastructure as typed TypeScript modules. Import,
+								compose, and deploy — the same mental model you use every day.
+							</p>
+						</div>
+
+						<!-- Code window -->
+						<div class="w-full max-w-lg flex-shrink-0 lg:max-w-xl">
+							<div
+								class="overflow-hidden rounded-xl text-sm"
+								style="background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 24px 64px rgba(0,0,0,0.5);"
+							>
+								<!-- Title bar -->
+								<div
+									class="flex items-center gap-2 px-4 py-3"
+									style="border-bottom: 1px solid var(--color-border); background: rgba(0,0,0,0.2);"
+								>
+									<span
+										class="h-3 w-3 rounded-full"
+										style="background: #ff5f57;"></span>
+									<span
+										class="h-3 w-3 rounded-full"
+										style="background: #febc2e;"></span>
+									<span
+										class="h-3 w-3 rounded-full"
+										style="background: #28c840;"></span>
+									<span
+										class="ml-3 text-xs"
+										style="color: var(--color-muted); font-family: var(--font-mono);"
+										>infra.ts</span
+									>
+								</div>
+								<!-- Code -->
+								<pre
+									class="overflow-x-auto p-5 leading-relaxed"
+									style="font-family: var(--font-mono); font-size: 0.8125rem; color: var(--color-text);"><code><span class="code-kw">import</span> <span class="code-punct">{"{"}</span> deploy<span class="code-punct">,</span> vpc<span class="code-punct">,</span> service <span class="code-punct">{"}"}</span> <span class="code-kw">from</span> <span class="code-str">"@vyft/engine"</span><span class="code-punct">;</span>
+
+<span class="code-kw">const</span> network <span class="code-punct">=</span> <span class="code-fn">vpc</span><span class="code-punct">({"{"}</span>
+  cidr<span class="code-punct">:</span> <span class="code-str">"10.0.0.0/16"</span><span class="code-punct">,</span>
+  zones<span class="code-punct">:</span> <span class="code-num">3</span><span class="code-punct">,</span>
+<span class="code-punct">{"}"}</span><span class="code-punct">);</span>
+
+<span class="code-kw">export default</span> <span class="code-fn">deploy</span><span class="code-punct">({"{"}</span>
+  network<span class="code-punct">,</span>
+  api<span class="code-punct">:</span> <span class="code-fn">service</span><span class="code-punct">({"{"}</span>
+    image<span class="code-punct">:</span> <span class="code-str">"my-api:latest"</span><span class="code-punct">,</span>
+    replicas<span class="code-punct">:</span> <span class="code-num">3</span><span class="code-punct">,</span>
+    env<span class="code-punct">:</span> <span class="code-punct">{"{"}</span>
+      DATABASE_URL<span class="code-punct">:</span> network<span class="code-punct">.</span>db<span class="code-punct">.</span>url<span class="code-punct">,</span>
+    <span class="code-punct">{"}"}</span><span class="code-punct">,</span>
+  <span class="code-punct">{"}"}</span><span class="code-punct">),</span>
+<span class="code-punct">{"}"}</span><span class="code-punct">);</span></code></pre>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Features -->
+			<section class="px-6 pb-24">
+				<div class="mx-auto max-w-5xl">
+					<div
+						class="grid grid-cols-1 gap-px sm:grid-cols-3"
+						style="background: var(--color-border); border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden;"
+					>
+						<!-- Feature 1 -->
+						<div
+							class="flex flex-col gap-4 p-8"
+							style="background: var(--color-bg);"
+						>
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-lg"
+								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="var(--color-accent-light)"
+									stroke-width="1.75"
+									aria-hidden="true"
+								>
+									<polyline points="16 18 22 12 16 6"></polyline>
+									<polyline points="8 6 2 12 8 18"></polyline>
+								</svg>
+							</div>
+							<div>
+								<h3
+									class="mb-2 text-base font-semibold"
+									style="color: var(--color-text);"
+								>
+									TypeScript-native
+								</h3>
+								<p
+									class="text-sm leading-relaxed"
+									style="color: var(--color-muted);"
+								>
+									Write infrastructure the same way you write application code.
+									Full type safety, autocomplete, and IDE refactoring support.
+								</p>
+							</div>
+						</div>
+
+						<!-- Feature 2 -->
+						<div
+							class="flex flex-col gap-4 p-8"
+							style="background: var(--color-bg);"
+						>
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-lg"
+								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="var(--color-accent-light)"
+									stroke-width="1.75"
+									aria-hidden="true"
+								>
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+									></path>
+									<polyline points="14 2 14 8 20 8"></polyline>
+									<line x1="9" y1="15" x2="15" y2="15"></line>
+								</svg>
+							</div>
+							<div>
+								<h3
+									class="mb-2 text-base font-semibold"
+									style="color: var(--color-text);"
+								>
+									No YAML, ever
+								</h3>
+								<p
+									class="text-sm leading-relaxed"
+									style="color: var(--color-muted);"
+								>
+									No configuration files, no cloud consoles, no config drift.
+									Infrastructure defined as composable TypeScript modules.
+								</p>
+							</div>
+						</div>
+
+						<!-- Feature 3 -->
+						<div
+							class="flex flex-col gap-4 p-8"
+							style="background: var(--color-bg);"
+						>
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-lg"
+								style="background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="var(--color-accent-light)"
+									stroke-width="1.75"
+									aria-hidden="true"
+								>
+									<circle cx="12" cy="12" r="10"></circle>
+									<line x1="2" y1="12" x2="22" y2="12"></line>
+									<path
+										d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+									></path>
+								</svg>
+							</div>
+							<div>
+								<h3
+									class="mb-2 text-base font-semibold"
+									style="color: var(--color-text);"
+								>
+									Deploy anywhere
+								</h3>
+								<p
+									class="text-sm leading-relaxed"
+									style="color: var(--color-muted);"
+								>
+									Target AWS, GCP, Azure, or self-hosted clusters. Same
+									TypeScript, any cloud — one command to deploy.
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
 			</section>
 		</main>
 
@@ -174,7 +443,18 @@ import "../styles/global.css";
 				class="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-sm sm:flex-row"
 				style="color: var(--color-muted);"
 			>
-				<span>© {new Date().getFullYear()} Vyft</span>
+				<div class="flex items-center gap-2.5">
+					<svg
+						height="16"
+						viewBox="0 0 560 676"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						aria-hidden="true"
+					>
+						<path d={logoPath} fill="currentColor"></path>
+					</svg>
+					<span>© {new Date().getFullYear()} Vyft</span>
+				</div>
 				<div class="flex items-center gap-6">
 					<a
 						href="https://github.com/vyftlabs/vyft"
