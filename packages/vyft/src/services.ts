@@ -1,25 +1,9 @@
-import { createProvider, defineResource } from "@vyft/provider";
-
-export interface NatsArgs {
-  version?: string;
-  jetstream?: boolean;
-}
-
-export interface RabbitmqArgs {
-  version?: string;
-  vhost?: string;
-}
-
-const natsResource = defineResource<NatsArgs>("nats", {});
-const rabbitmqResource = defineResource<RabbitmqArgs>("rabbitmq", {});
+import { createProvider } from "@vyft/provider";
 
 const services = createProvider({
   name: "services",
   context: () => ({}),
-  resources: {
-    nats: natsResource,
-    rabbitmq: rabbitmqResource,
-  },
+  resources: {},
 });
 
-export const { nats, rabbitmq } = services;
+export const {} = services;
