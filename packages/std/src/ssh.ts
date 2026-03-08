@@ -7,6 +7,8 @@ import { executeCommand } from "./process/lib.ts";
 const SSH_RETRY_DELAY = 5_000;
 const SSH_MAX_RETRIES = 24; // 2 minutes total
 
+const VYFT_DIR = ".vyft";
+
 export interface SshArgs {
   command: string[];
   host: string;
@@ -14,6 +16,8 @@ export interface SshArgs {
   privateKey: string;
   env?: Record<string, string>;
   timeout?: number;
+  /** Disable host key verification entirely. Insecure — use only when necessary. */
+  insecureIgnoreHostKey?: boolean;
 }
 
 export const ssh = defineResource<SshArgs>("ssh", {
@@ -41,12 +45,28 @@ async function executeSSH(
       remoteCmd = `${envPrefix} ${remoteCmd}`;
     }
 
+    let hostKeyArgs: string[];
+    if (input.insecureIgnoreHostKey) {
+      hostKeyArgs = [
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+      ];
+    } else {
+      const knownHostsPath = path.join(process.cwd(), VYFT_DIR, "known_hosts");
+      await fs.mkdir(path.dirname(knownHostsPath), { recursive: true });
+      hostKeyArgs = [
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        `UserKnownHostsFile=${knownHostsPath}`,
+      ];
+    }
+
     const sshArgs = [
       "ssh",
-      "-o",
-      "StrictHostKeyChecking=no",
-      "-o",
-      "UserKnownHostsFile=/dev/null",
+      ...hostKeyArgs,
       "-o",
       "ConnectTimeout=10",
       "-i",
