@@ -120,9 +120,7 @@ export async function createContainer(
   }
 
   if (res.status !== 201) {
-    throw new Error(
-      `Failed to create container ${name}: ${res.status} ${JSON.stringify(res.body)}`,
-    );
+    throw new Error(`Failed to create container ${name}: ${res.status}`);
   }
 
   await client.post(`/containers/${res.body.Id}/start`);
