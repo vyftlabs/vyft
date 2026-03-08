@@ -2,24 +2,54 @@
 import "../styles/global.css";
 
 const logo =
-	"M10.4916 3.47575C7.87926 5.50306 4.39535 11.0053 2.65381 15.3497C-0.829266 24.9066 -0.829244 73.2714 2.3633 121.925C4.39537 150.886 5.84718 157.546 13.1039 170.579C17.4585 179.267 26.7481 190.272 33.134 195.486C39.5208 200.698 93.2237 229.079 152.732 258.909C256.075 310.749 275.524 322.333 275.524 333.628C275.524 341.448 250.269 356.797 149.829 409.505C32.2633 471.769 22.1029 478.723 8.75002 506.814C1.49251 522.16 1.20281 524.771 0.331213 588.776C-0.539557 634.241 0.331212 657.7 2.65381 663.201C7.00848 673.629 17.168 678.26 28.7802 674.787C39.5208 671.601 178.278 599.779 466.825 448.022C538.528 410.374 557.104 388.364 559.425 338.841C562.042 284.685 543.458 256.592 486.273 227.922C209.919 89.7789 27.0378 0 21.8132 0C18.3293 0 13.1039 1.73829 10.4916 3.47575Z";
+  "M10.4916 3.47575C7.87926 5.50306 4.39535 11.0053 2.65381 15.3497C-0.829266 24.9066 -0.829244 73.2714 2.3633 121.925C4.39537 150.886 5.84718 157.546 13.1039 170.579C17.4585 179.267 26.7481 190.272 33.134 195.486C39.5208 200.698 93.2237 229.079 152.732 258.909C256.075 310.749 275.524 322.333 275.524 333.628C275.524 341.448 250.269 356.797 149.829 409.505C32.2633 471.769 22.1029 478.723 8.75002 506.814C1.49251 522.16 1.20281 524.771 0.331213 588.776C-0.539557 634.241 0.331212 657.7 2.65381 663.201C7.00848 673.629 17.168 678.26 28.7802 674.787C39.5208 671.601 178.278 599.779 466.825 448.022C538.528 410.374 557.104 388.364 559.425 338.841C562.042 284.685 543.458 256.592 486.273 227.922C209.919 89.7789 27.0378 0 21.8132 0C18.3293 0 13.1039 1.73829 10.4916 3.47575Z";
 
 const codeLines = [
-	{ n: 1, html: `<span class="code-kw">import</span> <span class="code-punct">{</span> service<span class="code-punct">,</span> site<span class="code-punct">,</span> postgres<span class="code-punct">,</span> redis <span class="code-punct">}</span> <span class="code-kw">from</span> <span class="code-str">"vyft"</span><span class="code-punct">;</span>` },
-	{ n: 2, html: `` },
-	{ n: 3, html: `<span class="code-kw">const</span> db <span class="code-punct">=</span> <span class="code-fn">postgres</span><span class="code-punct">(</span><span class="code-str">"db"</span><span class="code-punct">);</span>` },
-	{ n: 4, html: `<span class="code-kw">const</span> cache <span class="code-punct">=</span> <span class="code-fn">redis</span><span class="code-punct">(</span><span class="code-str">"cache"</span><span class="code-punct">);</span>` },
-	{ n: 5, html: `` },
-	{ n: 6, html: `<span class="code-kw">export const</span> api <span class="code-punct">=</span> <span class="code-fn">service</span><span class="code-punct">(</span><span class="code-str">"api"</span><span class="code-punct">,</span> <span class="code-punct">{</span>` },
-	{ n: 7, html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com/api/*"</span><span class="code-punct">,</span>` },
-	{ n: 8, html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/api"</span><span class="code-punct">,</span>` },
-	{ n: 9, html: `  depends<span class="code-punct">:</span> <span class="code-punct">[</span>db<span class="code-punct">,</span> cache<span class="code-punct">],</span>` },
-	{ n: 10, html: `<span class="code-punct">});</span>` },
-	{ n: 11, html: `` },
-	{ n: 12, html: `<span class="code-kw">export const</span> web <span class="code-punct">=</span> <span class="code-fn">site</span><span class="code-punct">(</span><span class="code-str">"web"</span><span class="code-punct">,</span> <span class="code-punct">{</span>` },
-	{ n: 13, html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com"</span><span class="code-punct">,</span>` },
-	{ n: 14, html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/web"</span><span class="code-punct">,</span>` },
-	{ n: 15, html: `<span class="code-punct">});</span>` },
+  {
+    n: 1,
+    html: `<span class="code-kw">import</span> <span class="code-punct">{</span> service<span class="code-punct">,</span> site<span class="code-punct">,</span> postgres<span class="code-punct">,</span> redis <span class="code-punct">}</span> <span class="code-kw">from</span> <span class="code-str">"vyft"</span><span class="code-punct">;</span>`,
+  },
+  { n: 2, html: `` },
+  {
+    n: 3,
+    html: `<span class="code-kw">const</span> db <span class="code-punct">=</span> <span class="code-fn">postgres</span><span class="code-punct">(</span><span class="code-str">"db"</span><span class="code-punct">);</span>`,
+  },
+  {
+    n: 4,
+    html: `<span class="code-kw">const</span> cache <span class="code-punct">=</span> <span class="code-fn">redis</span><span class="code-punct">(</span><span class="code-str">"cache"</span><span class="code-punct">);</span>`,
+  },
+  { n: 5, html: `` },
+  {
+    n: 6,
+    html: `<span class="code-kw">export const</span> api <span class="code-punct">=</span> <span class="code-fn">service</span><span class="code-punct">(</span><span class="code-str">"api"</span><span class="code-punct">,</span> <span class="code-punct">{</span>`,
+  },
+  {
+    n: 7,
+    html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com/api/*"</span><span class="code-punct">,</span>`,
+  },
+  {
+    n: 8,
+    html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/api"</span><span class="code-punct">,</span>`,
+  },
+  {
+    n: 9,
+    html: `  depends<span class="code-punct">:</span> <span class="code-punct">[</span>db<span class="code-punct">,</span> cache<span class="code-punct">],</span>`,
+  },
+  { n: 10, html: `<span class="code-punct">});</span>` },
+  { n: 11, html: `` },
+  {
+    n: 12,
+    html: `<span class="code-kw">export const</span> web <span class="code-punct">=</span> <span class="code-fn">site</span><span class="code-punct">(</span><span class="code-str">"web"</span><span class="code-punct">,</span> <span class="code-punct">{</span>`,
+  },
+  {
+    n: 13,
+    html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com"</span><span class="code-punct">,</span>`,
+  },
+  {
+    n: 14,
+    html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/web"</span><span class="code-punct">,</span>`,
+  },
+  { n: 15, html: `<span class="code-punct">});</span>` },
 ];
 ---
 
