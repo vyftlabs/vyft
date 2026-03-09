@@ -40,7 +40,10 @@ async function readPersistedPassphrase(
   }
 }
 
-async function persistPassphrase(project: string, passphrase: string): Promise<void> {
+async function persistPassphrase(
+  project: string,
+  passphrase: string,
+): Promise<void> {
   const filePath = passphraseConfigPath(project);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, passphrase, { mode: 0o600 });
@@ -67,7 +70,9 @@ export async function resolvePassphrase(
   if (isCancel(value)) process.exit(1);
 
   if (mode === "deploy") {
-    const save = await confirm({ message: "Save passphrase locally for future use?" });
+    const save = await confirm({
+      message: "Save passphrase locally for future use?",
+    });
     // Cancelling the save prompt is treated as "no" — passphrase is returned without saving
     if (!isCancel(save) && save) {
       await persistPassphrase(project, value);
