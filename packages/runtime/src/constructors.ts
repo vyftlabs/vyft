@@ -151,7 +151,7 @@ export const cronjob = resource<CronJobConfig, CronJobInput>(
     name: id,
     schedule: config.schedule,
     image: config.image,
-    path: config.path,
+    path: config.path ?? (config.image ? undefined : "."),
     cwd: config.cwd,
     command: config.command,
     env: config.env,
