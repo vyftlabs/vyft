@@ -31,6 +31,7 @@ function passphraseConfigPath(project: string): string {
 async function readPersistedPassphrase(project: string): Promise<string | null> {
   try {
     const data = await fs.readFile(passphraseConfigPath(project), "utf8");
+    // trim() strips trailing newlines from manually-edited files; whitespace-only content is treated as absent
     return data.trim() || null;
   } catch {
     return null;
@@ -45,7 +46,7 @@ async function persistPassphrase(project: string, passphrase: string): Promise<v
 
 export async function resolvePassphrase(
   project: string,
-  mode: "local" | "deploy",
+  mode: "local" | "deploy" | "read",
 ): Promise<string> {
   const env = process.env["VYFT_PASSPHRASE"];
   if (env) return env;
@@ -63,13 +64,16 @@ export async function resolvePassphrase(
   const value = await password({ message: "Enter passphrase:" });
   if (isCancel(value)) process.exit(1);
 
-  const save = await confirm({ message: "Save passphrase locally for future use?" });
-  if (!isCancel(save) && save) {
-    await persistPassphrase(project, value as string);
-    log.info(`Passphrase saved to ${passphraseConfigPath(project)}`);
+  if (mode === "deploy") {
+    const save = await confirm({ message: "Save passphrase locally for future use?" });
+    // Cancelling the save prompt is treated as "no" — passphrase is returned without saving
+    if (!isCancel(save) && save) {
+      await persistPassphrase(project, value);
+      log.info(`Passphrase saved to ${passphraseConfigPath(project)}`);
+    }
   }
 
-  return value as string;
+  return value;
 }
 
 export async function loadSalt(stateDir: string): Promise<Buffer> {

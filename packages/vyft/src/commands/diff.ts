@@ -44,7 +44,7 @@ export default new Command("diff")
 
     const store = await openStore(stateDir);
     const salt = await loadSalt(stateDir);
-    const passphrase = await resolvePassphrase(project, "deploy");
+    const passphrase = await resolvePassphrase(project, "read");
     const cipher = createCipher(passphrase, salt);
     const ctx = buildContext(store, cipher, providers, stateDir);
     await reconcile(ctx);
