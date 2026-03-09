@@ -1,6 +1,6 @@
 import {
-  appendFile,
   mkdir,
+  open,
   readFile,
   rename,
   rm,
@@ -35,13 +35,25 @@ export class LocalBackend implements StorageBackend {
   async write(key: string, data: string): Promise<void> {
     await mkdir(this.#dir, { recursive: true });
     const tmp = join(this.#dir, `.${key}.tmp`);
-    await writeFile(tmp, data, "utf8");
+    const fd = await open(tmp, "w");
+    try {
+      await fd.writeFile(data, "utf8");
+      await fd.sync();
+    } finally {
+      await fd.close();
+    }
     await rename(tmp, join(this.#dir, key));
   }
 
   async append(key: string, data: string): Promise<void> {
     await mkdir(this.#dir, { recursive: true });
-    await appendFile(join(this.#dir, key), data, "utf8");
+    const fd = await open(join(this.#dir, key), "a");
+    try {
+      await fd.writeFile(data, "utf8");
+      await fd.sync();
+    } finally {
+      await fd.close();
+    }
   }
 
   async delete(key: string): Promise<void> {
