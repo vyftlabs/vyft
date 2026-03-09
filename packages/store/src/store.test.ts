@@ -183,6 +183,27 @@ describe("Store", { concurrency: true }, () => {
       );
     });
 
+    it("survives crash after state write but before WAL delete (idempotent replay)", async () => {
+      const backend = setup();
+      // Simulate a crash that occurred after state.json was atomically written
+      // during open() compaction, but before wal.jsonl was deleted.
+      // The WAL entries are already reflected in state, so replaying them is idempotent.
+      await backend.write("state.json", JSON.stringify({ a: 1, b: 2 }));
+      await backend.write(
+        "wal.jsonl",
+        [
+          JSON.stringify({ type: "set", key: "a", data: 1 }),
+          JSON.stringify({ type: "set", key: "b", data: 2 }),
+        ].join("\n") + "\n",
+      );
+
+      const store = await Store.open(backend);
+      assert.equal(store.get("a"), 1);
+      assert.equal(store.get("b"), 2);
+      assert.equal(store.size, 2);
+      await store.dispose();
+    });
+
     it("tolerates truncated last line (crash recovery)", async () => {
       const backend = setup();
       const wal = `${[
@@ -879,6 +900,77 @@ describe("Store", { concurrency: true }, () => {
         "Should remain null after round-trip",
       );
       await store2.dispose();
+    });
+
+    it("open() compaction writes state.json before deleting wal.jsonl", async () => {
+      const inner = new MemoryBackend();
+      const ops: string[] = [];
+      const backend: StorageBackend = {
+        read: (k) => inner.read(k),
+        write: async (k, d) => {
+          ops.push(`write:${k}`);
+          return inner.write(k, d);
+        },
+        append: (k, d) => inner.append(k, d),
+        delete: async (k) => {
+          ops.push(`delete:${k}`);
+          return inner.delete(k);
+        },
+        deleteAll: (p) => inner.deleteAll(p),
+        lock: () => inner.lock(),
+        unlock: () => inner.unlock(),
+      };
+      await inner.write("state.json", JSON.stringify({ a: 1 }));
+      await inner.write(
+        "wal.jsonl",
+        `${JSON.stringify({ type: "set", key: "b", data: 2 })}\n`,
+      );
+
+      const store = await Store.open(backend);
+      await store.dispose();
+
+      const writeIdx = ops.indexOf("write:state.json");
+      const deleteIdx = ops.indexOf("delete:wal.jsonl");
+      assert.ok(writeIdx !== -1, "state.json should be written");
+      assert.ok(deleteIdx !== -1, "wal.jsonl should be deleted");
+      assert.ok(
+        writeIdx < deleteIdx,
+        "state.json must be written before wal.jsonl is deleted",
+      );
+    });
+
+    it("dispose() compaction writes state.json before deleting wal.jsonl", async () => {
+      const inner = new MemoryBackend();
+      const ops: string[] = [];
+      const backend: StorageBackend = {
+        read: (k) => inner.read(k),
+        write: async (k, d) => {
+          ops.push(`write:${k}`);
+          return inner.write(k, d);
+        },
+        append: (k, d) => inner.append(k, d),
+        delete: async (k) => {
+          ops.push(`delete:${k}`);
+          return inner.delete(k);
+        },
+        deleteAll: (p) => inner.deleteAll(p),
+        lock: () => inner.lock(),
+        unlock: () => inner.unlock(),
+      };
+
+      const store = await Store.open(backend);
+      await store.append({ type: "set", key: "a", data: 1 });
+      ops.length = 0; // reset — only track dispose() operations
+      await store.dispose();
+
+      const writeIdx = ops.indexOf("write:state.json");
+      const deleteIdx = ops.indexOf("delete:wal.jsonl");
+      assert.ok(writeIdx !== -1, "state.json should be written");
+      assert.ok(deleteIdx !== -1, "wal.jsonl should be deleted");
+      assert.ok(
+        writeIdx < deleteIdx,
+        "state.json must be written before wal.jsonl is deleted during compaction",
+      );
     });
 
     it("Infinity should be normalized to null on append", async () => {
