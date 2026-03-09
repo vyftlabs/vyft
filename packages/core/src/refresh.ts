@@ -26,6 +26,11 @@ export async function refresh(current: State, ctx: Context): Promise<void> {
     });
 
     const sealed = await sealOutput(output, ctx.cipher);
-    await ctx.store.append({ type: "set", key, data: sealed });
+    const existing = ctx.store.get(key) as Record<string, unknown>;
+    await ctx.store.append({
+      type: "set",
+      key,
+      data: { ...existing, output: sealed },
+    });
   }
 }
