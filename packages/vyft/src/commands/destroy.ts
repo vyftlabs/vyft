@@ -46,7 +46,7 @@ export default new Command("destroy")
 
     const store = await openStore(stateDir);
     const salt = await loadSalt(stateDir);
-    const passphrase = await resolvePassphrase();
+    const passphrase = await resolvePassphrase(project, "deploy");
     const cipher = createCipher(passphrase, salt);
     const ctx = buildContext(store, cipher, providers, stateDir);
     await reconcile(ctx);
