@@ -1,6 +1,8 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { isCancel, password } from "@clack/prompts";
+import { confirm, isCancel, log, password } from "@clack/prompts";
 import { Cipher, type Context, generateSalt, type Provider } from "@vyft/core";
 import type { State } from "@vyft/engine";
 import { LocalBackend, Store } from "@vyft/store";
@@ -22,13 +24,52 @@ export function resolveStateDir(
   return path.join(cwd, VYFT_DIR, context, project, stage);
 }
 
-export async function resolvePassphrase(): Promise<string> {
+function passphraseConfigPath(project: string): string {
+  return path.join(os.homedir(), ".config", "vyft", project, "passphrase");
+}
+
+async function readPersistedPassphrase(project: string): Promise<string | null> {
+  try {
+    const data = await fs.readFile(passphraseConfigPath(project), "utf8");
+    return data.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistPassphrase(project: string, passphrase: string): Promise<void> {
+  const filePath = passphraseConfigPath(project);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, passphrase, { mode: 0o600 });
+}
+
+export async function resolvePassphrase(
+  project: string,
+  mode: "local" | "deploy",
+): Promise<string> {
   const env = process.env["VYFT_PASSPHRASE"];
   if (env) return env;
 
+  const persisted = await readPersistedPassphrase(project);
+  if (persisted) return persisted;
+
+  if (mode === "local") {
+    const generated = crypto.randomBytes(32).toString("hex");
+    await persistPassphrase(project, generated);
+    log.info(`Generated passphrase saved to ${passphraseConfigPath(project)}`);
+    return generated;
+  }
+
   const value = await password({ message: "Enter passphrase:" });
   if (isCancel(value)) process.exit(1);
-  return value;
+
+  const save = await confirm({ message: "Save passphrase locally for future use?" });
+  if (!isCancel(save) && save) {
+    await persistPassphrase(project, value as string);
+    log.info(`Passphrase saved to ${passphraseConfigPath(project)}`);
+  }
+
+  return value as string;
 }
 
 export async function loadSalt(stateDir: string): Promise<Buffer> {

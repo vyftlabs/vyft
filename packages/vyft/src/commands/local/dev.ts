@@ -47,7 +47,7 @@ async function deployOnce(cwd: string, project: string, stage: string) {
 
   const store = await openStore(stateDir);
   const salt = await loadSalt(stateDir);
-  const passphrase = await resolvePassphrase();
+  const passphrase = await resolvePassphrase(project, "local");
   const cipher = createCipher(passphrase, salt);
   const ctx = buildContext(store, cipher, providers, stateDir);
   await reconcile(ctx);
