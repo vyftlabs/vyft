@@ -28,7 +28,9 @@ function passphraseConfigPath(project: string): string {
   return path.join(os.homedir(), ".config", "vyft", project, "passphrase");
 }
 
-async function readPersistedPassphrase(project: string): Promise<string | null> {
+async function readPersistedPassphrase(
+  project: string,
+): Promise<string | null> {
   try {
     const data = await fs.readFile(passphraseConfigPath(project), "utf8");
     // trim() strips trailing newlines from manually-edited files; whitespace-only content is treated as absent
