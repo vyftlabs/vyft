@@ -64,7 +64,8 @@ export default new Command("deploy")
         },
       });
     } catch (err) {
-      s.stop("failed");
+      const message = err instanceof Error ? err.message : String(err);
+      s.stop(`failed: ${message}`);
       throw err;
     } finally {
       await store.dispose();
