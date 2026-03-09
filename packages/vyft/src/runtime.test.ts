@@ -11,7 +11,9 @@ function configPath(project: string): string {
 
 async function cleanupProject(project: string): Promise<void> {
   try {
-    await fs.rm(path.join(os.homedir(), ".config", "vyft", project), { recursive: true });
+    await fs.rm(path.join(os.homedir(), ".config", "vyft", project), {
+      recursive: true,
+    });
   } catch {
     // ignore
   }
