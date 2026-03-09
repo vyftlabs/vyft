@@ -52,7 +52,8 @@ export function buildContainerConfig(
   image: string,
   ctx: { project: string; stage: string; networkName: string },
 ): ContainerConfig {
-  const env = Object.entries(input.env ?? {}).map(([k, v]) => `${k}=${v}`);
+  const baseEnv = { NODE_ENV: ctx.stage, ...input.env };
+  const env = Object.entries(baseEnv).map(([k, v]) => `${k}=${v}`);
 
   const labels: Record<string, string> = {
     "com.docker.compose.project": ctx.project,

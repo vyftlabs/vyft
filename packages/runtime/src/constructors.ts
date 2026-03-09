@@ -85,7 +85,6 @@ export const service = resource<ServiceConfig, ServiceInput>(
   (id, config) => {
     const env: Record<string, string> = {
       PORT: String(config.port ?? 3000),
-      NODE_ENV: "production",
       ...config.env,
     };
 
