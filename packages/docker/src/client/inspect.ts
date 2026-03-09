@@ -49,8 +49,8 @@ export function normalizeDockerContainer(
     : 3000;
 
   const mounts = inspect.HostConfig.Binds?.map((b) => {
-    const idx = b.indexOf(":");
-    return { source: b.slice(0, idx), target: b.slice(idx + 1) };
+    const [source, target] = b.split(":");
+    return { source: source ?? "", target: target ?? "" };
   });
 
   return {
