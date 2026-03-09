@@ -12,8 +12,12 @@ function before(
   a: string,
   b: string,
 ): boolean {
-  const ai = steps.findIndex((s) => s.some((c) => `${c.urn}:${c.action}` === a));
-  const bi = steps.findIndex((s) => s.some((c) => `${c.urn}:${c.action}` === b));
+  const ai = steps.findIndex((s) =>
+    s.some((c) => `${c.urn}:${c.action}` === a),
+  );
+  const bi = steps.findIndex((s) =>
+    s.some((c) => `${c.urn}:${c.action}` === b),
+  );
   return ai !== -1 && bi !== -1 && ai < bi;
 }
 
@@ -29,10 +33,7 @@ describe("plan", () => {
 
     const steps = plan(desired, current);
     assert.equal(steps.length, 1);
-    assert.deepEqual(
-      steps[0].map((c) => c.urn).sort(),
-      ["a", "b"],
-    );
+    assert.deepEqual(steps[0]?.map((c) => c.urn).sort(), ["a", "b"]);
   });
 
   it("orders creates by dependency", () => {
@@ -99,7 +100,10 @@ describe("plan", () => {
     };
 
     const steps = plan(desired, current);
-    const allActions = steps.flat().map((c) => `${c.urn}:${c.action}`).sort();
+    const allActions = steps
+      .flat()
+      .map((c) => `${c.urn}:${c.action}`)
+      .sort();
     assert.deepEqual(allActions, [
       "kept:update",
       "newone:create",
@@ -116,9 +120,6 @@ describe("plan", () => {
     };
     const current: State = { entries: {} };
 
-    assert.throws(
-      () => plan(desired, current),
-      /circular/i,
-    );
+    assert.throws(() => plan(desired, current), /circular/i);
   });
 });

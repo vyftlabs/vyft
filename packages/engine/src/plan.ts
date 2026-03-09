@@ -132,16 +132,16 @@ export function plan(desired: State, current: State): Change[][] {
       if (change.action !== "delete") {
         if (depAction !== "delete") {
           // create/update depends on create/update: dep must come first
-          deps.get(change.urn)!.add(dep);
+          deps.get(change.urn)?.add(dep);
         } else {
           // create/update depends on a resource being deleted:
           // the deletion must happen after this update
-          deps.get(dep)!.add(change.urn);
+          deps.get(dep)?.add(change.urn);
         }
       } else {
         if (depAction === "delete") {
           // delete depends on delete: dependent must be deleted before dependency
-          deps.get(dep)!.add(change.urn);
+          deps.get(dep)?.add(change.urn);
         }
         // delete depending on create/update: no ordering constraint needed
       }
