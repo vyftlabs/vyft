@@ -1,4 +1,4 @@
-import { refresh } from "@vyft/core";
+import { reconcile, refresh } from "@vyft/core";
 import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
@@ -47,6 +47,7 @@ export default new Command("refresh")
     const passphrase = await resolvePassphrase();
     const cipher = createCipher(passphrase, salt);
     const ctx = buildContext(store, cipher, providers, stateDir);
+    await reconcile(ctx);
     const current = buildCurrentState(store);
 
     try {
