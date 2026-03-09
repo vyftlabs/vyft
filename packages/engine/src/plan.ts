@@ -109,32 +109,44 @@ export function plan(desired: State, current: State): Change[][] {
     ...Object.keys(current.entries),
   ]);
 
-  const forwardDeps = new Map<string, Set<string>>();
-  for (const change of [...creates, ...updates]) {
-    const entry = desired.entries[change.urn];
-    if (entry) {
-      forwardDeps.set(change.urn, collectDeps(change.urn, entry, allUrns));
-    }
-  }
+  const allChanges = [...creates, ...updates, ...deletes];
+  const actionOf = new Map<string, Change["action"]>();
+  for (const c of allChanges) actionOf.set(c.urn, c.action);
 
-  const reverseDeps = new Map<string, Set<string>>();
-  for (const change of deletes) {
-    const entry = current.entries[change.urn];
+  const deps = new Map<string, Set<string>>();
+  for (const c of allChanges) deps.set(c.urn, new Set());
+
+  for (const change of allChanges) {
+    const entry =
+      change.action === "delete"
+        ? current.entries[change.urn]
+        : desired.entries[change.urn];
     if (!entry) continue;
-    const deps = collectDeps(change.urn, entry, allUrns);
-    for (const dep of deps) {
-      const set = reverseDeps.get(dep) ?? new Set<string>();
-      set.add(change.urn);
-      reverseDeps.set(dep, set);
+
+    const rawDeps = collectDeps(change.urn, entry, allUrns);
+
+    for (const dep of rawDeps) {
+      const depAction = actionOf.get(dep);
+      if (!depAction) continue;
+
+      if (change.action !== "delete") {
+        if (depAction !== "delete") {
+          // create/update depends on create/update: dep must come first
+          deps.get(change.urn)!.add(dep);
+        } else {
+          // create/update depends on a resource being deleted:
+          // the deletion must happen after this update
+          deps.get(dep)!.add(change.urn);
+        }
+      } else {
+        if (depAction === "delete") {
+          // delete depends on delete: dependent must be deleted before dependency
+          deps.get(dep)!.add(change.urn);
+        }
+        // delete depending on create/update: no ordering constraint needed
+      }
     }
   }
 
-  for (const change of deletes) {
-    if (!reverseDeps.has(change.urn)) reverseDeps.set(change.urn, new Set());
-  }
-
-  const deleteSteps = topoSort(deletes, reverseDeps);
-  const createUpdateSteps = topoSort([...creates, ...updates], forwardDeps);
-
-  return [...deleteSteps, ...createUpdateSteps];
+  return topoSort(allChanges, deps);
 }
