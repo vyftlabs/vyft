@@ -16,9 +16,7 @@ export default defineConfig({
       },
       plugins: [
         starlightThemeBlack({
-          navLinks: [
-            { label: "Docs", link: "/docs" },
-          ],
+          navLinks: [{ label: "Docs", link: "/docs" }],
         }),
       ],
       social: [
@@ -49,16 +47,14 @@ export default defineConfig({
         {
           label: "Standard Library",
           items: [
-{ label: "Glob", slug: "std/glob" },
+            { label: "Glob", slug: "std/glob" },
             { label: "Template", slug: "std/template" },
             { label: "Crypto", slug: "std/crypto" },
           ],
         },
         {
           label: "CLI",
-          items: [
-            { label: "Commands", slug: "cli/commands" },
-          ],
+          items: [{ label: "Commands", slug: "cli/commands" }],
         },
       ],
     }),
