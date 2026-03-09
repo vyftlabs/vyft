@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { spinner } from "@clack/prompts";
-import { type ApplyEvent, apply, toState } from "@vyft/core";
+import { type ApplyEvent, apply, reconcile, toState } from "@vyft/core";
 import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
@@ -50,6 +50,7 @@ async function deployOnce(cwd: string, project: string, stage: string) {
   const passphrase = await resolvePassphrase();
   const cipher = createCipher(passphrase, salt);
   const ctx = buildContext(store, cipher, providers, stateDir);
+  await reconcile(ctx);
   const current = buildCurrentState(store);
   const desired = toState(entries);
 
