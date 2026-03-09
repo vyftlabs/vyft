@@ -2,6 +2,7 @@ import { isCancel, select, text } from "@clack/prompts";
 import { Command } from "commander";
 import type { ContextEntry } from "../../contexts.ts";
 import { addContext } from "../../contexts.ts";
+import { runtimes } from "../../providers.ts";
 import { cancel } from "../../utils/prompts.ts";
 
 interface Option {
@@ -89,7 +90,9 @@ export default new Command("add")
           return answer;
         })());
 
-      const runtimeOptions = RUNTIMES[platform] ?? [];
+      const runtimeOptions = (RUNTIMES[platform] ?? []).filter((opt) =>
+        runtimes.has(opt.value),
+      );
       const runtime =
         opts.runtime ??
         (await (async () => {
