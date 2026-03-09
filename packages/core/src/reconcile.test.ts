@@ -3,8 +3,8 @@ import { describe, it } from "node:test";
 import { MemoryBackend, Store } from "@vyft/store";
 import type { Context } from "./context.ts";
 import { reconcile } from "./reconcile.ts";
-import { RESOURCE } from "./resource.ts";
 import type { ResourceDefinition } from "./resource.ts";
+import { RESOURCE } from "./resource.ts";
 import type { Cipher } from "./secret.ts";
 
 const TEST_URN = "urn:vyft:resource:test:thing:my_thing";
@@ -109,7 +109,12 @@ describe("reconcile", () => {
     await store.append({
       type: "set",
       key: "urn:vyft:resource:unknown:thing:x",
-      data: { status: "pending", urn: "urn:vyft:resource:unknown:thing:x", action: "create", input: {} },
+      data: {
+        status: "pending",
+        urn: "urn:vyft:resource:unknown:thing:x",
+        action: "create",
+        input: {},
+      },
     });
 
     const ctx = await makeCtx(store, {});
@@ -145,6 +150,9 @@ describe("reconcile", () => {
 
     assert.equal(readCalled, false);
     const data = store.get(TEST_URN) as Record<string, unknown>;
-    assert.deepEqual((data["output"] as Record<string, unknown>)["id"], "existing");
+    assert.deepEqual(
+      (data["output"] as Record<string, unknown>)["id"],
+      "existing",
+    );
   });
 });
