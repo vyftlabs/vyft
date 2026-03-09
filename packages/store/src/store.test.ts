@@ -191,10 +191,10 @@ describe("Store", { concurrency: true }, () => {
       await backend.write("state.json", JSON.stringify({ a: 1, b: 2 }));
       await backend.write(
         "wal.jsonl",
-        [
+        `${[
           JSON.stringify({ type: "set", key: "a", data: 1 }),
           JSON.stringify({ type: "set", key: "b", data: 2 }),
-        ].join("\n") + "\n",
+        ].join("\n")}\n`,
       );
 
       const store = await Store.open(backend);
