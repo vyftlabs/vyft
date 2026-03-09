@@ -60,4 +60,20 @@ describe("normalizeDockerContainer", () => {
     });
     assert.equal(result.mounts, undefined);
   });
+
+  it("returns undefined mounts when Binds is absent", () => {
+    const result = normalizeDockerContainer({
+      ...baseInspect,
+      HostConfig: {},
+    });
+    assert.equal(result.mounts, undefined);
+  });
+
+  it("handles malformed bind string with no colon", () => {
+    const result = normalizeDockerContainer({
+      ...baseInspect,
+      HostConfig: { Binds: ["orphan"] },
+    });
+    assert.deepEqual(result.mounts, [{ source: "orphan", target: "" }]);
+  });
 });

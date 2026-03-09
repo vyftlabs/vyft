@@ -49,9 +49,18 @@ export function normalizeDockerContainer(
     : 3000;
 
   const mounts = inspect.HostConfig.Binds?.map((b) => {
-    const [source, target] = b.split(":");
-    return { source: source ?? "", target: target ?? "" };
+    const [source = "", target = ""] = b.split(":");
+    return { source, target };
   });
+
+  const restartName = inspect.HostConfig.RestartPolicy?.Name;
+  const restartPolicy: ServiceInput["restart"] =
+    restartName === "always" ||
+    restartName === "on-failure" ||
+    restartName === "unless-stopped" ||
+    restartName === "no"
+      ? restartName
+      : "always";
 
   return {
     image: inspect.Config.Image,
@@ -59,8 +68,6 @@ export function normalizeDockerContainer(
     env,
     command: inspect.Config.Cmd ?? undefined,
     mounts: mounts && mounts.length > 0 ? mounts : undefined,
-    restart:
-      (inspect.HostConfig.RestartPolicy?.Name as ServiceInput["restart"]) ??
-      "always",
+    restart: restartPolicy,
   };
 }
