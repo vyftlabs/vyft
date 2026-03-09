@@ -28,6 +28,7 @@ export {
 export { plan } from "./plan.ts";
 export type { PlatformResourceName } from "./platform.ts";
 export type { Provider, ProviderConfig } from "./provider.ts";
+export { reconcile } from "./reconcile.ts";
 export { refresh } from "./refresh.ts";
 export { type ResolvedResult, resolve } from "./resolve.ts";
 export {

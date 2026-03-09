@@ -1,5 +1,5 @@
 import { confirm, isCancel, spinner } from "@clack/prompts";
-import { type ApplyEvent, destroy } from "@vyft/core";
+import { type ApplyEvent, destroy, reconcile } from "@vyft/core";
 import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
@@ -49,6 +49,7 @@ export default new Command("destroy")
     const passphrase = await resolvePassphrase();
     const cipher = createCipher(passphrase, salt);
     const ctx = buildContext(store, cipher, providers, stateDir);
+    await reconcile(ctx);
     const current = buildCurrentState(store);
     const count = Object.keys(current.entries).length;
 

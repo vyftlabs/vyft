@@ -8,6 +8,7 @@ import {
   removeContainer,
 } from "../client/container.ts";
 import { pullImage } from "../client/image.ts";
+import { inspectContainer } from "../client/inspect.ts";
 import { ensureNetwork } from "../client/network.ts";
 import type { DockerContext } from "../context.ts";
 
@@ -51,6 +52,13 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
         containerId,
       },
     };
+  },
+
+  async read({ input, ctx }) {
+    const name = containerName(ctx.project, ctx.stage, input.name);
+    const inspect = await inspectContainer(ctx.client, name);
+    if (!inspect) return {};
+    return { name, containerId: inspect.Id };
   },
 
   async update({ input, ctx }) {
