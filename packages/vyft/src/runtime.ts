@@ -21,7 +21,7 @@ export function resolveStateDir(
   project: string,
   stage = "production",
 ): string {
-  return path.join(cwd, VYFT_DIR, context, project, stage);
+  return path.join(cwd, VYFT_DIR, "context", context, project, stage);
 }
 
 export function resolveLocalStateDir(cwd: string, project: string): string {
