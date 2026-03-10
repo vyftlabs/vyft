@@ -1,4 +1,4 @@
-import { isOutput, type Output } from "./output.ts";
+import { isOutput, type OutputRef } from "./output.ts";
 import { isSecret, SECRET, unwrap } from "./secret.ts";
 
 const DEFERRED: unique symbol = Symbol("vyft.deferred");
@@ -91,7 +91,7 @@ interpolate.secret = function secretInterpolate(
 };
 
 function resolveOutputValue(
-  output: Output,
+  output: OutputRef,
   outputs: Record<string, unknown>,
 ): unknown {
   const outputData = outputs[output.urn];

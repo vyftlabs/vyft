@@ -2,7 +2,7 @@
 
 export type {
   Output,
-  ResourceHandle,
+  Resource,
   ResourceOptions,
   SecretOutput,
 } from "@vyft/core";
@@ -12,9 +12,9 @@ export type {
   CronJobConfig,
   JobConfig,
   ServiceConfig,
-  ServiceHandle,
+  ServiceOutputs,
   VolumeConfig,
-  VolumeHandle,
+  VolumeOutputs,
 } from "@vyft/runtime";
 export { cronjob, job, service, volume } from "@vyft/runtime";
 export { default as std } from "@vyft/std";

@@ -22,6 +22,7 @@ export {
   isOutput,
   OUTPUT,
   type Output,
+  type OutputRef,
   resolveOutputs,
   type SecretOutput,
 } from "./output.ts";
@@ -44,9 +45,9 @@ export {
   type HandlerName,
   type Handlers,
   RESOURCE,
+  type Resource,
   type ResourceDefinition,
   type ResourceEntry,
-  type ResourceHandle,
   type ResourceOptions,
   type ResourceRef,
   resource,

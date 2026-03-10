@@ -4,23 +4,29 @@ const OUTPUT: unique symbol = Symbol("vyft.output");
 
 export { OUTPUT };
 
-export interface Output {
-  [OUTPUT]: true;
-  readonly urn: string;
-  readonly path: string;
-  readonly kind: "output";
+/** User-facing output reference. T is the type the output resolves to at deploy time. */
+export interface Output<T = unknown> {
+  readonly [OUTPUT]: true;
+  /** @internal phantom type — do not access */
+  readonly _type?: T;
 }
 
-export interface SecretOutput {
-  [OUTPUT]: true;
-  [SECRET]: true;
-  readonly urn: string;
-  readonly path: string;
-  readonly kind: "secret";
+export interface SecretOutput<T = unknown> extends Output<T> {
+  readonly [SECRET]: true;
 }
 
-export function createOutput(urn: string, path: string): Output {
-  const ref = Object.create(null) as Output;
+/** Internal type with urn/path/kind — used within core for resolution. */
+export interface OutputRef<T = unknown> extends Output<T> {
+  readonly urn: string;
+  readonly path: string;
+  readonly kind: "output" | "secret";
+}
+
+export function createOutput<T = unknown>(
+  urn: string,
+  path: string,
+): Output<T> {
+  const ref = Object.create(null) as OutputRef<T>;
   Object.defineProperty(ref, OUTPUT, {
     value: true,
     enumerable: false,
@@ -44,8 +50,11 @@ export function createOutput(urn: string, path: string): Output {
   return ref;
 }
 
-export function createSecretOutput(urn: string, path: string): SecretOutput {
-  const ref = Object.create(null) as SecretOutput;
+export function createSecretOutput<T = unknown>(
+  urn: string,
+  path: string,
+): SecretOutput<T> {
+  const ref = Object.create(null) as OutputRef<T> & { [SECRET]: true };
   Object.defineProperty(ref, OUTPUT, {
     value: true,
     enumerable: false,
@@ -74,7 +83,8 @@ export function createSecretOutput(urn: string, path: string): SecretOutput {
   return ref;
 }
 
-export function isOutput(value: unknown): value is Output {
+/** Narrows to OutputRef so internal code can access urn/path/kind. */
+export function isOutput(value: unknown): value is OutputRef {
   return (
     typeof value === "object" &&
     value !== null &&

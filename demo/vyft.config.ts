@@ -1,12 +1,10 @@
 import { secret, service, std } from "vyft";
 
-const password = secret(
-  std.crypto.randomString("password", {
-    length: 16,
-  }),
-);
+const password = std.crypto.randomString("password", {
+  length: 16,
+});
 
-service("db", {
+const db = service("db", {
   image: "postgres:16",
   port: 5432,
   env: {
@@ -15,4 +13,6 @@ service("db", {
   },
 });
 
-service("app");
+const app = service("app", {
+  link: [db],
+});

@@ -11,6 +11,7 @@ export {
   type Provider,
   type ProviderConfig,
   RESOURCE,
+  type Resource,
   type ResourceDefinition,
   type UpdateArgs,
 } from "@vyft/core";

@@ -3,23 +3,23 @@ import {
   type PlatformResourceName,
   type Provider,
   RESOURCE,
+  type Resource,
   type ResourceDefinition,
-  type ResourceHandle,
   type ResourceOptions,
 } from "@vyft/core";
 
 // biome-ignore lint/suspicious/noExplicitAny: resource definitions have varying input types
-type AnyResourceDefinition = ResourceDefinition<any, any>;
+type AnyResourceDefinition = ResourceDefinition<any, any, any>;
 
 /** A leaf resource or a nested namespace of resources. */
 export type ResourceTree =
   | AnyResourceDefinition
   | { [key: string]: ResourceTree };
 
-/** Converts a ResourceDefinition to a callable constructor that returns a ResourceHandle. */
+/** Converts a ResourceDefinition to a callable constructor. */
 type ResourceConstructor<D> =
-  D extends ResourceDefinition<infer I>
-    ? (id: string, input: I, options?: ResourceOptions) => ResourceHandle
+  D extends ResourceDefinition<infer I, infer O>
+    ? (id: string, input: I, options?: ResourceOptions) => Resource<O>
     : never;
 
 /** Recursively maps a resource tree to constructor functions. */
@@ -36,7 +36,7 @@ export interface CreateProviderConfig<
   resources: TResources;
   platform?: {
     // biome-ignore lint/suspicious/noExplicitAny: resources have varying input types
-    [K in PlatformResourceName]: ResourceDefinition<any, TCtx>;
+    [K in PlatformResourceName]: ResourceDefinition<any, any, TCtx>;
   };
 }
 
@@ -74,7 +74,7 @@ const REQUIRED_PLATFORM_RESOURCES: PlatformResourceName[] = [
 ];
 
 function validatePlatform<TCtx>(
-  platform: Record<string, ResourceDefinition<unknown, TCtx>>,
+  platform: Record<string, ResourceDefinition<unknown, unknown, TCtx>>,
 ): void {
   const missing = REQUIRED_PLATFORM_RESOURCES.filter(
     (key) => !(key in platform),
@@ -94,11 +94,14 @@ function buildConstructors(
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(tree)) {
     if (isResourceDefinition(value)) {
-      result[key] = createConstructor<Record<string, unknown>>(
+      result[key] = createConstructor(
         name,
         provider,
         value.name,
-        (id, config) => ({ name: id, ...config }),
+        (id: string, config: Record<string, unknown>) => ({
+          name: id,
+          ...config,
+        }),
       );
     } else {
       result[key] = buildConstructors(

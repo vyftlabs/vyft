@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isOutput, type Output, RESOURCE, registry } from "@vyft/core";
+import { isOutput, RESOURCE, registry } from "@vyft/core";
 import { createProvider, defineResource } from "./index.ts";
 
 describe("defineResource", () => {
@@ -91,19 +91,19 @@ describe("createProvider", () => {
     const handle = provider.snapshot("my-snap", { serverId: "srv-1" });
     const entries = registry.collect();
 
-    // Handle is an Output with empty path (references whole output)
+    // Handle is an Output — isOutput narrows to OutputRef
     assert.ok(isOutput(handle));
-    assert.equal((handle as Output).path, "");
+    assert.equal(handle.path, "");
 
     assert.ok(handle.urn);
-    assert.ok((handle.urn as string).includes("test"));
-    assert.ok((handle.urn as string).includes("snapshot"));
-    assert.ok((handle.urn as string).includes("my-snap"));
+    assert.ok(handle.urn.includes("test"));
+    assert.ok(handle.urn.includes("snapshot"));
+    assert.ok(handle.urn.includes("my-snap"));
 
     // Property access returns Output for specific key
-    const idOutput = (handle as Record<string, unknown>)["id"] as Output;
-    assert.ok(isOutput(idOutput));
-    assert.equal(idOutput.path, "id");
+    const idHandle = (handle as unknown as Record<string, unknown>)["id"];
+    assert.ok(isOutput(idHandle));
+    assert.equal(idHandle.path, "id");
 
     // Entry registered in registry
     assert.equal(entries.length, 1);

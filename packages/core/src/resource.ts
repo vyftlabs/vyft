@@ -1,4 +1,9 @@
-import { DEPENDABLE, type Dependable, LINKABLE } from "@vyft/engine";
+import {
+  DEPENDABLE,
+  type Dependable,
+  LINKABLE,
+  type Linkable,
+} from "@vyft/engine";
 import type { Output } from "./output.ts";
 import { createOutput, OUTPUT } from "./output.ts";
 import type { Provider } from "./provider.ts";
@@ -64,46 +69,46 @@ export interface DiffResult {
   changes?: string[];
 }
 
-export interface CreateResult {
+export interface CreateResult<TOutput = unknown> {
   externalId?: string;
-  output: unknown;
+  output: TOutput;
 }
 
-export interface Handlers<TInput, TCtx> {
-  create?(args: HandlerArgs<TInput, TCtx>): Promise<CreateResult>;
-  read?(args: HandlerArgs<TInput, TCtx>): Promise<unknown>;
-  update?(args: UpdateArgs<TInput, TCtx>): Promise<unknown>;
+export interface Handlers<TInput, TCtx = unknown, TOutput = unknown> {
+  create?(args: HandlerArgs<TInput, TCtx>): Promise<CreateResult<TOutput>>;
+  read?(args: HandlerArgs<TInput, TCtx>): Promise<TOutput>;
+  update?(args: UpdateArgs<TInput, TCtx>): Promise<TOutput>;
   delete?(args: HandlerArgs<TInput, TCtx>): Promise<void>;
   diff?(args: DiffArgs<TInput>): Promise<DiffResult>;
 }
 
-export interface ResourceDefinition<TInput = unknown, TCtx = unknown> {
+export interface ResourceDefinition<
+  TInput = unknown,
+  TOutput = unknown,
+  TCtx = unknown,
+> {
   [RESOURCE]: true;
   name: string;
-  handlers: Handlers<TInput, TCtx>;
+  handlers: Handlers<TInput, TCtx, TOutput>;
 }
 
-/** Output handle returned by resource constructors. Also an Output itself (path ""). */
-export interface ResourceHandle extends Output {
-  readonly urn: string;
-  [DEPENDABLE]: true;
-  [LINKABLE]: true;
-  [key: string]: unknown;
-}
+/** User-facing resource reference. T is the output shape. */
+export type Resource<T = unknown> = T & Dependable & Linkable;
 
 /**
  * Internal factory — creates a constructor that registers entries in the global registry
- * and returns a Proxy-based ResourceHandle.
+ * and returns a Proxy-based Resource.
  *
- * The handle is both an Output (path "") referencing the whole output value,
- * and a Proxy where any property access returns an Output for that specific key.
+ * The resource is branded with OUTPUT (path ""), DEPENDABLE, and LINKABLE.
+ * For record outputs, property access returns Output for that key.
+ * Unknown symbol access passes through to the target (supports secret() branding).
  */
-export function createConstructor<C>(
+export function createConstructor<C, TOutput = unknown>(
   providerName: string,
   providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => Record<string, unknown>,
-): (id: string, config?: C, options?: ResourceOptions) => ResourceHandle {
+): (id: string, config?: C, options?: ResourceOptions) => Resource<TOutput> {
   return (id: string, config?: C, options?: ResourceOptions) => {
     const scope = registry.currentScope();
     const resolvedId = scope ? `${scope.split(":").pop()}/${id}` : id;
@@ -129,10 +134,10 @@ export function createConstructor<C>(
     }
     registry.register(entry);
 
-    const target: ResourceHandle = Object.create(null);
+    const target = Object.create(null) as Record<string | symbol, unknown>;
     Object.defineProperty(target, "urn", {
       value: resourceUrn,
-      enumerable: true,
+      enumerable: false,
       configurable: false,
     });
     Object.defineProperty(target, OUTPUT, {
@@ -142,12 +147,12 @@ export function createConstructor<C>(
     });
     Object.defineProperty(target, "path", {
       value: "",
-      enumerable: true,
+      enumerable: false,
       configurable: false,
     });
     Object.defineProperty(target, "kind", {
       value: "output",
-      enumerable: true,
+      enumerable: false,
       configurable: false,
     });
     Object.defineProperty(target, DEPENDABLE, {
@@ -163,14 +168,15 @@ export function createConstructor<C>(
 
     const outputCache = new Map<string, Output>();
     return new Proxy(target, {
-      get(_t, prop) {
+      get(t, prop) {
         if (prop === "urn") return resourceUrn;
         if (prop === "path") return "";
         if (prop === "kind") return "output";
         if (prop === OUTPUT) return true;
         if (prop === DEPENDABLE) return true;
         if (prop === LINKABLE) return true;
-        if (typeof prop === "symbol") return undefined;
+        // Pass through unknown symbols to target (supports secret() branding)
+        if (typeof prop === "symbol") return t[prop];
         const key = prop;
         const cached = outputCache.get(key);
         if (cached) return cached;
@@ -178,13 +184,15 @@ export function createConstructor<C>(
         outputCache.set(key, output);
         return output;
       },
-      has(_t, prop) {
+      has(t, prop) {
         if (prop === "urn" || prop === "path" || prop === "kind") return true;
         if (prop === OUTPUT || prop === DEPENDABLE || prop === LINKABLE)
           return true;
-        return typeof prop === "string";
+        // Check target for unknown symbols (supports secret() branding check)
+        if (typeof prop === "symbol") return prop in t;
+        return true;
       },
-    });
+    }) as Resource<TOutput>;
   };
 }
 

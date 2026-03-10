@@ -3,7 +3,7 @@ import {
   createConstructor,
   createOutput,
   type Provider,
-  type ResourceHandle,
+  type Resource,
 } from "@vyft/core";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
@@ -82,25 +82,23 @@ export interface CronJobConfig {
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
 }
 
-export interface ServiceHandle extends ResourceHandle {
-  host: Output;
-  port: Output;
-  url: Output;
+export interface ServiceOutputs {
+  host: Output<string>;
+  port: Output<number>;
+  url: Output<string>;
 }
 
-export interface VolumeHandle extends ResourceHandle {
-  name: Output;
+export interface VolumeOutputs {
+  name: Output<string>;
 }
 
 function linkEnvPrefix(urn: string): string {
-  // Extract the resource id from the URN (last segment)
-  // urn:vyft:resource:runtime:service:db → DB
   const parts = urn.split(":");
   const id = parts[parts.length - 1] ?? "";
   return id.toUpperCase().replace(/-/g, "_");
 }
 
-const serviceConstructor = createConstructor<ServiceConfig>(
+const serviceConstructor = createConstructor<ServiceConfig, ServiceOutputs>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "service",
@@ -138,11 +136,14 @@ const serviceConstructor = createConstructor<ServiceConfig>(
   },
 );
 
-export function service(id: string, config?: ServiceConfig): ServiceHandle {
-  return serviceConstructor(id, config) as ServiceHandle;
+export function service(
+  id: string,
+  config?: ServiceConfig,
+): Resource<ServiceOutputs> {
+  return serviceConstructor(id, config);
 }
 
-const volumeConstructor = createConstructor<VolumeConfig>(
+const volumeConstructor = createConstructor<VolumeConfig, VolumeOutputs>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "volume",
@@ -152,8 +153,11 @@ const volumeConstructor = createConstructor<VolumeConfig>(
   }),
 );
 
-export function volume(id: string, config?: VolumeConfig): VolumeHandle {
-  return volumeConstructor(id, config) as VolumeHandle;
+export function volume(
+  id: string,
+  config?: VolumeConfig,
+): Resource<VolumeOutputs> {
+  return volumeConstructor(id, config);
 }
 
 const jobConstructor = createConstructor<JobConfig>(
@@ -171,8 +175,8 @@ const jobConstructor = createConstructor<JobConfig>(
   }),
 );
 
-export function job(id: string, config?: JobConfig): ResourceHandle {
-  return jobConstructor(id, config) as ResourceHandle;
+export function job(id: string, config?: JobConfig): Resource {
+  return jobConstructor(id, config);
 }
 
 const cronjobConstructor = createConstructor<CronJobConfig>(
@@ -193,6 +197,6 @@ const cronjobConstructor = createConstructor<CronJobConfig>(
   }),
 );
 
-export function cronjob(id: string, config?: CronJobConfig): ResourceHandle {
-  return cronjobConstructor(id, config) as ResourceHandle;
+export function cronjob(id: string, config?: CronJobConfig): Resource {
+  return cronjobConstructor(id, config);
 }
