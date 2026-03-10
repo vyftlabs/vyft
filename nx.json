@@ -31,10 +31,10 @@
       "conventionalCommits": true,
       "generatorOptions": {
         "updateDependents": "auto"
-      },
-      "git": {
-        "commitMessage": "chore(release): {version}"
       }
+    },
+    "git": {
+      "commitMessage": "chore(release): {version}"
     },
     "changelog": {
       "workspaceChangelog": true,
