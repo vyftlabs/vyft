@@ -18,6 +18,8 @@ export interface ResourceEntry<T = unknown> extends ResourceRef<T> {
   [DEPENDABLE]: true;
   [LINKABLE]: true;
   value: Record<string, unknown>;
+  /** Original config before transformation — preserved for tooling (e.g. local dev runner) */
+  config?: unknown;
   dependsOn?: Dependable[];
   provider: Provider<unknown>;
 }
@@ -86,12 +88,14 @@ export function resource<C, T>(
 ): (id: string, config?: C, options?: ResourceOptions) => ResourceEntry<T> {
   return (id: string, config?: C, options?: ResourceOptions) => {
     const resourceUrn = urn.build("resource", providerName, type, id);
-    const value = define(id, config ?? ({} as C));
+    const resolvedConfig = config ?? ({} as C);
+    const value = define(id, resolvedConfig);
     const entry = {
       [DEPENDABLE]: true,
       [LINKABLE]: true,
       urn: resourceUrn,
       value,
+      config: resolvedConfig,
       provider: providerInstance,
     } as ResourceEntry<T>;
     if (options?.dependsOn) {

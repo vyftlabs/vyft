@@ -9,6 +9,17 @@ import type {
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
 
+export type DevConfig =
+  | string
+  | string[]
+  | {
+      command: string | string[];
+      env?: Record<string, string>;
+      cwd?: string;
+      include?: string[];
+      exclude?: string[];
+    };
+
 const lazyProvider: Provider<unknown> = {
   config: {
     context() {
@@ -38,6 +49,8 @@ export interface ServiceConfig {
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
   expose?: boolean;
   link?: Linkable[];
+  /** Dev command config — only used by `vyft local dev`, not deployed */
+  dev?: DevConfig;
 }
 
 export interface VolumeConfig {
