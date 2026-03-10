@@ -1,6 +1,11 @@
 {
   "name": "@vyft/railpack",
   "version": "0.4.1-alpha",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vyftlabs/vyft",
+    "directory": "packages/railpack"
+  },
   "type": "module",
   "exports": {
     ".": {
