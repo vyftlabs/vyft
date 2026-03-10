@@ -35,7 +35,7 @@ jobs:
 
       - run: pnpm nx run-many -t lint build test --parallel=3
 
-  release:
+  publish:
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -56,15 +56,10 @@ jobs:
           package-manager-cache: false
           registry-url: https://registry.npmjs.org
 
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm nx run-many -t build --parallel=3
 
-      - run: pnpm nx release ${GITHUB_REF_NAME#v} --yes
+      - run: pnpm nx release publish --yes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
