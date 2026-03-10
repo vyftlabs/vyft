@@ -1,23 +1,23 @@
+import { registry } from "./registry.ts";
 import { SECRET } from "./secret.ts";
 
 const OUTPUT: unique symbol = Symbol("vyft.output");
+const TYPE: unique symbol = Symbol("vyft.type");
 
-export { OUTPUT };
+export { OUTPUT, TYPE };
 
 /** User-facing output reference. T is the type the output resolves to at deploy time. */
 export interface Output<T = unknown> {
   readonly [OUTPUT]: true;
-  /** @internal phantom type — do not access */
-  readonly _type?: T;
+  readonly [TYPE]?: T;
 }
 
 export interface SecretOutput<T = unknown> extends Output<T> {
   readonly [SECRET]: true;
 }
 
-/** Internal type with urn/path/kind — used within core for resolution. */
+/** Internal type with path/kind — used within core for resolution. */
 export interface OutputRef<T = unknown> extends Output<T> {
-  readonly urn: string;
   readonly path: string;
   readonly kind: "output" | "secret";
 }
@@ -32,11 +32,6 @@ export function createOutput<T = unknown>(
     enumerable: false,
     configurable: false,
   });
-  Object.defineProperty(ref, "urn", {
-    value: urn,
-    enumerable: true,
-    configurable: false,
-  });
   Object.defineProperty(ref, "path", {
     value: path,
     enumerable: true,
@@ -47,6 +42,7 @@ export function createOutput<T = unknown>(
     enumerable: true,
     configurable: false,
   });
+  registry.registerHandle(ref, urn);
   return ref;
 }
 
@@ -65,11 +61,6 @@ export function createSecretOutput<T = unknown>(
     enumerable: false,
     configurable: false,
   });
-  Object.defineProperty(ref, "urn", {
-    value: urn,
-    enumerable: true,
-    configurable: false,
-  });
   Object.defineProperty(ref, "path", {
     value: path,
     enumerable: true,
@@ -80,6 +71,7 @@ export function createSecretOutput<T = unknown>(
     enumerable: true,
     configurable: false,
   });
+  registry.registerHandle(ref, urn);
   return ref;
 }
 
@@ -109,9 +101,10 @@ export function resolveOutputs(
   outputs: Record<string, unknown>,
 ): unknown {
   if (isOutput(data)) {
-    const output = outputs[data.urn];
+    const urn = registry.urnOf(data);
+    const output = outputs[urn];
     if (output === undefined) {
-      throw new Error(`Unresolved output: ${data.urn}.${data.path}`);
+      throw new Error(`Unresolved output: ${urn}.${data.path}`);
     }
     return getNestedValue(output, data.path);
   }

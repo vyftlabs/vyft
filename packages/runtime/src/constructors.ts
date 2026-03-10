@@ -3,7 +3,7 @@ import {
   createConstructor,
   createOutput,
   type Provider,
-  type Resource,
+  registry,
 } from "@vyft/core";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
@@ -112,10 +112,11 @@ const serviceConstructor = createConstructor<ServiceConfig, ServiceOutputs>(
 
     if (config.link) {
       for (const ref of config.link) {
-        const prefix = linkEnvPrefix(ref.urn);
-        env[`${prefix}_HOST`] = createOutput(ref.urn, "host");
-        env[`${prefix}_PORT`] = createOutput(ref.urn, "port");
-        env[`${prefix}_URL`] = createOutput(ref.urn, "url");
+        const refUrn = registry.urnOf(ref);
+        const prefix = linkEnvPrefix(refUrn);
+        env[`${prefix}_HOST`] = createOutput(refUrn, "host");
+        env[`${prefix}_PORT`] = createOutput(refUrn, "port");
+        env[`${prefix}_URL`] = createOutput(refUrn, "url");
       }
     }
 
@@ -136,10 +137,7 @@ const serviceConstructor = createConstructor<ServiceConfig, ServiceOutputs>(
   },
 );
 
-export function service(
-  id: string,
-  config?: ServiceConfig,
-): Resource<ServiceOutputs> {
+export function service(id: string, config?: ServiceConfig) {
   return serviceConstructor(id, config);
 }
 
@@ -153,10 +151,7 @@ const volumeConstructor = createConstructor<VolumeConfig, VolumeOutputs>(
   }),
 );
 
-export function volume(
-  id: string,
-  config?: VolumeConfig,
-): Resource<VolumeOutputs> {
+export function volume(id: string, config?: VolumeConfig) {
   return volumeConstructor(id, config);
 }
 
@@ -175,7 +170,7 @@ const jobConstructor = createConstructor<JobConfig>(
   }),
 );
 
-export function job(id: string, config?: JobConfig): Resource {
+export function job(id: string, config?: JobConfig) {
   return jobConstructor(id, config);
 }
 
@@ -197,6 +192,6 @@ const cronjobConstructor = createConstructor<CronJobConfig>(
   }),
 );
 
-export function cronjob(id: string, config?: CronJobConfig): Resource {
+export function cronjob(id: string, config?: CronJobConfig) {
   return cronjobConstructor(id, config);
 }

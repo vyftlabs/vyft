@@ -1,4 +1,5 @@
 import { isOutput, type OutputRef } from "./output.ts";
+import { registry } from "./registry.ts";
 import { isSecret, SECRET, unwrap } from "./secret.ts";
 
 const DEFERRED: unique symbol = Symbol("vyft.deferred");
@@ -94,9 +95,10 @@ function resolveOutputValue(
   output: OutputRef,
   outputs: Record<string, unknown>,
 ): unknown {
-  const outputData = outputs[output.urn];
+  const urn = registry.urnOf(output);
+  const outputData = outputs[urn];
   if (outputData === undefined) {
-    throw new Error(`Unresolved output: ${output.urn}.${output.path}`);
+    throw new Error(`Unresolved output: ${urn}.${output.path}`);
   }
   const parts = output.path.split(".");
   let value: unknown = outputData;

@@ -95,10 +95,11 @@ describe("createProvider", () => {
     assert.ok(isOutput(handle));
     assert.equal(handle.path, "");
 
-    assert.ok(handle.urn);
-    assert.ok(handle.urn.includes("test"));
-    assert.ok(handle.urn.includes("snapshot"));
-    assert.ok(handle.urn.includes("my-snap"));
+    const handleUrn = registry.urnOf(handle);
+    assert.ok(handleUrn);
+    assert.ok(handleUrn.includes("test"));
+    assert.ok(handleUrn.includes("snapshot"));
+    assert.ok(handleUrn.includes("my-snap"));
 
     // Property access returns Output for specific key
     const idHandle = (handle as unknown as Record<string, unknown>)["id"];
@@ -107,7 +108,7 @@ describe("createProvider", () => {
 
     // Entry registered in registry
     assert.equal(entries.length, 1);
-    assert.equal(entries[0]?.urn, handle.urn);
+    assert.equal(entries[0]?.urn, handleUrn);
   });
 
   it("throws on duplicate resource names across namespaces", () => {

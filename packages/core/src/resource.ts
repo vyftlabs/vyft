@@ -5,7 +5,7 @@ import {
   type Linkable,
 } from "@vyft/engine";
 import type { Output } from "./output.ts";
-import { createOutput, OUTPUT } from "./output.ts";
+import { createOutput, OUTPUT, TYPE } from "./output.ts";
 import type { Provider } from "./provider.ts";
 import { registry } from "./registry.ts";
 import type { URN } from "./urn.ts";
@@ -15,7 +15,7 @@ export const RESOURCE: unique symbol = Symbol("vyft.resource");
 
 export interface ResourceRef<T = unknown> {
   urn: URN;
-  readonly _type?: T;
+  readonly [TYPE]?: T;
 }
 
 export interface ResourceOptions {
@@ -28,7 +28,7 @@ export interface ResourceEntry<T = unknown> extends ResourceRef<T> {
   value: Record<string, unknown>;
   /** Original config before transformation — preserved for tooling (e.g. local dev runner) */
   config?: unknown;
-  dependsOn?: Dependable[];
+  dependsOn?: string[];
   provider: Provider<unknown>;
 }
 
@@ -92,6 +92,13 @@ export interface ResourceDefinition<
   handlers: Handlers<TInput, TCtx, TOutput>;
 }
 
+/** Eagerly expands named types so hover tooltips show structural form. */
+type Expand<T> = T extends object
+  ? T extends readonly unknown[]
+    ? T
+    : { [K in keyof T]: T[K] }
+  : T;
+
 /** Maps a handler output type to what the user sees on the resource handle. */
 type OutputShape<T> = T extends object
   ? T extends readonly unknown[]
@@ -115,7 +122,11 @@ export function createConstructor<C, TOutput = unknown>(
   providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => Record<string, unknown>,
-): (id: string, config?: C, options?: ResourceOptions) => Resource<TOutput> {
+): (
+  id: string,
+  config?: C,
+  options?: ResourceOptions,
+) => Resource<Expand<TOutput>> {
   return (id: string, config?: C, options?: ResourceOptions) => {
     const scope = registry.currentScope();
     const resolvedId = scope ? `${scope.split(":").pop()}/${id}` : id;
@@ -131,22 +142,14 @@ export function createConstructor<C, TOutput = unknown>(
       provider: providerInstance,
     };
     if (options?.dependsOn) {
-      entry.dependsOn = options.dependsOn;
+      entry.dependsOn = options.dependsOn.map((dep) => registry.urnOf(dep));
     }
     if (scope) {
-      const parentDep: Dependable = { [DEPENDABLE]: true, urn: scope };
-      entry.dependsOn = entry.dependsOn
-        ? [parentDep, ...entry.dependsOn]
-        : [parentDep];
+      entry.dependsOn = entry.dependsOn ? [scope, ...entry.dependsOn] : [scope];
     }
     registry.register(entry);
 
     const target = Object.create(null) as Record<string | symbol, unknown>;
-    Object.defineProperty(target, "urn", {
-      value: resourceUrn,
-      enumerable: false,
-      configurable: false,
-    });
     Object.defineProperty(target, OUTPUT, {
       value: true,
       enumerable: false,
@@ -174,9 +177,8 @@ export function createConstructor<C, TOutput = unknown>(
     });
 
     const outputCache = new Map<string, Output>();
-    return new Proxy(target, {
+    const proxy = new Proxy(target, {
       get(t, prop) {
-        if (prop === "urn") return resourceUrn;
         if (prop === "path") return "";
         if (prop === "kind") return "output";
         if (prop === OUTPUT) return true;
@@ -192,14 +194,16 @@ export function createConstructor<C, TOutput = unknown>(
         return output;
       },
       has(t, prop) {
-        if (prop === "urn" || prop === "path" || prop === "kind") return true;
+        if (prop === "path" || prop === "kind") return true;
         if (prop === OUTPUT || prop === DEPENDABLE || prop === LINKABLE)
           return true;
         // Check target for unknown symbols (supports secret() branding check)
         if (typeof prop === "symbol") return prop in t;
         return true;
       },
-    }) as Resource<TOutput>;
+    }) as Resource<Expand<TOutput>>;
+    registry.registerHandle(proxy, resourceUrn);
+    return proxy;
   };
 }
 

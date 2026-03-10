@@ -36,8 +36,8 @@ function collectDeps(
 
   if (entry.dependsOn) {
     for (const dep of entry.dependsOn) {
-      if (knownUrns.has(dep.urn)) {
-        deps.add(dep.urn);
+      if (knownUrns.has(dep)) {
+        deps.add(dep);
       }
     }
   }

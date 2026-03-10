@@ -6,7 +6,6 @@ export { DEPENDABLE, LINKABLE, MOUNTABLE };
 
 export interface Dependable {
   [DEPENDABLE]: true;
-  readonly urn: string;
 }
 
 export interface Mountable<T = unknown> extends Dependable {

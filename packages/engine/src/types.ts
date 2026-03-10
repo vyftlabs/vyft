@@ -1,5 +1,3 @@
-import type { Dependable } from "./brands.ts";
-
 export type Action = "create" | "update" | "delete";
 
 export interface Change {
@@ -16,7 +14,7 @@ export interface Entry {
   externalId?: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
-  dependsOn?: Dependable[];
+  dependsOn?: string[];
 }
 
 export interface State {
