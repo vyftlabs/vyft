@@ -51,30 +51,33 @@ assert.ok(create);
 describe("exec", () => {
   describe("basic command execution", () => {
     test("executes simple command and returns stdout artifact", async () => {
-      const { output } = await create({
+      const result = await create({
         input: { command: ["echo", "hello"] },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("executes command with multiple arguments", async () => {
-      const { output } = await create({
+      const result = await create({
         input: { command: ["printf", "%s %s", "hello", "world"] },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
 
     test("returns stderr artifact", async () => {
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["sh", "-c", "echo warn >&2; echo ok"],
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stderr"], "stderr");
     });
@@ -82,13 +85,14 @@ describe("exec", () => {
 
   describe("stdin", () => {
     test("accepts literal string stdin", async () => {
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["wc", "-c"],
           stdin: "hello",
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
@@ -97,13 +101,14 @@ describe("exec", () => {
       const inputFile = path.join(tmpDir, "stdin-test.txt");
       await fs.writeFile(inputFile, "file content here");
 
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["wc", "-c"],
           stdinFile: inputFile,
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
@@ -111,7 +116,7 @@ describe("exec", () => {
     test("accepts relative file path with cwd", async () => {
       await fs.writeFile(path.join(tmpDir, "relative.txt"), "relative content");
 
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["cat"],
           stdinFile: "./relative.txt",
@@ -119,6 +124,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
@@ -158,13 +164,14 @@ describe("exec", () => {
 
   describe("environment variables", () => {
     test("sets custom environment variables", async () => {
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["sh", "-c", "echo $MY_CUSTOM_VAR"],
           env: { MY_CUSTOM_VAR: "test_value" },
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
@@ -174,13 +181,14 @@ describe("exec", () => {
     test("executes in specified directory", async () => {
       await fs.writeFile(path.join(tmpDir, "cwd-test.txt"), "exists");
 
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["ls", "cwd-test.txt"],
           cwd: tmpDir,
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });
@@ -222,13 +230,14 @@ describe("exec", () => {
     });
 
     test("succeeds when command finishes before timeout", async () => {
-      const { output } = await create({
+      const result = await create({
         input: {
           command: ["echo", "fast"],
           timeout: 5000,
         },
         ctx: { artifacts: createMockArtifacts() },
       });
+      const output = result.output as Record<string, unknown>;
 
       assertArtifactRef(output["stdout"], "stdout");
     });

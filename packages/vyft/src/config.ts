@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { type Provider, type ResourceEntry, urn } from "@vyft/core";
+import { type Provider, type ResourceEntry, registry, urn } from "@vyft/core";
 import { service } from "@vyft/runtime";
 import { createJiti } from "jiti";
 
@@ -10,16 +10,6 @@ const CONFIG_FILES = [
   "vyft.config.mjs",
   "vyft.config.mts",
 ];
-
-function isResourceEntry(value: unknown): value is ResourceEntry {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "urn" in value &&
-    typeof (value as Record<string, unknown>)["urn"] === "string" &&
-    "value" in value
-  );
-}
 
 export interface LoadedConfig {
   entries: ResourceEntry[];
@@ -58,20 +48,16 @@ export async function loadConfig(
     const filePath = path.join(cwd, file);
     if (!(await fileExists(filePath))) continue;
 
-    const mod = (await jiti.import(filePath)) as Record<string, unknown>;
-
-    const entries: ResourceEntry[] = [];
-    for (const value of Object.values(mod)) {
-      if (isResourceEntry(value)) {
-        entries.push(value);
-      }
-    }
+    registry.begin();
+    await jiti.import(filePath);
+    const entries = registry.collect();
     return { entries, providers: collectProviders(entries) };
   }
 
   if (name) {
-    const entry = service(name, {});
-    const entries = [entry];
+    registry.begin();
+    service(name, {});
+    const entries = registry.collect();
     return { entries, providers: collectProviders(entries) };
   }
 

@@ -1,11 +1,10 @@
-import type { Linkable } from "@vyft/core";
-import { createOutput, type Provider, resource } from "@vyft/core";
-import type {
-  CronJobInput,
-  JobInput,
-  ServiceInput,
-  VolumeInput,
-} from "./schemas.ts";
+import type { Linkable, Output } from "@vyft/core";
+import {
+  createConstructor,
+  createOutput,
+  type Provider,
+  type ResourceHandle,
+} from "@vyft/core";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
 
@@ -83,6 +82,16 @@ export interface CronJobConfig {
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
 }
 
+export interface ServiceHandle extends ResourceHandle {
+  host: Output;
+  port: Output;
+  url: Output;
+}
+
+export interface VolumeHandle extends ResourceHandle {
+  name: Output;
+}
+
 function linkEnvPrefix(urn: string): string {
   // Extract the resource id from the URN (last segment)
   // urn:vyft:resource:runtime:service:db → DB
@@ -91,25 +100,24 @@ function linkEnvPrefix(urn: string): string {
   return id.toUpperCase().replace(/-/g, "_");
 }
 
-export const service = resource<ServiceConfig, ServiceInput>(
+const serviceConstructor = createConstructor<ServiceConfig>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "service",
   (id, config) => {
-    const env: Record<string, string> = {
+    // Env starts as string values but link outputs inject Output objects.
+    // sealInput handles the conversion at deploy time.
+    const env: Record<string, unknown> = {
       PORT: String(config.port ?? 3000),
       ...config.env,
     };
 
-    // Outputs are branded objects that sealInput converts to serialized envelopes.
-    // They resolve to strings at deploy time, but at config time they aren't strings.
-    const envWithOutputs = env as Record<string, unknown>;
     if (config.link) {
       for (const ref of config.link) {
         const prefix = linkEnvPrefix(ref.urn);
-        envWithOutputs[`${prefix}_HOST`] = createOutput(ref.urn, "host");
-        envWithOutputs[`${prefix}_PORT`] = createOutput(ref.urn, "port");
-        envWithOutputs[`${prefix}_URL`] = createOutput(ref.urn, "url");
+        env[`${prefix}_HOST`] = createOutput(ref.urn, "host");
+        env[`${prefix}_PORT`] = createOutput(ref.urn, "port");
+        env[`${prefix}_URL`] = createOutput(ref.urn, "url");
       }
     }
 
@@ -130,7 +138,11 @@ export const service = resource<ServiceConfig, ServiceInput>(
   },
 );
 
-export const volume = resource<VolumeConfig, VolumeInput>(
+export function service(id: string, config?: ServiceConfig): ServiceHandle {
+  return serviceConstructor(id, config) as ServiceHandle;
+}
+
+const volumeConstructor = createConstructor<VolumeConfig>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "volume",
@@ -140,7 +152,11 @@ export const volume = resource<VolumeConfig, VolumeInput>(
   }),
 );
 
-export const job = resource<JobConfig, JobInput>(
+export function volume(id: string, config?: VolumeConfig): VolumeHandle {
+  return volumeConstructor(id, config) as VolumeHandle;
+}
+
+const jobConstructor = createConstructor<JobConfig>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "job",
@@ -155,7 +171,11 @@ export const job = resource<JobConfig, JobInput>(
   }),
 );
 
-export const cronjob = resource<CronJobConfig, CronJobInput>(
+export function job(id: string, config?: JobConfig): ResourceHandle {
+  return jobConstructor(id, config) as ResourceHandle;
+}
+
+const cronjobConstructor = createConstructor<CronJobConfig>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "cronjob",
@@ -172,3 +192,7 @@ export const cronjob = resource<CronJobConfig, CronJobInput>(
     restart: config.restart ?? "on-failure",
   }),
 );
+
+export function cronjob(id: string, config?: CronJobConfig): ResourceHandle {
+  return cronjobConstructor(id, config) as ResourceHandle;
+}

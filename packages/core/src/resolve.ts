@@ -7,7 +7,7 @@ import { urn } from "./urn.ts";
 
 export interface ResolvedResult {
   externalId?: string;
-  output: Record<string, unknown>;
+  output: unknown;
 }
 
 function collectOutputs(ctx: Context): Record<string, unknown> {

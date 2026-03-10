@@ -1,11 +1,11 @@
 import {
+  createConstructor,
   type PlatformResourceName,
   type Provider,
   RESOURCE,
   type ResourceDefinition,
-  type ResourceEntry,
+  type ResourceHandle,
   type ResourceOptions,
-  resource,
 } from "@vyft/core";
 
 // biome-ignore lint/suspicious/noExplicitAny: resource definitions have varying input types
@@ -16,10 +16,10 @@ export type ResourceTree =
   | AnyResourceDefinition
   | { [key: string]: ResourceTree };
 
-/** Converts a ResourceDefinition to a callable constructor. */
+/** Converts a ResourceDefinition to a callable constructor that returns a ResourceHandle. */
 type ResourceConstructor<D> =
   D extends ResourceDefinition<infer I>
-    ? (id: string, input: I, options?: ResourceOptions) => ResourceEntry<I>
+    ? (id: string, input: I, options?: ResourceOptions) => ResourceHandle
     : never;
 
 /** Recursively maps a resource tree to constructor functions. */
@@ -94,7 +94,7 @@ function buildConstructors(
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(tree)) {
     if (isResourceDefinition(value)) {
-      result[key] = resource<Record<string, unknown>, Record<string, unknown>>(
+      result[key] = createConstructor<Record<string, unknown>>(
         name,
         provider,
         value.name,

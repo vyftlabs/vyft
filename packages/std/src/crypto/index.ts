@@ -10,7 +10,7 @@ export const randomBytes = defineResource<RandomBytesArgs>("random_bytes", {
   async create({ input }) {
     const encoding = input.encoding ?? "hex";
     const result = crypto.randomBytes(input.length).toString(encoding);
-    return { output: { result } };
+    return { output: result };
   },
 });
 
@@ -39,7 +39,7 @@ export const randomString = defineResource<RandomStringArgs>("random_string", {
     for (const byte of bytes) {
       result += alphabet[byte % alphabet.length];
     }
-    return { output: { result } };
+    return { output: result };
   },
 });
 
@@ -54,7 +54,7 @@ export const randomInteger = defineResource<RandomIntegerArgs>(
     async create({ input }) {
       const range = input.max - input.min + 1;
       const result = input.min + crypto.randomInt(range);
-      return { output: { result } };
+      return { output: result };
     },
   },
 );
@@ -62,7 +62,7 @@ export const randomInteger = defineResource<RandomIntegerArgs>(
 export const randomUuid = defineResource<Record<string, never>>("random_uuid", {
   async create() {
     const result = crypto.randomUUID();
-    return { output: { result } };
+    return { output: result };
   },
 });
 

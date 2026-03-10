@@ -186,8 +186,8 @@ export function sealInput(
 }
 
 export async function sealOutput(
-  output: Record<string, unknown>,
+  output: unknown,
   cipher: Cipher,
-): Promise<Record<string, unknown>> {
-  return sealSecretValue(output, cipher) as Promise<Record<string, unknown>>;
+): Promise<unknown> {
+  return sealSecretValue(output, cipher);
 }

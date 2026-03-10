@@ -3,7 +3,9 @@ export type {
   DevConfig,
   JobConfig,
   ServiceConfig,
+  ServiceHandle,
   VolumeConfig,
+  VolumeHandle,
 } from "./constructors.ts";
 export {
   cronjob,

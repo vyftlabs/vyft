@@ -1,6 +1,8 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createJiti } from "jiti";
+import { registry } from "./registry.ts";
+import type { ResourceEntry } from "./resource.ts";
 import { urn } from "./urn.ts";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -19,21 +21,6 @@ const CONFIG_FILES = [
   "vyft.config.mts",
 ];
 
-interface ResourceLike {
-  urn: string;
-  value: Record<string, unknown>;
-}
-
-function isResourceEntry(value: unknown): value is ResourceLike {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "urn" in value &&
-    typeof (value as Record<string, unknown>)["urn"] === "string" &&
-    "value" in value
-  );
-}
-
 async function findConfig(cwd: string): Promise<string | null> {
   for (const name of CONFIG_FILES) {
     const path = resolve(cwd, name);
@@ -49,17 +36,13 @@ async function findConfig(cwd: string): Promise<string | null> {
 
 // ── Collection ───────────────────────────────────────────────────────
 
-function collectEntries(config: unknown): BindingEntry[] {
-  if (typeof config !== "object" || config === null) return [];
-
-  const entries: BindingEntry[] = [];
-  for (const value of Object.values(config as Record<string, unknown>)) {
-    if (!isResourceEntry(value)) continue;
-
-    const parsed = urn.parse(value.urn);
+function collectEntries(entries: ResourceEntry[]): BindingEntry[] {
+  const result: BindingEntry[] = [];
+  for (const entry of entries) {
+    const parsed = urn.parse(entry.urn);
     if (parsed.resource !== "service") continue;
 
-    entries.push({
+    result.push({
       id: parsed.id,
       bindings: [
         { key: "host", type: "string" },
@@ -69,20 +52,17 @@ function collectEntries(config: unknown): BindingEntry[] {
     });
   }
 
-  return entries;
+  return result;
 }
 
-function collectEnvKeys(config: unknown): string[] {
+function collectEnvKeys(entries: ResourceEntry[]): string[] {
   const keys = new Set<string>(["PORT", "NODE_ENV"]);
-  if (typeof config !== "object" || config === null) return [...keys];
 
-  for (const value of Object.values(config as Record<string, unknown>)) {
-    if (!isResourceEntry(value)) continue;
-
-    const parsed = urn.parse(value.urn);
+  for (const entry of entries) {
+    const parsed = urn.parse(entry.urn);
     if (parsed.resource !== "service") continue;
 
-    const env = value.value["env"];
+    const env = entry.value["env"];
     if (typeof env === "object" && env !== null) {
       for (const key of Object.keys(env)) {
         keys.add(key);
@@ -130,10 +110,13 @@ export async function generate(cwd: string): Promise<void> {
   if (!configPath) return;
 
   const jiti = createJiti(cwd);
-  const config = await jiti.import(configPath);
 
-  const entries = collectEntries(config);
-  const envKeys = collectEnvKeys(config);
+  registry.begin();
+  await jiti.import(configPath);
+  const entries = registry.collect();
+
+  const bindingEntries = collectEntries(entries);
+  const envKeys = collectEnvKeys(entries);
 
   const outputDir = join(cwd, "node_modules", "@types", "vyft__client");
   await mkdir(outputDir, { recursive: true });
@@ -143,6 +126,6 @@ export async function generate(cwd: string): Promise<void> {
   );
   await writeFile(
     join(outputDir, "index.d.ts"),
-    generateModuleDts(entries, envKeys),
+    generateModuleDts(bindingEntries, envKeys),
   );
 }

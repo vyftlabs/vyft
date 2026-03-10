@@ -327,8 +327,7 @@ export default new Command("dev")
           parsed.resource !== "service"
         )
           continue;
-        const value = entry.value as Record<string, unknown>;
-        if (value["image"] != null) {
+        if (entry.value["image"] != null) {
           infraEntries.push(entry);
         } else {
           appEntries.push(entry);
@@ -343,22 +342,26 @@ export default new Command("dev")
       }
 
       // Allocate ports for native services
-      const serviceIds = appEntries.map((e) => {
-        const v = e.value as Record<string, unknown>;
-        return String(v["name"] ?? e.urn.split(":").pop() ?? e.urn);
-      });
+      const serviceIds = appEntries.map((e) =>
+        String(e.value["name"] ?? e.urn.split(":").pop() ?? e.urn),
+      );
       const ports = await allocatePorts(serviceIds);
 
       // Resolve and start native services
       for (const entry of appEntries) {
-        const config = entry.config as ServiceConfig | undefined;
-        const value = entry.value as Record<string, unknown>;
+        const config =
+          typeof entry.config === "object" && entry.config !== null
+            ? (entry.config as ServiceConfig)
+            : undefined;
         const serviceName = String(
-          value["name"] ?? entry.urn.split(":").pop() ?? entry.urn,
+          entry.value["name"] ?? entry.urn.split(":").pop() ?? entry.urn,
         );
         const servicePort = ports.get(serviceName) ?? 3000;
+        const envValue = entry.value["env"];
         const serviceEnv =
-          (value["env"] as Record<string, string> | undefined) ?? {};
+          typeof envValue === "object" && envValue !== null
+            ? (envValue as Record<string, string>)
+            : {};
 
         let command: string[];
         let nativeCwd: string;
@@ -377,8 +380,10 @@ export default new Command("dev")
           exclude = resolved.exclude;
           extraEnv = resolved.env;
         } else {
+          const pathValue = entry.value["path"];
           const servicePath =
-            config?.path ?? (value["path"] as string | undefined);
+            config?.path ??
+            (typeof pathValue === "string" ? pathValue : undefined);
           if (!servicePath) {
             console.error(
               `\nCould not detect how to run service "${serviceName}" — no path or dev key.\n\nAdd a \`dev\` key to your service config:\n\n  service("${serviceName}", { path: "./path/to/service", dev: "npm run dev" })\n`,

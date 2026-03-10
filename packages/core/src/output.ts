@@ -84,6 +84,7 @@ export function isOutput(value: unknown): value is Output {
 }
 
 function getNestedValue(obj: unknown, path: string): unknown {
+  if (path === "") return obj;
   const parts = path.split(".");
   let current = obj;
   for (const part of parts) {

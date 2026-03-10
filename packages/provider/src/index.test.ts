@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { RESOURCE } from "@vyft/core";
+import { isOutput, type Output, RESOURCE, registry } from "@vyft/core";
 import { createProvider, defineResource } from "./index.ts";
 
 describe("defineResource", () => {
@@ -74,7 +74,7 @@ describe("createProvider", () => {
     assert.equal(typeof provider.crypto.uuid, "function");
   });
 
-  it("constructors produce ResourceEntry objects", () => {
+  it("constructors return ResourceHandle that is also an Output", () => {
     const snapshot = defineResource<{ serverId: string }>("snapshot", {
       async create({ input }) {
         return { output: { id: input.serverId } };
@@ -87,12 +87,27 @@ describe("createProvider", () => {
       resources: { snapshot },
     });
 
-    const entry = provider.snapshot("my-snap", { serverId: "srv-1" });
-    assert.ok(entry.urn);
-    assert.ok(entry.urn.includes("test"));
-    assert.ok(entry.urn.includes("snapshot"));
-    assert.ok(entry.urn.includes("my-snap"));
-    assert.ok(entry.value);
+    registry.begin();
+    const handle = provider.snapshot("my-snap", { serverId: "srv-1" });
+    const entries = registry.collect();
+
+    // Handle is an Output with empty path (references whole output)
+    assert.ok(isOutput(handle));
+    assert.equal((handle as Output).path, "");
+
+    assert.ok(handle.urn);
+    assert.ok((handle.urn as string).includes("test"));
+    assert.ok((handle.urn as string).includes("snapshot"));
+    assert.ok((handle.urn as string).includes("my-snap"));
+
+    // Property access returns Output for specific key
+    const idOutput = (handle as Record<string, unknown>)["id"] as Output;
+    assert.ok(isOutput(idOutput));
+    assert.equal(idOutput.path, "id");
+
+    // Entry registered in registry
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0]?.urn, handle.urn);
   });
 
   it("throws on duplicate resource names across namespaces", () => {

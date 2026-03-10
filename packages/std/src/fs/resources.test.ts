@@ -60,10 +60,11 @@ describe("file", () => {
     await fs.writeFile(filePath, "hello world");
 
     const input = { source: filePath };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["content"], "hello world");
     assert.equal(output["size"], 11);
     assert.equal(typeof output["sha256"], "string");
@@ -76,10 +77,11 @@ describe("file", () => {
     await fs.writeFile(filePath, buf);
 
     const input = { source: filePath, encoding: "base64" } as const;
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["content"], buf.toString("base64"));
     assert.equal(output["size"], 3);
   });
@@ -98,7 +100,10 @@ describe("file", () => {
       input: { source: b },
       ctx: { artifacts: createMockArtifacts() },
     });
-    assert.equal(resA.output["sha256"], resB.output["sha256"]);
+    assert.equal(
+      (resA.output as Record<string, unknown>)["sha256"],
+      (resB.output as Record<string, unknown>)["sha256"],
+    );
   });
 });
 
@@ -110,10 +115,11 @@ describe("template", () => {
 
   test("interpolates inline content", async () => {
     const input = { content: "Hello, {{name}}!", vars: { name: "World" } };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["content"], "Hello, World!");
     assert.equal(typeof output["sha256"], "string");
     assert.equal(String(output["sha256"]).length, 64);
@@ -127,10 +133,11 @@ describe("template", () => {
       source: tplPath,
       vars: { user: "Alice", place: "Wonderland" },
     };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["content"], "Hi Alice, welcome to Wonderland.");
   });
 
@@ -165,10 +172,11 @@ describe("glob", () => {
 
   test("matches files by pattern", async () => {
     const input = { cwd: globDir, include: ["*.txt"] };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["count"], 2);
     const files = outputFiles(output);
     const paths = files.map((f) => f.path);
@@ -178,10 +186,11 @@ describe("glob", () => {
 
   test("excludes files by pattern", async () => {
     const input = { cwd: globDir, include: ["**/*"], exclude: ["*.log"] };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     const files = outputFiles(output);
     const paths = files.map((f) => f.path);
     assert.ok(!paths.includes("c.log"));
@@ -190,10 +199,11 @@ describe("glob", () => {
 
   test("includes nested files with ** pattern", async () => {
     const input = { cwd: globDir, include: ["**/*.txt"] };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["count"], 3);
     const files = outputFiles(output);
     const paths = files.map((f) => f.path);
@@ -202,10 +212,11 @@ describe("glob", () => {
 
   test("per-file sha256 is correct", async () => {
     const input = { cwd: globDir, include: ["a.txt"] };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     assert.equal(output["count"], 1);
     const files = outputFiles(output);
     const f = files[0];
@@ -217,10 +228,11 @@ describe("glob", () => {
 
   test("returns archive artifact ref", async () => {
     const input = { cwd: globDir, include: ["*.txt"] };
-    const { output } = await create({
+    const result = await create({
       input,
       ctx: { artifacts: createMockArtifacts() },
     });
+    const output = result.output as Record<string, unknown>;
     const archive = output["archive"];
     assert.ok(
       archive != null && typeof archive === "object" && "key" in archive,

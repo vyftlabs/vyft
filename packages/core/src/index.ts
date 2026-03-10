@@ -30,11 +30,13 @@ export type { PlatformResourceName } from "./platform.ts";
 export type { Provider, ProviderConfig } from "./provider.ts";
 export { reconcile } from "./reconcile.ts";
 export { refresh } from "./refresh.ts";
+export { registry } from "./registry.ts";
 export { type ResolvedResult, resolve } from "./resolve.ts";
 export {
   type ArtifactRef,
   type Artifacts,
   type CreateResult,
+  createConstructor,
   type DiffAction,
   type DiffArgs,
   type DiffResult,
@@ -44,6 +46,7 @@ export {
   RESOURCE,
   type ResourceDefinition,
   type ResourceEntry,
+  type ResourceHandle,
   type ResourceOptions,
   type ResourceRef,
   resource,

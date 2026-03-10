@@ -16,7 +16,7 @@ export type ApplyEvent =
       action: Action;
       input: Record<string, unknown> | undefined;
       externalId?: string | undefined;
-      output: Record<string, unknown>;
+      output: unknown;
     };
 
 export interface ExecuteOptions {
