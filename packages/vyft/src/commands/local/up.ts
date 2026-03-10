@@ -25,7 +25,9 @@ export default new Command("up")
     const imageEntries = entries.filter((entry) => {
       const parsed = urn.parse(entry.urn);
       const value = entry.value as Record<string, unknown>;
-      return parsed.provider === RUNTIME_PROVIDER_NAME && value["image"] != null;
+      return (
+        parsed.provider === RUNTIME_PROVIDER_NAME && value["image"] != null
+      );
     });
 
     if (imageEntries.length === 0) {
