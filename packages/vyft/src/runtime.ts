@@ -24,6 +24,10 @@ export function resolveStateDir(
   return path.join(cwd, VYFT_DIR, context, project, stage);
 }
 
+export function resolveLocalStateDir(cwd: string, project: string): string {
+  return path.join(cwd, VYFT_DIR, "local", project);
+}
+
 function passphraseConfigPath(project: string): string {
   return path.join(os.homedir(), ".config", "vyft", project, "passphrase");
 }
