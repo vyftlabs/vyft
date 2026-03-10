@@ -59,7 +59,10 @@ async function detectFromFile(filePath: string): Promise<DetectedDev | null> {
   }
 
   if (ext === ".py") {
-    const root = await findProjectRoot(dir, ["pyproject.toml", "requirements.txt"]);
+    const root = await findProjectRoot(dir, [
+      "pyproject.toml",
+      "requirements.txt",
+    ]);
     if (!root) return null;
     return {
       command: ["python", path.relative(root, filePath)],
@@ -136,7 +139,11 @@ async function detectFromDir(dirPath: string): Promise<DetectedDev | null> {
   }
 
   if (await fileExists(path.join(dirPath, "pyproject.toml"))) {
-    return { command: ["uv", "run", "dev"], cwd: dirPath, include: ["**/*.py"] };
+    return {
+      command: ["uv", "run", "dev"],
+      cwd: dirPath,
+      include: ["**/*.py"],
+    };
   }
 
   return null;
