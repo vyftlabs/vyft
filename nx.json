@@ -29,6 +29,7 @@
     "projects": ["packages/*", "!packages/e2e"],
     "version": {
       "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
       "generatorOptions": {
         "updateDependents": "auto"
       }
