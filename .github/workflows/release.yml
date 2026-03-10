@@ -38,6 +38,7 @@ jobs:
   release:
     needs: ci
     runs-on: ubuntu-latest
+    environment: release
     timeout-minutes: 20
     permissions:
       contents: write
