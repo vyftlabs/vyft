@@ -35,7 +35,7 @@ jobs:
 
       - run: pnpm nx run-many -t lint build test --parallel=3
 
-  publish:
+  release:
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -60,6 +60,9 @@ jobs:
 
       - run: pnpm nx run-many -t build --parallel=3
 
-      - run: pnpm nx release publish --yes
+      - name: Version and publish
+        run: |
+          pnpm nx release version ${GITHUB_REF_NAME#v} --yes
+          pnpm nx release publish --yes
         env:
           NPM_CONFIG_PROVENANCE: true
