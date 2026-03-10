@@ -1,5 +1,6 @@
 export type {
   CronJobConfig,
+  DevConfig,
   JobConfig,
   ServiceConfig,
   VolumeConfig,
