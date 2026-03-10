@@ -2,7 +2,7 @@ import { plan, reconcile, toState } from "@vyft/core";
 import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
-import { loadConfig, resolveProjectName } from "../config.ts";
+import { loadConfig, resolveName } from "../config.ts";
 import { getCurrentContext } from "../contexts.ts";
 import {
   buildContext,
@@ -19,11 +19,11 @@ import {
 export default new Command("diff")
   .description("Show infrastructure changes")
   .option("--stage <name>", "Deployment stage", "production")
-  .option("--project <name>", "Project name")
-  .action(async (opts: { stage: string; project?: string }) => {
+  .option("--name <name>", "Project name")
+  .action(async (opts: { stage: string; name?: string }) => {
     const cwd = process.cwd();
-    const { entries, providers } = await loadConfig(cwd);
-    const project = await resolveProjectName(cwd, opts.project);
+    const project = await resolveName(cwd, opts.name);
+    const { entries, providers } = await loadConfig(cwd, project);
     const context = await getCurrentContext(cwd);
     const stateDir = resolveStateDir(cwd, context.name, project, opts.stage);
 

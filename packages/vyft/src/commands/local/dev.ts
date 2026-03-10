@@ -1,5 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import {
   type ApplyEvent,
@@ -16,7 +18,7 @@ import {
   type ServiceConfig,
 } from "@vyft/runtime";
 import { Command } from "commander";
-import { loadConfig, resolveProjectName } from "../../config.ts";
+import { loadConfig, resolveName } from "../../config.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -248,19 +250,57 @@ async function destroyInfra(cwd: string, project: string): Promise<void> {
   }
 }
 
+const PORT_MIN = 3000;
+const PORT_MAX = 9999;
+const PORT_RANGE = PORT_MAX - PORT_MIN + 1;
+
+function hashPort(id: string): number {
+  const hash = createHash("sha256").update(id).digest();
+  const n = hash.readUInt32BE(0);
+  return PORT_MIN + (n % PORT_RANGE);
+}
+
+function isPortFree(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, "127.0.0.1");
+  });
+}
+
+async function allocatePorts(ids: string[]): Promise<Map<string, number>> {
+  const sorted = [...ids].sort();
+  const assigned = new Map<string, number>();
+  const used = new Set<number>();
+
+  for (const id of sorted) {
+    let port = hashPort(id);
+    while (used.has(port) || !(await isPortFree(port))) {
+      port = port + 1 > PORT_MAX ? PORT_MIN : port + 1;
+    }
+    assigned.set(id, port);
+    used.add(port);
+  }
+
+  return assigned;
+}
+
 export default new Command("dev")
   .description("Start local development environment with native execution")
   .option("--stage <name>", "Deployment stage", "development")
-  .option("--project <name>", "Project name")
-  .action(async (opts: { stage: string; project?: string }) => {
+  .option("--name <name>", "Project name")
+  .action(async (opts: { stage: string; name?: string }) => {
     const cwd = process.cwd();
-    const project = await resolveProjectName(cwd, opts.project);
+    const project = await resolveName(cwd, opts.name);
 
     const nativeServices: NativeService[] = [];
     let infraRunning = false;
 
     async function startAll(): Promise<void> {
-      const { entries } = await loadConfig(cwd);
+      const { entries } = await loadConfig(cwd, project);
 
       const infraEntries: Awaited<ReturnType<typeof loadConfig>>["entries"] =
         [];
@@ -288,6 +328,13 @@ export default new Command("dev")
         infraRunning = true;
       }
 
+      // Allocate ports for native services
+      const serviceIds = appEntries.map((e) => {
+        const v = e.value as Record<string, unknown>;
+        return String(v["name"] ?? e.urn.split(":").pop() ?? e.urn);
+      });
+      const ports = await allocatePorts(serviceIds);
+
       // Resolve and start native services
       for (const entry of appEntries) {
         const config = entry.config as ServiceConfig | undefined;
@@ -295,7 +342,7 @@ export default new Command("dev")
         const serviceName = String(
           value["name"] ?? entry.urn.split(":").pop() ?? entry.urn,
         );
-        const servicePort = Number(value["port"] ?? 3000);
+        const servicePort = ports.get(serviceName) ?? 3000;
         const serviceEnv =
           (value["env"] as Record<string, string> | undefined) ?? {};
 

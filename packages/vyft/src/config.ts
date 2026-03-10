@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { type Provider, type ResourceEntry, urn } from "@vyft/core";
+import { service } from "@vyft/runtime";
 import { createJiti } from "jiti";
 
 const CONFIG_FILES = [
@@ -47,7 +48,10 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-export async function loadConfig(cwd: string): Promise<LoadedConfig> {
+export async function loadConfig(
+  cwd: string,
+  name?: string,
+): Promise<LoadedConfig> {
   const jiti = createJiti(cwd);
 
   for (const file of CONFIG_FILES) {
@@ -65,12 +69,18 @@ export async function loadConfig(cwd: string): Promise<LoadedConfig> {
     return { entries, providers: collectProviders(entries) };
   }
 
+  if (name) {
+    const entry = service(name, {});
+    const entries = [entry];
+    return { entries, providers: collectProviders(entries) };
+  }
+
   throw new Error(
-    `No config file found. Create one of: ${CONFIG_FILES.join(", ")}`,
+    `No config file found. Create one of: ${CONFIG_FILES.join(", ")}, or pass --name <name>.`,
   );
 }
 
-export async function resolveProjectName(
+export async function resolveName(
   cwd: string,
   override?: string,
 ): Promise<string> {
@@ -86,6 +96,6 @@ export async function resolveProjectName(
   } catch {}
 
   throw new Error(
-    'Could not determine project name. Add a "name" field to package.json or use --project <name>.',
+    'Could not determine project name. Add a "name" field to package.json or use --name <name>.',
   );
 }

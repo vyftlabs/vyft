@@ -3,7 +3,7 @@ import { type ApplyEvent, destroy, reconcile } from "@vyft/core";
 import docker from "@vyft/docker";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
-import { resolveProjectName } from "../../config.ts";
+import { resolveName } from "../../config.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -16,11 +16,11 @@ import {
 
 export default new Command("down")
   .description("Stop local environment")
-  .option("--project <name>", "Project name")
+  .option("--name <name>", "Project name")
   .option("-y, --yes", "Skip confirmation")
-  .action(async (opts: { project?: string; yes?: boolean }) => {
+  .action(async (opts: { name?: string; yes?: boolean }) => {
     const cwd = process.cwd();
-    const project = await resolveProjectName(cwd, opts.project);
+    const project = await resolveName(cwd, opts.name);
     const stateDir = resolveLocalStateDir(cwd, project);
     const providers = {
       [RUNTIME_PROVIDER_NAME]: docker({ project, stage: "local" }),

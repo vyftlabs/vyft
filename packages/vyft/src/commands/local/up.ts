@@ -3,7 +3,7 @@ import { type ApplyEvent, apply, reconcile, toState, urn } from "@vyft/core";
 import docker from "@vyft/docker";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
-import { loadConfig, resolveProjectName } from "../../config.ts";
+import { loadConfig, resolveName } from "../../config.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -16,11 +16,11 @@ import {
 
 export default new Command("up")
   .description("Start local environment")
-  .option("--project <name>", "Project name")
-  .action(async (opts: { project?: string }) => {
+  .option("--name <name>", "Project name")
+  .action(async (opts: { name?: string }) => {
     const cwd = process.cwd();
-    const { entries } = await loadConfig(cwd);
-    const project = await resolveProjectName(cwd, opts.project);
+    const project = await resolveName(cwd, opts.name);
+    const { entries } = await loadConfig(cwd, project);
 
     const imageEntries = entries.filter((entry) => {
       const parsed = urn.parse(entry.urn);
