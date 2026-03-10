@@ -30,6 +30,13 @@ import {
 } from "../../runtime.ts";
 import { detectDev } from "./detect.ts";
 
+const dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
+const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
+const cyan = (s: string) => `\x1b[36m${s}\x1b[39m`;
+const green = (s: string) => `\x1b[32m${s}\x1b[39m`;
+const yellow = (s: string) => `\x1b[33m${s}\x1b[39m`;
+const red = (s: string) => `\x1b[31m${s}\x1b[39m`;
+
 const CONFIG_FILES = [
   "vyft.config.ts",
   "vyft.config.js",
@@ -123,13 +130,13 @@ function shouldWatch(
 }
 
 function prefixedLog(name: string, data: Buffer, isErr: boolean): void {
-  const prefix = `[${name}] `;
+  const prefix = dim(`[${name}]`);
   for (const line of data.toString().split("\n")) {
     if (line) {
       if (isErr) {
-        process.stderr.write(`${prefix}${line}\n`);
+        process.stderr.write(`${prefix} ${line}\n`);
       } else {
-        process.stdout.write(`${prefix}${line}\n`);
+        process.stdout.write(`${prefix} ${line}\n`);
       }
     }
   }
@@ -150,7 +157,9 @@ function startProcess(svc: NativeService): void {
   proc.stderr?.on("data", (d: Buffer) => prefixedLog(svc.name, d, true));
   proc.on("exit", (code) => {
     if (code !== null && code !== 0) {
-      console.error(`[${svc.name}] exited with code ${code}`);
+      console.error(
+        `${dim(`[${svc.name}]`)} ${red(`exited with code ${code}`)}`,
+      );
     }
   });
 
@@ -181,7 +190,10 @@ function watchService(svc: NativeService): void {
 
         if (svc.debounce) clearTimeout(svc.debounce);
         svc.debounce = setTimeout(() => {
-          console.log(`[${svc.name}] change detected, restarting...`);
+          console.log(
+            `${dim(`[${svc.name}]`)} ${yellow("change detected, restarting...")}`,
+          );
+
           killProcess(svc);
           startProcess(svc);
         }, 300);
@@ -213,8 +225,9 @@ async function applyInfra(
   try {
     await apply(desired, current, ctx, {
       onEvent(event: ApplyEvent) {
-        const status = event.status === "pending" ? "..." : "done";
-        console.log(`  ${event.action} ${event.urn} ${status}`);
+        const label =
+          event.status === "pending" ? dim(event.action) : green(event.action);
+        console.log(`  ${label} ${dim(event.urn)}`);
       },
     });
   } finally {
@@ -241,8 +254,9 @@ async function destroyInfra(cwd: string, project: string): Promise<void> {
   try {
     await destroy(current, ctx, {
       onEvent(event: ApplyEvent) {
-        const status = event.status === "pending" ? "..." : "done";
-        console.log(`  ${event.action} ${event.urn} ${status}`);
+        const label =
+          event.status === "pending" ? dim(event.action) : green(event.action);
+        console.log(`  ${label} ${dim(event.urn)}`);
       },
     });
   } finally {
@@ -323,7 +337,7 @@ export default new Command("dev")
 
       // Start infra containers
       if (infraEntries.length > 0) {
-        console.log("Starting infra containers...");
+        console.log(cyan("Starting infra containers..."));
         await applyInfra(cwd, project, infraEntries);
         infraRunning = true;
       }
@@ -405,7 +419,9 @@ export default new Command("dev")
         };
 
         nativeServices.push(svc);
-        console.log(`Starting [${serviceName}]: ${command.join(" ")}`);
+        console.log(
+          `${green("Starting")} ${bold(`[${serviceName}]`)} ${dim(command.join(" "))}`,
+        );
         startProcess(svc);
         watchService(svc);
       }
@@ -424,10 +440,12 @@ export default new Command("dev")
     try {
       await startAll();
     } catch (err) {
-      console.error("Failed to start:", err);
+      console.error(red("Failed to start:"), err);
     }
 
-    console.log("\nWatching for changes... (Ctrl+C to stop)\n");
+    console.log(
+      `\n${dim("Watching for changes...")} ${dim("(Ctrl+C to stop)")}\n`,
+    );
 
     // Watch config file for full reload
     let configDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -439,28 +457,30 @@ export default new Command("dev")
 
         if (configDebounce) clearTimeout(configDebounce);
         configDebounce = setTimeout(async () => {
-          console.log(`\nConfig changed: ${filename} — reloading...\n`);
+          console.log(
+            `\n${yellow(`Config changed: ${filename}`)} ${dim("— reloading...")}\n`,
+          );
           await stopNative();
           try {
             await startAll();
           } catch (err) {
-            console.error("Reload failed:", err);
+            console.error(red("Reload failed:"), err);
           }
         }, 300);
       },
     );
 
     const cleanup = async () => {
-      console.log("\nShutting down...");
+      console.log(`\n${dim("Shutting down...")}`);
       configWatcher.close();
       if (configDebounce) clearTimeout(configDebounce);
       await stopNative();
       if (infraRunning) {
-        console.log("Stopping infra containers...");
+        console.log(dim("Stopping infra containers..."));
         try {
           await destroyInfra(cwd, project);
         } catch (err) {
-          console.error("Failed to stop infra:", err);
+          console.error(red("Failed to stop infra:"), err);
         }
       }
       process.exit(0);
