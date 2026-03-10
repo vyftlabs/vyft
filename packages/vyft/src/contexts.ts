@@ -39,11 +39,16 @@ async function writeContexts(cwd: string, data: ContextsFile): Promise<void> {
   await fs.writeFile(contextsPath(cwd), JSON.stringify(data, null, 2));
 }
 
+const RESERVED_CONTEXT_NAMES = ["local"];
+
 export async function addContext(
   cwd: string,
   name: string,
   entry: ContextEntry,
 ): Promise<void> {
+  if (RESERVED_CONTEXT_NAMES.includes(name)) {
+    throw new Error(`Context name "${name}" is reserved`);
+  }
   const data = await readContexts(cwd);
   if (data.contexts[name]) {
     throw new Error(`Context "${name}" already exists`);
