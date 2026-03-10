@@ -60,7 +60,7 @@ jobs:
 
       - run: pnpm nx run-many -t build --parallel=3
 
-      - run: pnpm nx release --yes
+      - run: pnpm nx release ${GITHUB_REF_NAME#v} --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
