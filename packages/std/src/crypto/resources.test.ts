@@ -60,20 +60,18 @@ describe("sshKeyPair", () => {
 
   test("generates ed25519 key pair", async () => {
     const input = { type: "ed25519" } as const;
-    const result = await create({ input, ctx });
-    const output = result.output as Record<string, unknown>;
-    assert.ok(String(output["privateKeyPem"]).includes("BEGIN PRIVATE KEY"));
-    assert.ok(String(output["publicKeyPem"]).includes("BEGIN PUBLIC KEY"));
-    assert.ok(String(output["fingerprint"]).startsWith("SHA256:"));
+    const { output } = await create({ input, ctx });
+    assert.ok(output.privateKeyPem.includes("BEGIN PRIVATE KEY"));
+    assert.ok(output.publicKeyPem.includes("BEGIN PUBLIC KEY"));
+    assert.ok(output.fingerprint.startsWith("SHA256:"));
   });
 
   test("generates RSA key pair", async () => {
     const input = { type: "rsa", rsaBits: 2048 } as const;
-    const result = await create({ input, ctx });
-    const output = result.output as Record<string, unknown>;
-    assert.ok(String(output["privateKeyPem"]).includes("BEGIN PRIVATE KEY"));
-    assert.ok(String(output["publicKeyPem"]).includes("BEGIN PUBLIC KEY"));
-    assert.ok(String(output["fingerprint"]).startsWith("SHA256:"));
+    const { output } = await create({ input, ctx });
+    assert.ok(output.privateKeyPem.includes("BEGIN PRIVATE KEY"));
+    assert.ok(output.publicKeyPem.includes("BEGIN PUBLIC KEY"));
+    assert.ok(output.fingerprint.startsWith("SHA256:"));
   });
 });
 

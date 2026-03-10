@@ -9,7 +9,12 @@ export interface HashArgs {
   cwd?: string;
 }
 
-export const hash = defineResource<HashArgs>("hash", {
+export interface HashOutputs {
+  checksum: string;
+  count: number;
+}
+
+export const hash = defineResource<HashArgs, HashOutputs>("hash", {
   async create({ input }) {
     const cwd = input.cwd ?? process.cwd();
     const patterns = Array.isArray(input.patterns)

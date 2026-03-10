@@ -7,7 +7,13 @@ export interface FileArgs {
   encoding?: "utf-8" | "base64";
 }
 
-export const file = defineResource<FileArgs>("file", {
+export interface FileOutputs {
+  content: string;
+  sha256: string;
+  size: number;
+}
+
+export const file = defineResource<FileArgs, FileOutputs>("file", {
   async create({ input }) {
     const raw = await fs.readFile(input.source);
     const encoding = input.encoding ?? "utf-8";

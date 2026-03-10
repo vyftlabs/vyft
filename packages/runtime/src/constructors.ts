@@ -36,7 +36,7 @@ export interface ServiceConfig {
   cwd?: string;
   port?: number;
   domain?: string;
-  env?: Record<string, string>;
+  env?: Record<string, string | Output<string>>;
   command?: string[];
   mounts?: Array<{ source: string; target: string }>;
   health?: {
@@ -61,7 +61,7 @@ export interface JobConfig {
   path?: string;
   cwd?: string;
   command?: string[];
-  env?: Record<string, string>;
+  env?: Record<string, string | Output<string>>;
   mounts?: Array<{ source: string; target: string }>;
 }
 
@@ -71,7 +71,7 @@ export interface CronJobConfig {
   path?: string;
   cwd?: string;
   command?: string[];
-  env?: Record<string, string>;
+  env?: Record<string, string | Output<string>>;
   mounts?: Array<{ source: string; target: string }>;
   health?: {
     path: string;
@@ -83,13 +83,13 @@ export interface CronJobConfig {
 }
 
 export interface ServiceOutputs {
-  host: Output<string>;
-  port: Output<number>;
-  url: Output<string>;
+  host: string;
+  port: number;
+  url: string;
 }
 
 export interface VolumeOutputs {
-  name: Output<string>;
+  name: string;
 }
 
 function linkEnvPrefix(urn: string): string {

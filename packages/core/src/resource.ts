@@ -92,8 +92,15 @@ export interface ResourceDefinition<
   handlers: Handlers<TInput, TCtx, TOutput>;
 }
 
-/** User-facing resource reference. T is the output shape. */
-export type Resource<T = unknown> = T & Dependable & Linkable;
+/** Maps a handler output type to what the user sees on the resource handle. */
+type OutputShape<T> = T extends object
+  ? T extends readonly unknown[]
+    ? Output<T>
+    : { [K in keyof T]: Output<T[K]> }
+  : Output<T>;
+
+/** User-facing resource reference. T is the raw output shape from handlers. */
+export type Resource<T = unknown> = OutputShape<T> & Dependable & Linkable;
 
 /**
  * Internal factory — creates a constructor that registers entries in the global registry

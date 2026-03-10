@@ -55,9 +55,7 @@ describe("exec", () => {
         input: { command: ["echo", "hello"] },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("executes command with multiple arguments", async () => {
@@ -65,9 +63,7 @@ describe("exec", () => {
         input: { command: ["printf", "%s %s", "hello", "world"] },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("returns stderr artifact", async () => {
@@ -77,9 +73,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stderr"], "stderr");
+      assertArtifactRef(result.output.stderr, "stderr");
     });
   });
 
@@ -92,9 +86,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("accepts file path via stdinFile", async () => {
@@ -108,9 +100,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("accepts relative file path with cwd", async () => {
@@ -124,9 +114,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("throws when stdinFile does not exist", async () => {
@@ -171,9 +159,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
   });
 
@@ -188,9 +174,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
 
     test("fails when file not in cwd", async () => {
@@ -237,9 +221,7 @@ describe("exec", () => {
         },
         ctx: { artifacts: createMockArtifacts() },
       });
-      const output = result.output as Record<string, unknown>;
-
-      assertArtifactRef(output["stdout"], "stdout");
+      assertArtifactRef(result.output.stdout, "stdout");
     });
   });
 

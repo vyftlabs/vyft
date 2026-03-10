@@ -6,13 +6,16 @@ export interface RandomBytesArgs {
   encoding?: "hex" | "base64";
 }
 
-export const randomBytes = defineResource<RandomBytesArgs>("random_bytes", {
-  async create({ input }) {
-    const encoding = input.encoding ?? "hex";
-    const result = crypto.randomBytes(input.length).toString(encoding);
-    return { output: result };
+export const randomBytes = defineResource<RandomBytesArgs, string>(
+  "random_bytes",
+  {
+    async create({ input }) {
+      const encoding = input.encoding ?? "hex";
+      const result = crypto.randomBytes(input.length).toString(encoding);
+      return { output: result };
+    },
   },
-});
+);
 
 export interface RandomStringArgs {
   length: number;
@@ -23,32 +26,35 @@ export interface RandomStringArgs {
   special?: boolean;
 }
 
-export const randomString = defineResource<RandomStringArgs>("random_string", {
-  async create({ input }) {
-    let alphabet = input.alphabet;
-    if (alphabet === undefined) {
-      alphabet = "";
-      if (input.uppercase ?? true) alphabet += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      if (input.lowercase ?? true) alphabet += "abcdefghijklmnopqrstuvwxyz";
-      if (input.numbers ?? true) alphabet += "0123456789";
-      if (input.special ?? false) alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?";
-    }
+export const randomString = defineResource<RandomStringArgs, string>(
+  "random_string",
+  {
+    async create({ input }) {
+      let alphabet = input.alphabet;
+      if (alphabet === undefined) {
+        alphabet = "";
+        if (input.uppercase ?? true) alphabet += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        if (input.lowercase ?? true) alphabet += "abcdefghijklmnopqrstuvwxyz";
+        if (input.numbers ?? true) alphabet += "0123456789";
+        if (input.special ?? false) alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?";
+      }
 
-    let result = "";
-    const bytes = crypto.randomBytes(input.length);
-    for (const byte of bytes) {
-      result += alphabet[byte % alphabet.length];
-    }
-    return { output: result };
+      let result = "";
+      const bytes = crypto.randomBytes(input.length);
+      for (const byte of bytes) {
+        result += alphabet[byte % alphabet.length];
+      }
+      return { output: result };
+    },
   },
-});
+);
 
 export interface RandomIntegerArgs {
   min: number;
   max: number;
 }
 
-export const randomInteger = defineResource<RandomIntegerArgs>(
+export const randomInteger = defineResource<RandomIntegerArgs, number>(
   "random_integer",
   {
     async create({ input }) {
@@ -59,51 +65,63 @@ export const randomInteger = defineResource<RandomIntegerArgs>(
   },
 );
 
-export const randomUuid = defineResource<Record<string, never>>("random_uuid", {
-  async create() {
-    const result = crypto.randomUUID();
-    return { output: result };
+export const randomUuid = defineResource<Record<string, never>, string>(
+  "random_uuid",
+  {
+    async create() {
+      const result = crypto.randomUUID();
+      return { output: result };
+    },
   },
-});
+);
 
 export interface SshKeyPairArgs {
   type: "ed25519" | "rsa";
   rsaBits?: number;
 }
 
-export const sshKeyPair = defineResource<SshKeyPairArgs>("ssh_key_pair", {
-  async create({ input }) {
-    let privateKeyPem: string;
-    let publicKeyPem: string;
+export interface SshKeyPairOutputs {
+  privateKeyPem: string;
+  publicKeyPem: string;
+  fingerprint: string;
+}
 
-    if (input.type === "ed25519") {
-      const pair = crypto.generateKeyPairSync("ed25519", {
-        privateKeyEncoding: { type: "pkcs8", format: "pem" },
-        publicKeyEncoding: { type: "spki", format: "pem" },
-      });
-      privateKeyPem = pair.privateKey;
-      publicKeyPem = pair.publicKey;
-    } else {
-      const modulusLength = input.rsaBits ?? 4096;
-      const pair = crypto.generateKeyPairSync("rsa", {
-        modulusLength,
-        privateKeyEncoding: { type: "pkcs8", format: "pem" },
-        publicKeyEncoding: { type: "spki", format: "pem" },
-      });
-      privateKeyPem = pair.privateKey;
-      publicKeyPem = pair.publicKey;
-    }
+export const sshKeyPair = defineResource<SshKeyPairArgs, SshKeyPairOutputs>(
+  "ssh_key_pair",
+  {
+    async create({ input }) {
+      let privateKeyPem: string;
+      let publicKeyPem: string;
 
-    const publicKeyDer = crypto
-      .createPublicKey(publicKeyPem)
-      .export({ type: "spki", format: "der" });
+      if (input.type === "ed25519") {
+        const pair = crypto.generateKeyPairSync("ed25519", {
+          privateKeyEncoding: { type: "pkcs8", format: "pem" },
+          publicKeyEncoding: { type: "spki", format: "pem" },
+        });
+        privateKeyPem = pair.privateKey;
+        publicKeyPem = pair.publicKey;
+      } else {
+        const modulusLength = input.rsaBits ?? 4096;
+        const pair = crypto.generateKeyPairSync("rsa", {
+          modulusLength,
+          privateKeyEncoding: { type: "pkcs8", format: "pem" },
+          publicKeyEncoding: { type: "spki", format: "pem" },
+        });
+        privateKeyPem = pair.privateKey;
+        publicKeyPem = pair.publicKey;
+      }
 
-    const hash = crypto
-      .createHash("sha256")
-      .update(publicKeyDer)
-      .digest("base64");
-    const fingerprint = `SHA256:${hash}`;
+      const publicKeyDer = crypto
+        .createPublicKey(publicKeyPem)
+        .export({ type: "spki", format: "der" });
 
-    return { output: { privateKeyPem, publicKeyPem, fingerprint } };
+      const hash = crypto
+        .createHash("sha256")
+        .update(publicKeyDer)
+        .digest("base64");
+      const fingerprint = `SHA256:${hash}`;
+
+      return { output: { privateKeyPem, publicKeyPem, fingerprint } };
+    },
   },
-});
+);

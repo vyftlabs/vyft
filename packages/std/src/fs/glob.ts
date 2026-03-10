@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { ArtifactRef } from "@vyft/core";
 import { defineResource } from "@vyft/provider";
 import * as tar from "tar";
 import { glob as tinyglob } from "tinyglobby";
@@ -12,7 +13,19 @@ export interface GlobArgs {
   exclude?: string[];
 }
 
-export const glob = defineResource<GlobArgs>("glob", {
+export interface GlobFileEntry {
+  path: string;
+  sha256: string;
+  size: number;
+}
+
+export interface GlobOutputs {
+  archive: ArtifactRef;
+  files: GlobFileEntry[];
+  count: number;
+}
+
+export const glob = defineResource<GlobArgs, GlobOutputs>("glob", {
   async create({ input, ctx }) {
     const matched = await tinyglob(input.include, {
       cwd: input.cwd,

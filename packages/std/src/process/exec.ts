@@ -1,5 +1,11 @@
+import type { ArtifactRef } from "@vyft/core";
 import { defineResource } from "@vyft/provider";
 import { executeCommand, readStdinFile } from "./lib.ts";
+
+export interface ExecOutputs {
+  stdout: ArtifactRef;
+  stderr: ArtifactRef;
+}
 
 export interface ExecArgs {
   command: string[];
@@ -13,7 +19,7 @@ export interface ExecArgs {
   exclude?: string[];
 }
 
-export const exec = defineResource<ExecArgs>("exec", {
+export const exec = defineResource<ExecArgs, ExecOutputs>("exec", {
   async create({ input, ctx }) {
     if (input.stdin !== undefined && input.stdinFile !== undefined) {
       throw new Error("Cannot specify both stdin and stdinFile");
