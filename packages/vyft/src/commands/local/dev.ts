@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -10,7 +10,11 @@ import {
   urn,
 } from "@vyft/core";
 import docker from "@vyft/docker";
-import { type DevConfig, type ServiceConfig, RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
+import {
+  type DevConfig,
+  RUNTIME_PROVIDER_NAME,
+  type ServiceConfig,
+} from "@vyft/runtime";
 import { Command } from "commander";
 import { loadConfig, resolveProjectName } from "../../config.ts";
 import {
@@ -81,9 +85,7 @@ function parseDevConfig(
   }
   return {
     command:
-      typeof dev.command === "string"
-        ? dev.command.split(" ")
-        : dev.command,
+      typeof dev.command === "string" ? dev.command.split(" ") : dev.command,
     env: dev.env ?? {},
     cwd: dev.cwd ? path.resolve(defaults.cwd, dev.cwd) : defaults.cwd,
     include: dev.include ?? defaults.include,
@@ -96,8 +98,9 @@ function matchGlob(relPath: string, pattern: string): boolean {
     .replace(/[.+^$()|[\]\\]/g, (c) => `\\${c}`)
     .replace(/\*\*\//g, "(?:[^/]+/)*")
     .replace(/\*/g, "[^/]*")
-    .replace(/\{([^}]+)\}/g, (_m, group: string) =>
-      `(?:${group.split(",").join("|")})`,
+    .replace(
+      /\{([^}]+)\}/g,
+      (_m, group: string) => `(?:${group.split(",").join("|")})`,
     );
   return new RegExp(`^${regexStr}$`).test(relPath);
 }
