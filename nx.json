@@ -32,11 +32,11 @@
       "fallbackCurrentVersionResolver": "disk",
       "generatorOptions": {
         "updateDependents": "auto"
+      },
+      "git": {
+        "commit": false,
+        "tag": false
       }
-    },
-    "git": {
-      "commit": false,
-      "tag": false
     },
     "changelog": {
       "automaticFromRef": true,
