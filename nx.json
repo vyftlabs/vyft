@@ -35,7 +35,8 @@
       }
     },
     "git": {
-      "commitMessage": "chore(release): {version}"
+      "commit": false,
+      "tag": false
     },
     "changelog": {
       "automaticFromRef": true,
