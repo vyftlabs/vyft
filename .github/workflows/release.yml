@@ -62,7 +62,7 @@ jobs:
 
       - name: Version and publish
         run: |
-          pnpm nx release version ${GITHUB_REF_NAME#v} --yes
+          pnpm nx release version ${GITHUB_REF_NAME#v}
           pnpm nx release publish --yes
         env:
           NPM_CONFIG_PROVENANCE: true
