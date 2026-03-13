@@ -101,7 +101,9 @@ function topoSort(
   // Record each URN's ASAP step index
   const asapStep = new Map<string, number>();
   for (let i = 0; i < asapSteps.length; i++) {
-    for (const change of asapSteps[i]!) {
+    const step = asapSteps[i];
+    if (!step) continue;
+    for (const change of step) {
       asapStep.set(change.urn, i);
     }
   }
@@ -113,17 +115,23 @@ function topoSort(
 
   // Process in reverse topo order so dependents are resolved first
   for (let i = lastIdx; i >= 0; i--) {
-    for (const change of asapSteps[i]!) {
+    const step = asapSteps[i];
+    if (!step) continue;
+    for (const change of step) {
       const rev = reverseDeps.get(change.urn);
       if (!rev || rev.size === 0) {
         alapStep.set(change.urn, lastIdx);
       } else {
         let latest = lastIdx;
         for (const dependent of rev) {
-          const depStep = alapStep.get(dependent) ?? asapStep.get(dependent)!;
+          const depStep =
+            alapStep.get(dependent) ?? asapStep.get(dependent) ?? 0;
           latest = Math.min(latest, depStep - 1);
         }
-        alapStep.set(change.urn, Math.max(latest, asapStep.get(change.urn)!));
+        alapStep.set(
+          change.urn,
+          Math.max(latest, asapStep.get(change.urn) ?? 0),
+        );
       }
     }
   }
@@ -135,7 +143,7 @@ function topoSort(
   }
   for (const change of changes) {
     const step = alapStep.get(change.urn) ?? 0;
-    result[step]!.push(change);
+    result[step]?.push(change);
   }
 
   return result.filter((s) => s.length > 0);

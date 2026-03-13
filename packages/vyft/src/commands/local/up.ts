@@ -3,6 +3,7 @@ import docker, { createClient } from "@vyft/docker";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
 import { loadConfig, resolveName } from "../../config.ts";
+import { waitForHealthy } from "../../health.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -13,7 +14,6 @@ import {
   resolvePassphrase,
 } from "../../runtime.ts";
 import { createTreeRenderer } from "../../tree.ts";
-import { waitForHealthy } from "../../health.ts";
 
 export default new Command("up")
   .description("Start local environment")
@@ -29,7 +29,10 @@ export default new Command("up")
     // Filter to infra entries: everything except native services (services without an explicit image)
     const infraEntries = entries.filter((entry) => {
       const parsed = urn.parse(entry.urn);
-      if (parsed.provider !== RUNTIME_PROVIDER_NAME || parsed.resource !== "service") {
+      if (
+        parsed.provider !== RUNTIME_PROVIDER_NAME ||
+        parsed.resource !== "service"
+      ) {
         return true;
       }
       const config = entry.config as Record<string, unknown> | undefined;
@@ -44,7 +47,11 @@ export default new Command("up")
     const stateDir = resolveLocalStateDir(cwd, project);
     const providers = {
       ...configProviders,
-      [RUNTIME_PROVIDER_NAME]: docker({ project, stage: "local", publishPorts: true }),
+      [RUNTIME_PROVIDER_NAME]: docker({
+        project,
+        stage: "local",
+        publishPorts: true,
+      }),
     };
 
     const store = await openStore(stateDir);
@@ -63,9 +70,7 @@ export default new Command("up")
       await apply(desired, current, ctx, { onEvent: tree.onEvent });
 
       const healthContainers = infraEntries
-        .filter(
-          (e) => e.value["health"] != null && e.value["image"] != null,
-        )
+        .filter((e) => e.value["health"] != null && e.value["image"] != null)
         .map((e) => ({
           name: `vyft-${project}-local-${String(e.value["name"])}`,
           urn: e.urn,

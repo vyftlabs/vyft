@@ -34,9 +34,10 @@ export function clearAmbientProvider(): void {
 // createRuntime
 // ---------------------------------------------------------------------------
 
-export interface RuntimeResourceCallable<TInput> {
-  (id: string, input?: TInput): void;
-}
+export type RuntimeResourceCallable<TInput> = (
+  id: string,
+  input?: TInput,
+) => void;
 
 export function createRuntime<TOpts, TCtx>(
   name: string,
@@ -51,7 +52,9 @@ export function createRuntime<TOpts, TCtx>(
     /**
      * Identity function — provides TypeScript inference for service handlers.
      */
-    service(handlers: Handlers<ServiceInput, TCtx>): Handlers<ServiceInput, TCtx> {
+    service(
+      handlers: Handlers<ServiceInput, TCtx>,
+    ): Handlers<ServiceInput, TCtx> {
       return handlers;
     },
 
@@ -72,7 +75,9 @@ export function createRuntime<TOpts, TCtx>(
     /**
      * Identity function — provides TypeScript inference for cronjob handlers.
      */
-    cronjob(handlers: Handlers<CronJobInput, TCtx>): Handlers<CronJobInput, TCtx> {
+    cronjob(
+      handlers: Handlers<CronJobInput, TCtx>,
+    ): Handlers<CronJobInput, TCtx> {
       return handlers;
     },
 
@@ -110,7 +115,12 @@ export function createRuntime<TOpts, TCtx>(
           ambientResources[resourceName] = definition;
         }
         // Register the entry in the global registry
-        const resourceUrn = urn.build("resource", RUNTIME_PROVIDER_NAME, resourceName, id);
+        const resourceUrn = urn.build(
+          "resource",
+          RUNTIME_PROVIDER_NAME,
+          resourceName,
+          id,
+        );
         registry.register({
           [DEPENDABLE]: true,
           urn: resourceUrn,
@@ -135,10 +145,18 @@ export function createRuntime<TOpts, TCtx>(
         // biome-ignore lint/suspicious/noExplicitAny: resources have varying input types
         const resources: Record<string, ResourceDefinition<any, any, TCtx>> = {
           build: { [RESOURCE]: true, name: "build", handlers: config.build },
-          service: { [RESOURCE]: true, name: "service", handlers: config.service },
+          service: {
+            [RESOURCE]: true,
+            name: "service",
+            handlers: config.service,
+          },
           job: { [RESOURCE]: true, name: "job", handlers: config.job },
           volume: { [RESOURCE]: true, name: "volume", handlers: config.volume },
-          cronjob: { [RESOURCE]: true, name: "cronjob", handlers: config.cronjob },
+          cronjob: {
+            [RESOURCE]: true,
+            name: "cronjob",
+            handlers: config.cronjob,
+          },
         };
 
         // Pre-register custom resource definitions (from .resource() calls)

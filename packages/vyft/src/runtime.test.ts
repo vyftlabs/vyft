@@ -5,13 +5,15 @@ import path from "node:path";
 import { afterEach, describe, it } from "node:test";
 import { resolvePassphrase } from "./runtime.ts";
 
+const VYFT_HOME = path.join(os.homedir(), ".vyft");
+
 function configPath(project: string): string {
-  return path.join(os.homedir(), ".config", "vyft", project, "passphrase");
+  return path.join(VYFT_HOME, "config", project, "passphrase");
 }
 
 async function cleanupProject(project: string): Promise<void> {
   try {
-    await fs.rm(path.join(os.homedir(), ".config", "vyft", project), {
+    await fs.rm(path.join(VYFT_HOME, "config", project), {
       recursive: true,
     });
   } catch {

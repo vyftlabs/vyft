@@ -19,9 +19,7 @@ async function resolveImage(
   ctx: DockerContext,
 ): Promise<string> {
   if (!input.image) {
-    throw new Error(
-      `Service "${input.name}" requires an image`,
-    );
+    throw new Error(`Service "${input.name}" requires an image`);
   }
   // Check if image exists locally (e.g. build-produced); pull only if not found
   const inspectRes = await ctx.client.get(

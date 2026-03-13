@@ -165,7 +165,12 @@ export function service(id: string, config?: ServiceConfig) {
     const buildEntry: ResourceEntry = {
       [DEPENDABLE]: true,
       urn: buildUrn,
-      value: { name: id, path: buildPath, cwd: resolvedConfig.cwd, start: resolvedConfig.start },
+      value: {
+        name: id,
+        path: buildPath,
+        cwd: resolvedConfig.cwd,
+        start: resolvedConfig.start,
+      },
       provider: lazyProvider,
     };
     registry.register(buildEntry);

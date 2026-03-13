@@ -1,7 +1,7 @@
 import { type Action, execute, type State } from "@vyft/engine";
 import type { Context } from "./context.ts";
 import { plan } from "./plan.ts";
-import { resolve } from "./resolve.ts";
+import { type ResolvedResult, resolve } from "./resolve.ts";
 
 export type ApplyEvent =
   | {
@@ -71,7 +71,7 @@ export async function apply(
         input,
       });
 
-      let result;
+      let result: ResolvedResult | undefined;
       try {
         result = await resolve(change, desired, current, ctx);
       } catch (err) {

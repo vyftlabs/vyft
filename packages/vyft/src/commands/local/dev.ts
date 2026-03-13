@@ -21,6 +21,7 @@ import {
 } from "@vyft/runtime";
 import { Command } from "commander";
 import { loadConfig, resolveName } from "../../config.ts";
+import { waitForHealthy as waitForHealthyContainers } from "../../health.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -30,7 +31,6 @@ import {
   resolveLocalStateDir,
   resolvePassphrase,
 } from "../../runtime.ts";
-import { waitForHealthy as waitForHealthyContainers } from "../../health.ts";
 import { createTreeRenderer, type TreeEntry } from "../../tree.ts";
 import { detectDev } from "./detect.ts";
 
@@ -383,7 +383,9 @@ export default new Command("dev")
       const treeEntries: TreeEntry[] = entries
         .filter((e) => {
           const parsed = urn.parse(e.urn);
-          return !(parsed.resource === "build" && nativeServiceIds.has(parsed.id));
+          return !(
+            parsed.resource === "build" && nativeServiceIds.has(parsed.id)
+          );
         })
         .map((e) => ({
           urn: e.urn,

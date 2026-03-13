@@ -24,7 +24,11 @@ export const buildHandlers: Handlers<BuildInput, DockerContext> = {
   async create({ input, ctx }) {
     const tag = buildImageName(ctx.project, ctx.stage, input.name);
     const buildDir = path.resolve(process.cwd(), input.cwd ?? ".");
-    const startCommand = await resolveStartCommand(buildDir, input.path, input.start);
+    const startCommand = await resolveStartCommand(
+      buildDir,
+      input.path,
+      input.start,
+    );
     await build(buildDir, {
       name: tag,
       progress: "plain",
@@ -43,7 +47,11 @@ export const buildHandlers: Handlers<BuildInput, DockerContext> = {
   async update({ input, ctx }) {
     const tag = buildImageName(ctx.project, ctx.stage, input.name);
     const buildDir = path.resolve(process.cwd(), input.cwd ?? ".");
-    const startCommand = await resolveStartCommand(buildDir, input.path, input.start);
+    const startCommand = await resolveStartCommand(
+      buildDir,
+      input.path,
+      input.start,
+    );
     await build(buildDir, {
       name: tag,
       progress: "plain",

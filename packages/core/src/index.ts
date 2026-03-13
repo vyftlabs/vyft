@@ -1,5 +1,5 @@
-export { DEPENDABLE } from "@vyft/engine";
 export type { Dependable, Linkable, Mountable } from "@vyft/engine";
+export { DEPENDABLE } from "@vyft/engine";
 export { type ApplyEvent, apply, type ExecuteOptions } from "./apply.ts";
 export type { Context } from "./context.ts";
 export { destroy } from "./destroy.ts";

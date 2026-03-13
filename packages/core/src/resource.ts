@@ -111,10 +111,10 @@ type OutputShape<T> = T extends object
 export type Resource<T = unknown> = OutputShape<T> & Dependable;
 
 /** Resource that can be passed to `link` — only services produce host/port/url. */
-export type LinkableResource<T = any> = Resource<T> & Linkable;
+export type LinkableResource<T = unknown> = Resource<T> & Linkable;
 
 /** Resource that can be passed as a mount source — only volumes. */
-export type MountableResource<T = any> = Resource<T> & Mountable;
+export type MountableResource<T = unknown> = Resource<T> & Mountable;
 
 /**
  * Internal factory — creates a constructor that registers entries in the global registry

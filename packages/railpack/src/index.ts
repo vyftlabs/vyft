@@ -89,6 +89,8 @@ export async function info(
 ): Promise<Record<string, unknown>> {
   const bin = await ensureBinary();
   const host = await ensureBuildKit();
-  const output = await spawn(bin, ["info", directory, "--format", "json"], { BUILDKIT_HOST: host });
+  const output = await spawn(bin, ["info", directory, "--format", "json"], {
+    BUILDKIT_HOST: host,
+  });
   return JSON.parse(output) as Record<string, unknown>;
 }

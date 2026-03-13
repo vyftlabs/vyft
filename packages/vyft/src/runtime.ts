@@ -21,7 +21,15 @@ export function resolveStateDir(
   project: string,
   stage = "production",
 ): string {
-  return path.join(VYFT_HOME, "context", context, "project", project, "stage", stage);
+  return path.join(
+    VYFT_HOME,
+    "context",
+    context,
+    "project",
+    project,
+    "stage",
+    stage,
+  );
 }
 
 export function resolveRuntimeStateDir(context: string): string {

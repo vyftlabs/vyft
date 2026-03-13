@@ -87,7 +87,8 @@ function buildTree(entries: TreeEntry[]): TreeNode[] {
     const visited = new Set<string>();
     const queue = [...(allDeps.get(from) ?? [])].filter((d) => d !== exclude);
     while (queue.length > 0) {
-      const current = queue.pop()!;
+      const current = queue.pop();
+      if (!current) break;
       if (current === exclude) continue;
       if (visited.has(current)) continue;
       visited.add(current);

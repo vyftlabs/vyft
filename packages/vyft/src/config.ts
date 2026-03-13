@@ -52,7 +52,7 @@ export async function loadConfig(
   opts?: { noCache?: boolean; manualRegistry?: boolean },
 ): Promise<LoadedConfig> {
   const jiti = createJiti(cwd, {
-    moduleCache: opts?.noCache ? false : true,
+    moduleCache: !opts?.noCache,
   });
   const manual = opts?.manualRegistry === true;
 
