@@ -1,13 +1,11 @@
-import type { Handlers } from "@vyft/core";
-import type { VolumeInput } from "@vyft/runtime";
 import { createVolume, removeVolume } from "../client/volume.ts";
-import type { DockerContext } from "../context.ts";
+import { docker } from "../runtime.ts";
 
 function volumeName(project: string, stage: string, id: string): string {
   return `vyft-${project}-${stage}-${id}`;
 }
 
-export const volumeHandlers: Handlers<VolumeInput, DockerContext> = {
+export const volumeHandlers = docker.volume({
   async create({ input, ctx }) {
     const name = volumeName(ctx.project, ctx.stage, input.name);
     await createVolume(ctx.client, name);
@@ -29,4 +27,4 @@ export const volumeHandlers: Handlers<VolumeInput, DockerContext> = {
   async diff() {
     return { action: "none" };
   },
-};
+});

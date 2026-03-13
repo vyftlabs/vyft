@@ -1,8 +1,6 @@
 import path from "node:path";
-import type { Handlers } from "@vyft/core";
 import { build, info } from "@vyft/railpack";
-import type { BuildInput } from "@vyft/runtime";
-import type { DockerContext } from "../context.ts";
+import { docker } from "../runtime.ts";
 
 function buildImageName(project: string, stage: string, id: string): string {
   return `vyft-build-${project}-${id}:${stage}`;
@@ -20,7 +18,7 @@ async function resolveStartCommand(
   return `${runtime} ${entryPath}`;
 }
 
-export const buildHandlers: Handlers<BuildInput, DockerContext> = {
+export const buildHandlers = docker.build({
   async create({ input, ctx }) {
     const tag = buildImageName(ctx.project, ctx.stage, input.name);
     const buildDir = path.resolve(process.cwd(), input.cwd ?? ".");
@@ -64,4 +62,4 @@ export const buildHandlers: Handlers<BuildInput, DockerContext> = {
     const tag = buildImageName(ctx.project, ctx.stage, input.name);
     await ctx.client.del(`/images/${encodeURIComponent(tag)}?force=true`);
   },
-};
+});

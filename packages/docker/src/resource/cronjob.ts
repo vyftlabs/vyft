@@ -1,5 +1,3 @@
-import type { Handlers } from "@vyft/core";
-import type { CronJobInput } from "@vyft/runtime";
 import {
   buildContainerConfig,
   containerName,
@@ -9,7 +7,7 @@ import {
 } from "../client/container.ts";
 import { pullImage } from "../client/image.ts";
 import { inspectContainer } from "../client/inspect.ts";
-import type { DockerContext } from "../context.ts";
+import { docker } from "../runtime.ts";
 
 function buildCronCommand(schedule: string, command: string[]): string[] {
   const crontab = `${schedule} ${command.join(" ")}`;
@@ -20,7 +18,7 @@ function buildCronCommand(schedule: string, command: string[]): string[] {
   ];
 }
 
-export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
+export const cronjobHandlers = docker.cronjob({
   async create({ input, ctx }) {
     const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
@@ -89,4 +87,4 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
-};
+});

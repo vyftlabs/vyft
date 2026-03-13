@@ -1,4 +1,3 @@
-import type { Handlers } from "@vyft/core";
 import type { ServiceInput } from "@vyft/runtime";
 import {
   buildContainerConfig,
@@ -13,6 +12,7 @@ import {
   normalizeDockerContainer,
 } from "../client/inspect.ts";
 import type { DockerContext } from "../context.ts";
+import { docker } from "../runtime.ts";
 
 async function resolveImage(
   input: ServiceInput,
@@ -31,7 +31,7 @@ async function resolveImage(
   return input.image;
 }
 
-export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
+export const serviceHandlers = docker.service({
   async create({ input, ctx }) {
     const name = containerName(ctx.project, ctx.stage, input.name);
     const image = await resolveImage(input, ctx);
@@ -80,4 +80,4 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
-};
+});

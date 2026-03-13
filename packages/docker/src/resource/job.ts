@@ -1,5 +1,3 @@
-import type { Handlers } from "@vyft/core";
-import type { JobInput } from "@vyft/runtime";
 import {
   buildContainerConfig,
   containerName,
@@ -8,9 +6,9 @@ import {
   removeContainer,
 } from "../client/container.ts";
 import { pullImage } from "../client/image.ts";
-import type { DockerContext } from "../context.ts";
+import { docker } from "../runtime.ts";
 
-export const jobHandlers: Handlers<JobInput, DockerContext> = {
+export const jobHandlers = docker.job({
   async create({ input, ctx }) {
     const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
@@ -78,4 +76,4 @@ export const jobHandlers: Handlers<JobInput, DockerContext> = {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
-};
+});
