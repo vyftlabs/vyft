@@ -12,7 +12,8 @@
   },
   "pnpm": {
     "overrides": {
-      "minimatch@>=5.0.0 <5.1.8": "^5.1.8"
+      "minimatch@>=5.0.0 <5.1.8": "^5.1.8",
+      "devalue@<5.6.4": "^5.6.4"
     }
   },
   "devDependencies": {
