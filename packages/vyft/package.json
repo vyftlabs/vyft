@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
+    "@napi-rs/keyring": "^1.2.0",
     "@vyft/core": "workspace:*",
     "@vyft/provider": "workspace:*",
     "@vyft/docker": "workspace:*",

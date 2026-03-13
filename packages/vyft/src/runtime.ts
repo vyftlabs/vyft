@@ -6,6 +6,7 @@ import { confirm, isCancel, log, password } from "@clack/prompts";
 import { Cipher, type Context, generateSalt, type Provider } from "@vyft/core";
 import type { State } from "@vyft/engine";
 import { LocalBackend, Store } from "@vyft/store";
+import * as keyring from "./keyring.ts";
 import { platforms, runtimes } from "./providers.ts";
 
 const VYFT_HOME = path.join(os.homedir(), ".vyft");
@@ -40,46 +41,44 @@ export function resolveLocalStateDir(_cwd: string, project: string): string {
   return path.join(VYFT_HOME, "local", project);
 }
 
-function passphraseConfigPath(project: string): string {
-  return path.join(VYFT_HOME, "config", project, "passphrase");
+export interface PassphraseStore {
+  get(project: string): Promise<string | null>;
+  set(project: string, value: string): Promise<boolean>;
 }
 
-async function readPersistedPassphrase(
-  project: string,
-): Promise<string | null> {
-  try {
-    const data = await fs.readFile(passphraseConfigPath(project), "utf8");
-    // trim() strips trailing newlines from manually-edited files; whitespace-only content is treated as absent
-    return data.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
-async function persistPassphrase(
-  project: string,
-  passphrase: string,
-): Promise<void> {
-  const filePath = passphraseConfigPath(project);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, passphrase, { mode: 0o600 });
-}
+const defaultStore: PassphraseStore = {
+  get: keyring.getPassphrase,
+  set: keyring.setPassphrase,
+};
 
 export async function resolvePassphrase(
   project: string,
   mode: "local" | "deploy" | "read",
+  store: PassphraseStore = defaultStore,
 ): Promise<string> {
   const env = process.env["VYFT_PASSPHRASE"];
   if (env) return env;
 
-  const persisted = await readPersistedPassphrase(project);
-  if (persisted) return persisted;
+  const stored = await store.get(project);
+  if (stored) return stored;
 
   if (mode === "local") {
     const generated = crypto.randomBytes(32).toString("hex");
-    await persistPassphrase(project, generated);
-    log.info(`Generated passphrase saved to ${passphraseConfigPath(project)}`);
+    const saved = await store.set(project, generated);
+    if (saved) {
+      log.info("Generated passphrase saved to OS keyring");
+    } else {
+      log.warn(
+        "Could not save passphrase to OS keyring. Set VYFT_PASSPHRASE env var for persistence.",
+      );
+    }
     return generated;
+  }
+
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "No passphrase found. Set the VYFT_PASSPHRASE environment variable.",
+    );
   }
 
   const value = await password({ message: "Enter passphrase:" });
@@ -87,12 +86,17 @@ export async function resolvePassphrase(
 
   if (mode === "deploy") {
     const save = await confirm({
-      message: "Save passphrase locally for future use?",
+      message: "Save passphrase to OS keyring for future use?",
     });
-    // Cancelling the save prompt is treated as "no" — passphrase is returned without saving
     if (!isCancel(save) && save) {
-      await persistPassphrase(project, value);
-      log.info(`Passphrase saved to ${passphraseConfigPath(project)}`);
+      const saved = await store.set(project, value);
+      if (saved) {
+        log.info("Passphrase saved to OS keyring");
+      } else {
+        log.warn(
+          "Could not save to OS keyring. Set VYFT_PASSPHRASE env var instead.",
+        );
+      }
     }
   }
 

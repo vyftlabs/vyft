@@ -1,24 +1,21 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { afterEach, describe, it } from "node:test";
-import { resolvePassphrase } from "./runtime.ts";
+import { type PassphraseStore, resolvePassphrase } from "./runtime.ts";
 
-const VYFT_HOME = path.join(os.homedir(), ".vyft");
-
-function configPath(project: string): string {
-  return path.join(VYFT_HOME, "config", project, "passphrase");
-}
-
-async function cleanupProject(project: string): Promise<void> {
-  try {
-    await fs.rm(path.join(VYFT_HOME, "config", project), {
-      recursive: true,
-    });
-  } catch {
-    // ignore
-  }
+function memoryStore(
+  initial?: Record<string, string>,
+): PassphraseStore & { data: Map<string, string> } {
+  const data = new Map(Object.entries(initial ?? {}));
+  return {
+    data,
+    async get(project: string) {
+      return data.get(project) ?? null;
+    },
+    async set(project: string, value: string) {
+      data.set(project, value);
+      return true;
+    },
+  };
 }
 
 describe("resolvePassphrase", () => {
@@ -34,90 +31,100 @@ describe("resolvePassphrase", () => {
 
   it("returns VYFT_PASSPHRASE env var when set", async () => {
     process.env["VYFT_PASSPHRASE"] = "env-secret";
-    const result = await resolvePassphrase("any-project", "deploy");
+    const store = memoryStore();
+    const result = await resolvePassphrase("any-project", "deploy", store);
     assert.equal(result, "env-secret");
   });
 
-  it("returns persisted passphrase when file exists (deploy mode)", async () => {
-    delete process.env["VYFT_PASSPHRASE"];
-    const project = `test-${Date.now()}`;
-    const filePath = configPath(project);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, "stored-secret", { mode: 0o600 });
-    try {
-      const result = await resolvePassphrase(project, "deploy");
-      assert.equal(result, "stored-secret");
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
-  it("trims trailing newlines from persisted passphrase file", async () => {
-    delete process.env["VYFT_PASSPHRASE"];
-    const project = `test-trim-${Date.now()}`;
-    const filePath = configPath(project);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, "my-passphrase\n", { mode: 0o600 });
-    try {
-      const result = await resolvePassphrase(project, "deploy");
-      assert.equal(result, "my-passphrase");
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
-  it("treats whitespace-only passphrase file as absent", async () => {
-    delete process.env["VYFT_PASSPHRASE"];
-    const project = `test-whitespace-${Date.now()}`;
-    const filePath = configPath(project);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, "   \n", { mode: 0o600 });
-    try {
-      // local mode: should generate a new passphrase since file content is empty after trim
-      const result = await resolvePassphrase(project, "local");
-      assert.ok(result.length > 0);
-      assert.notEqual(result.trim(), "");
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
-  it("generates and persists a passphrase in local mode", async () => {
-    delete process.env["VYFT_PASSPHRASE"];
-    const project = `test-local-${Date.now()}`;
-    try {
-      const result = await resolvePassphrase(project, "local");
-      assert.ok(result.length > 0);
-      const saved = await fs.readFile(configPath(project), "utf8");
-      assert.equal(saved, result);
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
-  it("returns same generated passphrase on subsequent local calls", async () => {
-    delete process.env["VYFT_PASSPHRASE"];
-    const project = `test-idempotent-${Date.now()}`;
-    try {
-      const first = await resolvePassphrase(project, "local");
-      const second = await resolvePassphrase(project, "local");
-      assert.equal(first, second);
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
-  it("env var takes precedence over persisted passphrase", async () => {
-    const project = `test-priority-${Date.now()}`;
-    const filePath = configPath(project);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, "file-secret", { mode: 0o600 });
+  it("env var takes precedence over keyring entry", async () => {
     process.env["VYFT_PASSPHRASE"] = "env-wins";
+    const store = memoryStore({ "my-project": "keyring-secret" });
+    const result = await resolvePassphrase("my-project", "deploy", store);
+    assert.equal(result, "env-wins");
+  });
+
+  it("returns passphrase from keyring store when present", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store = memoryStore({ "my-project": "keyring-secret" });
+    const result = await resolvePassphrase("my-project", "deploy", store);
+    assert.equal(result, "keyring-secret");
+  });
+
+  it("generates and stores passphrase in local mode", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store = memoryStore();
+    const result = await resolvePassphrase("my-project", "local", store);
+    assert.ok(result.length > 0);
+    assert.equal(store.data.get("my-project"), result);
+  });
+
+  it("returns same stored passphrase on subsequent local calls", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store = memoryStore();
+    const first = await resolvePassphrase("my-project", "local", store);
+    const second = await resolvePassphrase("my-project", "local", store);
+    assert.equal(first, second);
+  });
+
+  it("warns when keyring is unavailable in local mode", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store: PassphraseStore = {
+      async get() {
+        return null;
+      },
+      async set() {
+        return false;
+      },
+    };
+    const result = await resolvePassphrase("my-project", "local", store);
+    assert.ok(result.length > 0);
+  });
+
+  it("throws in non-TTY deploy mode when no passphrase available", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store = memoryStore();
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
     try {
-      const result = await resolvePassphrase(project, "deploy");
-      assert.equal(result, "env-wins");
+      await assert.rejects(
+        () => resolvePassphrase("my-project", "deploy", store),
+        {
+          message:
+            "No passphrase found. Set the VYFT_PASSPHRASE environment variable.",
+        },
+      );
     } finally {
-      await cleanupProject(project);
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
+    }
+  });
+
+  it("throws in non-TTY read mode when no passphrase available", async () => {
+    delete process.env["VYFT_PASSPHRASE"];
+    const store = memoryStore();
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
+    try {
+      await assert.rejects(
+        () => resolvePassphrase("my-project", "read", store),
+        {
+          message:
+            "No passphrase found. Set the VYFT_PASSPHRASE environment variable.",
+        },
+      );
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
     }
   });
 });
