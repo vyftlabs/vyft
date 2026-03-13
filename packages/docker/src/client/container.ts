@@ -3,12 +3,14 @@ import type { DockerClient } from "./index.ts";
 
 interface ContainerInput {
   port: number;
+  domain?: string | undefined;
   env?: Record<string, string> | undefined;
   command?: string[] | undefined;
   mounts?: Array<{ source: string; target: string }> | undefined;
   health?:
     | {
-        path: string;
+        path?: string | undefined;
+        command?: string | undefined;
         interval?: string | undefined;
         timeout?: string | undefined;
         retries?: number | undefined;
@@ -29,6 +31,7 @@ interface HostConfig {
   RestartPolicy: { Name: string };
   NetworkMode: string;
   Binds?: string[];
+  PortBindings?: Record<string, Array<{ HostPort: string }>>;
 }
 
 interface ContainerConfig {
@@ -50,7 +53,12 @@ export function buildContainerConfig(
   input: ContainerInput,
   name: string,
   image: string,
-  ctx: { project: string; stage: string; networkName: string },
+  ctx: {
+    project: string;
+    stage: string;
+    networkName: string;
+    publishPorts?: boolean;
+  },
 ): ContainerConfig {
   const baseEnv = { NODE_ENV: ctx.stage, ...input.env };
   const env = Object.entries(baseEnv).map(([k, v]) => `${k}=${v}`);
@@ -63,6 +71,11 @@ export function buildContainerConfig(
     "vyft.managed": "true",
   };
 
+  if (input.domain) {
+    labels["caddy"] = input.domain;
+    labels["caddy.reverse_proxy"] = `{{upstreams ${input.port}}}`;
+  }
+
   const config: ContainerConfig = {
     Image: image,
     Env: env,
@@ -73,6 +86,12 @@ export function buildContainerConfig(
     },
     Labels: labels,
   };
+
+  if (ctx.publishPorts) {
+    config.HostConfig.PortBindings = {
+      [`${input.port}/tcp`]: [{ HostPort: String(input.port) }],
+    };
+  }
 
   if (input.command) {
     config.Cmd = input.command;
@@ -85,11 +104,14 @@ export function buildContainerConfig(
   }
 
   if (input.health) {
+    const test = input.health.command
+      ? ["CMD-SHELL", input.health.command]
+      : [
+          "CMD-SHELL",
+          `node -e "require('http').get('http://localhost:${input.port}${input.health.path}',r=>{r.statusCode===200?process.exit(0):process.exit(1)}).on('error',()=>process.exit(1))"`,
+        ];
     config.Healthcheck = {
-      Test: [
-        "CMD-SHELL",
-        `curl -f http://localhost:${input.port}${input.health.path} || exit 1`,
-      ],
+      Test: test,
     };
     if (input.health.interval !== undefined) {
       config.Healthcheck.Interval = durationToNanos(input.health.interval);
@@ -140,7 +162,10 @@ export async function removeContainer(
   name: string,
 ): Promise<void> {
   await client.post(`/containers/${name}/stop`).catch(() => {});
-  await client.del(`/containers/${name}?force=true`);
+  const res = await client.del(`/containers/${name}?force=true`);
+  if (res.status !== 204 && res.status !== 404) {
+    throw new Error(`Failed to remove container ${name}: ${res.status}`);
+  }
 }
 
 export async function recreateContainer(

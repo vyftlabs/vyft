@@ -1,9 +1,12 @@
-import type { Linkable, Output } from "@vyft/core";
+import type { Linkable, Mountable, Output } from "@vyft/core";
 import {
   createConstructor,
   createOutput,
+  DEPENDABLE,
   type Provider,
+  type ResourceEntry,
   registry,
+  urn,
 } from "@vyft/core";
 
 export const RUNTIME_PROVIDER_NAME = "runtime";
@@ -34,19 +37,20 @@ export interface ServiceConfig {
   image?: string;
   path?: string;
   cwd?: string;
+  start?: string;
   port?: number;
   domain?: string;
   env?: Record<string, string | Output<string>>;
   command?: string[];
-  mounts?: Array<{ source: string; target: string }>;
+  mounts?: Array<{ source: string | Mountable; target: string }>;
   health?: {
-    path: string;
+    path?: string;
+    command?: string;
     interval?: string;
     timeout?: string;
     retries?: number;
   };
   restart?: "always" | "on-failure" | "unless-stopped" | "no";
-  expose?: boolean;
   link?: Linkable[];
   /** Dev command config — only used by `vyft local dev`, not deployed */
   dev?: DevConfig;
@@ -62,7 +66,7 @@ export interface JobConfig {
   cwd?: string;
   command?: string[];
   env?: Record<string, string | Output<string>>;
-  mounts?: Array<{ source: string; target: string }>;
+  mounts?: Array<{ source: string | Mountable; target: string }>;
 }
 
 export interface CronJobConfig {
@@ -72,9 +76,10 @@ export interface CronJobConfig {
   cwd?: string;
   command?: string[];
   env?: Record<string, string | Output<string>>;
-  mounts?: Array<{ source: string; target: string }>;
+  mounts?: Array<{ source: string | Mountable; target: string }>;
   health?: {
-    path: string;
+    path?: string;
+    command?: string;
     interval?: string;
     timeout?: string;
     retries?: number;
@@ -98,11 +103,18 @@ function linkEnvPrefix(urn: string): string {
   return id.toUpperCase().replace(/-/g, "_");
 }
 
+// When a service needs building, we capture the build output ref here
+// before calling serviceConstructor. Safe because registration is synchronous.
+let pendingBuildImage: Output<string> | undefined;
+
 const serviceConstructor = createConstructor<ServiceConfig, ServiceOutputs>(
   RUNTIME_PROVIDER_NAME,
   lazyProvider,
   "service",
   (id, config) => {
+    const buildImage = pendingBuildImage;
+    pendingBuildImage = undefined;
+
     // Env starts as string values but link outputs inject Output objects.
     // sealInput handles the conversion at deploy time.
     const env: Record<string, unknown> = {
@@ -120,25 +132,47 @@ const serviceConstructor = createConstructor<ServiceConfig, ServiceOutputs>(
       }
     }
 
+    const mounts = config.mounts?.map((m) => ({
+      source:
+        typeof m.source === "string"
+          ? m.source
+          : createOutput(registry.urnOf(m.source), "name"),
+      target: m.target,
+    }));
+
     return {
       name: id,
-      image: config.image,
-      path: config.path ?? (config.image ? undefined : "."),
-      cwd: config.cwd,
+      image: buildImage ?? config.image,
       port: config.port ?? 3000,
       domain: config.domain,
       env,
       command: config.command,
-      mounts: config.mounts,
+      mounts,
       health: config.health,
       restart: config.restart ?? "always",
-      expose: config.expose,
     };
   },
+  { linkable: true },
 );
 
 export function service(id: string, config?: ServiceConfig) {
-  return serviceConstructor(id, config);
+  const resolvedConfig = config ?? {};
+  const needsBuild = !resolvedConfig.image;
+  const buildPath = resolvedConfig.path ?? (needsBuild ? "." : undefined);
+
+  if (buildPath) {
+    const buildUrn = urn.build("resource", RUNTIME_PROVIDER_NAME, "build", id);
+    const buildEntry: ResourceEntry = {
+      [DEPENDABLE]: true,
+      urn: buildUrn,
+      value: { name: id, path: buildPath, cwd: resolvedConfig.cwd, start: resolvedConfig.start },
+      provider: lazyProvider,
+    };
+    registry.register(buildEntry);
+    pendingBuildImage = createOutput(buildUrn, "image");
+  }
+
+  return serviceConstructor(id, resolvedConfig);
 }
 
 const volumeConstructor = createConstructor<VolumeConfig, VolumeOutputs>(
@@ -149,6 +183,7 @@ const volumeConstructor = createConstructor<VolumeConfig, VolumeOutputs>(
     name: id,
     size: config.size,
   }),
+  { mountable: true },
 );
 
 export function volume(id: string, config?: VolumeConfig) {

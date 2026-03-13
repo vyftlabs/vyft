@@ -17,6 +17,12 @@ export type ApplyEvent =
       input: Record<string, unknown> | undefined;
       externalId?: string | undefined;
       output: unknown;
+    }
+  | {
+      status: "failed";
+      urn: string;
+      action: Action;
+      error: unknown;
     };
 
 export interface ExecuteOptions {
@@ -31,25 +37,63 @@ export async function apply(
 ): Promise<void> {
   const steps = await plan(desired, current, ctx);
 
+  // Collect URNs in the plan so we can detect unchanged resources
+  const planned = new Set<string>();
+  for (const step of steps) {
+    for (const change of step) {
+      planned.add(change.urn);
+    }
+  }
+
+  // Emit "committed" for resources unchanged by the plan
+  for (const urn of Object.keys(desired.entries)) {
+    if (!planned.has(urn) && urn in current.entries) {
+      options?.onEvent?.({
+        status: "committed",
+        urn,
+        action: "update",
+        input: desired.entries[urn]?.input,
+        output: current.entries[urn]?.output,
+      });
+    }
+  }
+
   await execute(steps, {
     async dispatch(change) {
       const input =
         desired.entries[change.urn]?.input ??
         current.entries[change.urn]?.input;
 
-      {
-        const data: ApplyEvent = {
-          status: "pending",
+      options?.onEvent?.({
+        status: "pending",
+        urn: change.urn,
+        action: change.action,
+        input,
+      });
+
+      let result;
+      try {
+        result = await resolve(change, desired, current, ctx);
+      } catch (err) {
+        options?.onEvent?.({
+          status: "failed",
+          urn: change.urn,
+          action: change.action,
+          error: err,
+        });
+        throw err;
+      }
+
+      if (result.skipped) {
+        options?.onEvent?.({
+          status: "committed",
           urn: change.urn,
           action: change.action,
           input,
-        };
-
-        await ctx.store.append({ type: "set", key: change.urn, data });
-        options?.onEvent?.(data);
+          output: current.entries[change.urn]?.output,
+        });
+        return;
       }
-
-      const result = await resolve(change, desired, current, ctx);
 
       if (change.action === "delete") {
         await ctx.store.append({ type: "remove", key: change.urn });

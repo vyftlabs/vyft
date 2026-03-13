@@ -10,9 +10,12 @@ export async function plan(
   ctx: Context,
 ): Promise<Change[][]> {
   const steps = engine.plan(desired, current);
-  const resolved: Change[] = [];
+  const result: Change[][] = [];
 
   for (const step of steps) {
+    const resolved: Change[] = [];
+    const recreateDeletes: Change[] = [];
+
     for (const change of step) {
       if (change.action === "update") {
         const oldEntry = current.entries[change.urn];
@@ -36,19 +39,19 @@ export async function plan(
 
         if (diffHandler) {
           const artifacts = ctx.createArtifacts(change.urn);
-          const result = await diffHandler({
+          const diffResult = await diffHandler({
             old: oldEntry.input,
             new: newEntry.input,
             ctx: { artifacts },
           });
-          switch (result.action) {
+          switch (diffResult.action) {
             case "none":
               break;
             case "update":
               resolved.push(change);
               break;
             case "recreate":
-              resolved.push({ urn: change.urn, action: "delete" });
+              recreateDeletes.push({ urn: change.urn, action: "delete" });
               resolved.push({ urn: change.urn, action: "create" });
               break;
           }
@@ -59,7 +62,14 @@ export async function plan(
         resolved.push(change);
       }
     }
+
+    if (recreateDeletes.length > 0) {
+      result.push(recreateDeletes);
+    }
+    if (resolved.length > 0) {
+      result.push(resolved);
+    }
   }
 
-  return resolved.map((change) => [change]);
+  return result;
 }

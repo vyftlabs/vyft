@@ -14,16 +14,18 @@ export {
   service,
   volume,
 } from "./constructors.ts";
-export type { RuntimeConfig } from "./define.ts";
-export { defineRuntime } from "./define.ts";
+export type { RuntimeConfig, RuntimeResourceCallable } from "./define.ts";
+export { createRuntime, defineRuntime } from "./define.ts";
 export { durationToMs, durationToNanos, nanosToDigits } from "./duration.ts";
 export type {
+  BuildOutput,
   CronJobOutput,
   JobOutput,
   ServiceOutput,
   VolumeOutput,
 } from "./outputs.ts";
 export type {
+  BuildInput,
   CronJobInput,
   JobInput,
   ServiceInput,

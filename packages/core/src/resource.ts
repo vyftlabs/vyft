@@ -3,6 +3,8 @@ import {
   type Dependable,
   LINKABLE,
   type Linkable,
+  MOUNTABLE,
+  type Mountable,
 } from "@vyft/engine";
 import type { Output } from "./output.ts";
 import { createOutput, OUTPUT, TYPE } from "./output.ts";
@@ -24,7 +26,6 @@ export interface ResourceOptions {
 
 export interface ResourceEntry<T = unknown> extends ResourceRef<T> {
   [DEPENDABLE]: true;
-  [LINKABLE]: true;
   value: Record<string, unknown>;
   /** Original config before transformation — preserved for tooling (e.g. local dev runner) */
   config?: unknown;
@@ -107,13 +108,19 @@ type OutputShape<T> = T extends object
   : Output<T>;
 
 /** User-facing resource reference. T is the raw output shape from handlers. */
-export type Resource<T = unknown> = OutputShape<T> & Dependable & Linkable;
+export type Resource<T = unknown> = OutputShape<T> & Dependable;
+
+/** Resource that can be passed to `link` — only services produce host/port/url. */
+export type LinkableResource<T = any> = Resource<T> & Linkable;
+
+/** Resource that can be passed as a mount source — only volumes. */
+export type MountableResource<T = any> = Resource<T> & Mountable;
 
 /**
  * Internal factory — creates a constructor that registers entries in the global registry
  * and returns a Proxy-based Resource.
  *
- * The resource is branded with OUTPUT (path ""), DEPENDABLE, and LINKABLE.
+ * The resource is branded with OUTPUT (path ""), DEPENDABLE, and optionally LINKABLE.
  * For record outputs, property access returns Output for that key.
  * Unknown symbol access passes through to the target (supports secret() branding).
  */
@@ -122,6 +129,40 @@ export function createConstructor<C, TOutput = unknown>(
   providerInstance: Provider<unknown>,
   type: string,
   define: (id: string, config: C) => Record<string, unknown>,
+  options: { linkable: true },
+): (
+  id: string,
+  config?: C,
+  options?: ResourceOptions,
+) => LinkableResource<Expand<TOutput>>;
+export function createConstructor<C, TOutput = unknown>(
+  providerName: string,
+  providerInstance: Provider<unknown>,
+  type: string,
+  define: (id: string, config: C) => Record<string, unknown>,
+  options: { mountable: true },
+): (
+  id: string,
+  config?: C,
+  options?: ResourceOptions,
+) => MountableResource<Expand<TOutput>>;
+export function createConstructor<C, TOutput = unknown>(
+  providerName: string,
+  providerInstance: Provider<unknown>,
+  type: string,
+  define: (id: string, config: C) => Record<string, unknown>,
+  options?: { linkable?: boolean; mountable?: boolean },
+): (
+  id: string,
+  config?: C,
+  options?: ResourceOptions,
+) => Resource<Expand<TOutput>>;
+export function createConstructor<C, TOutput = unknown>(
+  providerName: string,
+  providerInstance: Provider<unknown>,
+  type: string,
+  define: (id: string, config: C) => Record<string, unknown>,
+  constructorOptions?: { linkable?: boolean; mountable?: boolean },
 ): (
   id: string,
   config?: C,
@@ -135,7 +176,6 @@ export function createConstructor<C, TOutput = unknown>(
     const value = define(id, resolvedConfig);
     const entry: ResourceEntry = {
       [DEPENDABLE]: true,
-      [LINKABLE]: true,
       urn: resourceUrn,
       value,
       config: resolvedConfig,
@@ -170,11 +210,22 @@ export function createConstructor<C, TOutput = unknown>(
       enumerable: false,
       configurable: false,
     });
-    Object.defineProperty(target, LINKABLE, {
-      value: true,
-      enumerable: false,
-      configurable: false,
-    });
+    const isLinkable = constructorOptions?.linkable === true;
+    if (isLinkable) {
+      Object.defineProperty(target, LINKABLE, {
+        value: true,
+        enumerable: false,
+        configurable: false,
+      });
+    }
+    const isMountable = constructorOptions?.mountable === true;
+    if (isMountable) {
+      Object.defineProperty(target, MOUNTABLE, {
+        value: true,
+        enumerable: false,
+        configurable: false,
+      });
+    }
 
     const outputCache = new Map<string, Output>();
     const proxy = new Proxy(target, {
@@ -183,7 +234,6 @@ export function createConstructor<C, TOutput = unknown>(
         if (prop === "kind") return "output";
         if (prop === OUTPUT) return true;
         if (prop === DEPENDABLE) return true;
-        if (prop === LINKABLE) return true;
         // Pass through unknown symbols to target (supports secret() branding)
         if (typeof prop === "symbol") return t[prop];
         const key = prop;
@@ -195,8 +245,9 @@ export function createConstructor<C, TOutput = unknown>(
       },
       has(t, prop) {
         if (prop === "path" || prop === "kind") return true;
-        if (prop === OUTPUT || prop === DEPENDABLE || prop === LINKABLE)
-          return true;
+        if (prop === OUTPUT || prop === DEPENDABLE) return true;
+        if (prop === LINKABLE) return isLinkable;
+        if (prop === MOUNTABLE) return isMountable;
         // Check target for unknown symbols (supports secret() branding check)
         if (typeof prop === "symbol") return prop in t;
         return true;

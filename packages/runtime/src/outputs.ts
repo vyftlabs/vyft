@@ -1,3 +1,7 @@
+export interface BuildOutput {
+  image: string;
+}
+
 export interface ServiceOutput {
   host: string;
   port: number;

@@ -7,6 +7,7 @@ export {
   type HandlerArgs,
   type HandlerName,
   type Handlers,
+  inputDiff,
   type PlatformResourceName,
   type Provider,
   type ProviderConfig,

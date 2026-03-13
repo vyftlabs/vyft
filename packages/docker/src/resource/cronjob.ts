@@ -9,7 +9,6 @@ import {
 } from "../client/container.ts";
 import { pullImage } from "../client/image.ts";
 import { inspectContainer } from "../client/inspect.ts";
-import { ensureNetwork } from "../client/network.ts";
 import type { DockerContext } from "../context.ts";
 
 function buildCronCommand(schedule: string, command: string[]): string[] {
@@ -23,8 +22,6 @@ function buildCronCommand(schedule: string, command: string[]): string[] {
 
 export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   async create({ input, ctx }) {
-    await ensureNetwork(ctx.client, ctx.networkName);
-
     const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
     await pullImage(ctx.client, image);
@@ -62,8 +59,6 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   },
 
   async update({ input, ctx }) {
-    await ensureNetwork(ctx.client, ctx.networkName);
-
     const name = containerName(ctx.project, ctx.stage, input.name);
     const image = input.image ?? "node:lts-slim";
 
@@ -93,9 +88,5 @@ export const cronjobHandlers: Handlers<CronJobInput, DockerContext> = {
   async delete({ input, ctx }) {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
-  },
-
-  async diff() {
-    return { action: "recreate" };
   },
 };

@@ -22,6 +22,7 @@
   "dependencies": {
     "@vyft/core": "workspace:*",
     "@vyft/platform": "workspace:*",
+    "@vyft/railpack": "workspace:*",
     "@vyft/runtime": "workspace:*"
   },
   "scripts": {

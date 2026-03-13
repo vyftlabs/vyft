@@ -1,13 +1,15 @@
-export type { Dependable, Linkable } from "@vyft/engine";
+export { DEPENDABLE } from "@vyft/engine";
+export type { Dependable, Linkable, Mountable } from "@vyft/engine";
 export { type ApplyEvent, apply, type ExecuteOptions } from "./apply.ts";
 export type { Context } from "./context.ts";
 export { destroy } from "./destroy.ts";
+export { inputDiff } from "./diff.ts";
 export type {
   Envelope,
   SerializedDeferred,
   SerializedRef,
 } from "./envelope.ts";
-export { isEnvelope, sealInput, sealOutput } from "./envelope.ts";
+export { isEnvelope, resolveValue, sealInput, sealOutput } from "./envelope.ts";
 export {
   DEFERRED,
   type DeferredTemplate,
@@ -44,6 +46,8 @@ export {
   type HandlerArgs,
   type HandlerName,
   type Handlers,
+  type LinkableResource,
+  type MountableResource,
   RESOURCE,
   type Resource,
   type ResourceDefinition,

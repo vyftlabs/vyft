@@ -50,7 +50,8 @@ function topoSort(
   changes: Change[],
   deps: Map<string, Set<string>>,
 ): Change[][] {
-  const steps: Change[][] = [];
+  // Standard ASAP topo sort first
+  const asapSteps: Change[][] = [];
   const placed = new Set<string>();
   const remaining = new Set(changes.map((c) => c.urn));
 
@@ -79,10 +80,65 @@ function topoSort(
       remaining.delete(change.urn);
     }
 
-    steps.push(step);
+    asapSteps.push(step);
   }
 
-  return steps;
+  if (asapSteps.length <= 1) return asapSteps;
+
+  // Build reverse dependency map (urn → set of urns that depend on it)
+  const reverseDeps = new Map<string, Set<string>>();
+  for (const [urn, d] of deps) {
+    for (const dep of d) {
+      let rev = reverseDeps.get(dep);
+      if (!rev) {
+        rev = new Set();
+        reverseDeps.set(dep, rev);
+      }
+      rev.add(urn);
+    }
+  }
+
+  // Record each URN's ASAP step index
+  const asapStep = new Map<string, number>();
+  for (let i = 0; i < asapSteps.length; i++) {
+    for (const change of asapSteps[i]!) {
+      asapStep.set(change.urn, i);
+    }
+  }
+
+  // Compute ALAP step: latest step each resource can be in
+  // Constrained by: must be before all dependents (reverse deps)
+  const alapStep = new Map<string, number>();
+  const lastIdx = asapSteps.length - 1;
+
+  // Process in reverse topo order so dependents are resolved first
+  for (let i = lastIdx; i >= 0; i--) {
+    for (const change of asapSteps[i]!) {
+      const rev = reverseDeps.get(change.urn);
+      if (!rev || rev.size === 0) {
+        alapStep.set(change.urn, lastIdx);
+      } else {
+        let latest = lastIdx;
+        for (const dependent of rev) {
+          const depStep = alapStep.get(dependent) ?? asapStep.get(dependent)!;
+          latest = Math.min(latest, depStep - 1);
+        }
+        alapStep.set(change.urn, Math.max(latest, asapStep.get(change.urn)!));
+      }
+    }
+  }
+
+  // Rebuild steps using ALAP placement
+  const result: Change[][] = [];
+  for (let i = 0; i <= lastIdx; i++) {
+    result.push([]);
+  }
+  for (const change of changes) {
+    const step = alapStep.get(change.urn) ?? 0;
+    result[step]!.push(change);
+  }
+
+  return result.filter((s) => s.length > 0);
 }
 
 export function plan(desired: State, current: State): Change[][] {

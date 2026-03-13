@@ -99,8 +99,4 @@ export const redisHandlers: Handlers<RedisInput, DockerContext> = {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
   },
-
-  async diff() {
-    return { action: "recreate" };
-  },
 };

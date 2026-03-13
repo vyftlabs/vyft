@@ -1,12 +1,20 @@
 // User-facing API re-exports
 
 export type {
+  LinkableResource,
+  MountableResource,
   Output,
   Resource,
   ResourceOptions,
   SecretOutput,
 } from "@vyft/core";
-export { createOutput, createSecretOutput, resource, secret } from "@vyft/core";
+export {
+  createOutput,
+  createSecretOutput,
+  interpolate,
+  resource,
+  secret,
+} from "@vyft/core";
 export { defineResource } from "@vyft/provider";
 export type {
   CronJobConfig,

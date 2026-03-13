@@ -17,5 +17,14 @@ export async function removeVolume(
   client: DockerClient,
   name: string,
 ): Promise<void> {
-  await client.del(`/volumes/${name}`);
+  const maxAttempts = 5;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const res = await client.del(`/volumes/${name}?force=true`);
+    if (res.status === 204 || res.status === 404) return;
+    if (res.status === 409 && attempt < maxAttempts - 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
+    throw new Error(`Failed to remove volume ${name}: ${res.status}`);
+  }
 }

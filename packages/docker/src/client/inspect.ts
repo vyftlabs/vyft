@@ -19,6 +19,9 @@ interface DockerInspect {
   State: {
     Status: string;
     Running: boolean;
+    Health?: {
+      Status: string;
+    };
   };
 }
 

@@ -6,12 +6,14 @@ import path from "node:path";
 import {
   type ApplyEvent,
   apply,
-  destroy,
+  type Provider,
   reconcile,
+  resolveValue,
+  sealInput,
   toState,
   urn,
 } from "@vyft/core";
-import docker from "@vyft/docker";
+import docker, { createClient } from "@vyft/docker";
 import {
   type DevConfig,
   RUNTIME_PROVIDER_NAME,
@@ -28,12 +30,20 @@ import {
   resolveLocalStateDir,
   resolvePassphrase,
 } from "../../runtime.ts";
+import { waitForHealthy as waitForHealthyContainers } from "../../health.ts";
+import { createTreeRenderer, type TreeEntry } from "../../tree.ts";
 import { detectDev } from "./detect.ts";
 
+function configHasImage(config: unknown): boolean {
+  return (
+    typeof config === "object" &&
+    config !== null &&
+    "image" in config &&
+    typeof (config as Record<string, unknown>)["image"] === "string"
+  );
+}
+
 const dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
-const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
-const cyan = (s: string) => `\x1b[36m${s}\x1b[39m`;
-const green = (s: string) => `\x1b[32m${s}\x1b[39m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[39m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[39m`;
 
@@ -205,14 +215,32 @@ function watchService(svc: NativeService): void {
   }
 }
 
+interface InfraResult {
+  resolve(value: unknown): Promise<unknown>;
+  waitForHealthy(
+    containers: Array<{ name: string; urn: string }>,
+    onStatus?: (
+      urn: string,
+      status: "starting" | "healthy" | "unhealthy",
+    ) => void,
+  ): Promise<void>;
+}
+
 async function applyInfra(
   cwd: string,
   project: string,
   infraEntries: Awaited<ReturnType<typeof loadConfig>>["entries"],
-): Promise<void> {
+  loadedProviders: Record<string, Provider<unknown>>,
+  onEvent: (event: ApplyEvent) => void,
+): Promise<InfraResult> {
   const stateDir = resolveLocalStateDir(cwd, project);
-  const providers = {
-    [RUNTIME_PROVIDER_NAME]: docker({ project, stage: "local" }),
+  const providers: Record<string, Provider<unknown>> = {
+    ...loadedProviders,
+    [RUNTIME_PROVIDER_NAME]: docker({
+      project,
+      stage: "local",
+      publishPorts: true,
+    }),
   };
   const store = await openStore(stateDir);
   const salt = await loadSalt(stateDir);
@@ -222,46 +250,45 @@ async function applyInfra(
   await reconcile(ctx);
   const current = buildCurrentState(store);
   const desired = toState(infraEntries);
-  try {
-    await apply(desired, current, ctx, {
-      onEvent(event: ApplyEvent) {
-        const label =
-          event.status === "pending" ? dim(event.action) : green(event.action);
-        console.log(`  ${label} ${dim(event.urn)}`);
-      },
-    });
-  } finally {
-    await store.dispose();
+  await apply(desired, current, ctx, { onEvent });
+  // Collect outputs and container hostnames before closing the store
+  const outputs: Record<string, unknown> = {};
+  const containerHosts = new Set<string>();
+  for (const [key, value] of store.entries()) {
+    const data = value as Record<string, unknown> | undefined;
+    if (data?.["output"]) {
+      outputs[key] = data["output"];
+      const out = data["output"] as Record<string, unknown>;
+      if (typeof out["host"] === "string") {
+        containerHosts.add(out["host"]);
+      }
+    }
   }
-}
-
-async function destroyInfra(cwd: string, project: string): Promise<void> {
-  const stateDir = resolveLocalStateDir(cwd, project);
-  const providers = {
-    [RUNTIME_PROVIDER_NAME]: docker({ project, stage: "local" }),
+  await store.dispose();
+  const dockerClient = createClient();
+  return {
+    async resolve(value: unknown): Promise<unknown> {
+      const resolved = await resolveValue(value, outputs, cipher);
+      // Rewrite Docker container hostnames to localhost for native dev
+      if (typeof resolved === "string") {
+        let result = resolved;
+        for (const host of containerHosts) {
+          result = result.replaceAll(host, "localhost");
+        }
+        return result;
+      }
+      return resolved;
+    },
+    async waitForHealthy(
+      containers: Array<{ name: string; urn: string }>,
+      onStatus?: (
+        urnValue: string,
+        status: "starting" | "healthy" | "unhealthy",
+      ) => void,
+    ): Promise<void> {
+      return waitForHealthyContainers(dockerClient, containers, onStatus);
+    },
   };
-  const store = await openStore(stateDir);
-  const salt = await loadSalt(stateDir);
-  const passphrase = await resolvePassphrase(project, "local");
-  const cipher = createCipher(passphrase, salt);
-  const ctx = buildContext(store, cipher, providers, stateDir);
-  await reconcile(ctx);
-  const current = buildCurrentState(store);
-  if (Object.keys(current.entries).length === 0) {
-    await store.dispose();
-    return;
-  }
-  try {
-    await destroy(current, ctx, {
-      onEvent(event: ApplyEvent) {
-        const label =
-          event.status === "pending" ? dim(event.action) : green(event.action);
-        console.log(`  ${label} ${dim(event.urn)}`);
-      },
-    });
-  } finally {
-    await store.dispose();
-  }
 }
 
 const PORT_MIN = 3000;
@@ -311,34 +338,84 @@ export default new Command("dev")
     const project = await resolveName(cwd, opts.name);
 
     const nativeServices: NativeService[] = [];
-    let infraRunning = false;
 
     async function startAll(): Promise<void> {
-      const { entries } = await loadConfig(cwd, project);
+      const { entries, providers } = await loadConfig(cwd, project, {
+        noCache: true,
+      });
 
       const infraEntries: Awaited<ReturnType<typeof loadConfig>>["entries"] =
         [];
       const appEntries: Awaited<ReturnType<typeof loadConfig>>["entries"] = [];
 
+      // First pass: identify native service ids
+      const nativeServiceIds = new Set<string>();
       for (const entry of entries) {
         const parsed = urn.parse(entry.urn);
         if (
-          parsed.provider !== RUNTIME_PROVIDER_NAME ||
-          parsed.resource !== "service"
-        )
-          continue;
-        if (entry.value["image"] != null) {
-          infraEntries.push(entry);
-        } else {
-          appEntries.push(entry);
+          parsed.provider === RUNTIME_PROVIDER_NAME &&
+          parsed.resource === "service" &&
+          !configHasImage(entry.config)
+        ) {
+          nativeServiceIds.add(parsed.id);
         }
       }
 
+      // Second pass: classify entries
+      for (const entry of entries) {
+        const parsed = urn.parse(entry.urn);
+        const isNativeService =
+          parsed.provider === RUNTIME_PROVIDER_NAME &&
+          parsed.resource === "service" &&
+          nativeServiceIds.has(parsed.id);
+        const isNativeBuild =
+          parsed.provider === RUNTIME_PROVIDER_NAME &&
+          parsed.resource === "build" &&
+          nativeServiceIds.has(parsed.id);
+        if (isNativeService) {
+          appEntries.push(entry);
+        } else if (!isNativeBuild) {
+          infraEntries.push(entry);
+        }
+      }
+
+      // Build tree entries: infra + app entries (excluding internal build resources)
+      const treeEntries: TreeEntry[] = entries
+        .filter((e) => {
+          const parsed = urn.parse(e.urn);
+          return !(parsed.resource === "build" && nativeServiceIds.has(parsed.id));
+        })
+        .map((e) => ({
+          urn: e.urn,
+          dependsOn: e.dependsOn,
+          value: e.value,
+        }));
+
+      const tree = createTreeRenderer({ entries: treeEntries });
+      tree.start();
+
       // Start infra containers
+      let infra: InfraResult | undefined;
       if (infraEntries.length > 0) {
-        console.log(cyan("Starting infra containers..."));
-        await applyInfra(cwd, project, infraEntries);
-        infraRunning = true;
+        infra = await applyInfra(
+          cwd,
+          project,
+          infraEntries,
+          providers,
+          tree.onEvent,
+        );
+
+        // Wait for containers with health checks to become healthy
+        const healthContainers: Array<{ name: string; urn: string }> = [];
+        for (const entry of infraEntries) {
+          if (entry.value["health"] != null && entry.value["image"] != null) {
+            const name = `vyft-${project}-local-${String(entry.value["name"])}`;
+            healthContainers.push({ name, urn: entry.urn });
+          }
+        }
+        if (healthContainers.length > 0) {
+          await infra.waitForHealthy(healthContainers, tree.onHealthStatus);
+        }
       }
 
       // Allocate ports for native services
@@ -358,10 +435,17 @@ export default new Command("dev")
         );
         const servicePort = ports.get(serviceName) ?? 3000;
         const envValue = entry.value["env"];
-        const serviceEnv =
+        const rawEnv =
           typeof envValue === "object" && envValue !== null
-            ? (envValue as Record<string, string>)
+            ? (envValue as Record<string, unknown>)
             : {};
+        // Seal Output refs into serialized envelopes, then resolve to strings
+        const sealedEnv = sealInput(rawEnv);
+        const serviceEnv: Record<string, string> = {};
+        for (const [k, v] of Object.entries(sealedEnv)) {
+          const resolved = infra ? await infra.resolve(v) : v;
+          serviceEnv[k] = String(resolved ?? "");
+        }
 
         let command: string[];
         let nativeCwd: string;
@@ -385,6 +469,8 @@ export default new Command("dev")
             config?.path ??
             (typeof pathValue === "string" ? pathValue : undefined);
           if (!servicePath) {
+            tree.setStatus(entry.urn, "failed");
+            tree.stop();
             console.error(
               `\nCould not detect how to run service "${serviceName}" — no path or dev key.\n\nAdd a \`dev\` key to your service config:\n\n  service("${serviceName}", { path: "./path/to/service", dev: "npm run dev" })\n`,
             );
@@ -393,6 +479,8 @@ export default new Command("dev")
 
           const detected = await detectDev(servicePath, cwd);
           if (!detected) {
+            tree.setStatus(entry.urn, "failed");
+            tree.stop();
             console.error(
               `\nCould not detect how to run ${servicePath}\n\nAdd a \`dev\` key to your service config:\n\n  service("${serviceName}", { path: "${servicePath}", dev: "npm run dev" })\n`,
             );
@@ -424,9 +512,14 @@ export default new Command("dev")
         };
 
         nativeServices.push(svc);
-        console.log(
-          `${green("Starting")} ${bold(`[${serviceName}]`)} ${dim(command.join(" "))}`,
-        );
+        tree.setSuffix(entry.urn, `localhost:${servicePort}`);
+        tree.setStatus(entry.urn, "done");
+      }
+
+      // Stop tree before starting processes — their stdout would corrupt cursor positioning
+      tree.stop();
+
+      for (const svc of nativeServices) {
         startProcess(svc);
         watchService(svc);
       }
@@ -480,14 +573,6 @@ export default new Command("dev")
       configWatcher.close();
       if (configDebounce) clearTimeout(configDebounce);
       await stopNative();
-      if (infraRunning) {
-        console.log(dim("Stopping infra containers..."));
-        try {
-          await destroyInfra(cwd, project);
-        } catch (err) {
-          console.error(red("Failed to stop infra:"), err);
-        }
-      }
       process.exit(0);
     };
 

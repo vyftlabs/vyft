@@ -1,5 +1,5 @@
-import { confirm, isCancel, spinner } from "@clack/prompts";
-import { type ApplyEvent, destroy, reconcile } from "@vyft/core";
+import { confirm, isCancel } from "@clack/prompts";
+import { destroy, reconcile } from "@vyft/core";
 import { PLATFORM_PROVIDER_NAME } from "@vyft/platform";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
@@ -16,6 +16,7 @@ import {
   resolveRuntimeProvider,
   resolveStateDir,
 } from "../runtime.ts";
+import { createTreeRenderer } from "../tree.ts";
 
 export default new Command("destroy")
   .description("Destroy infrastructure")
@@ -51,9 +52,9 @@ export default new Command("destroy")
     const ctx = buildContext(store, cipher, providers, stateDir);
     await reconcile(ctx);
     const current = buildCurrentState(store);
-    const count = Object.keys(current.entries).length;
+    const entries = Object.values(current.entries);
 
-    if (count === 0) {
+    if (entries.length === 0) {
       console.log("Nothing to destroy.");
       await store.dispose();
       return;
@@ -66,7 +67,7 @@ export default new Command("destroy")
         process.exit(1);
       }
       const ok = await confirm({
-        message: `Destroy ${count} resource(s)?`,
+        message: `Destroy ${entries.length} resource(s)?`,
       });
       if (isCancel(ok) || !ok) {
         await store.dispose();
@@ -74,19 +75,13 @@ export default new Command("destroy")
       }
     }
 
-    const s = spinner();
+    const tree = createTreeRenderer({ entries });
+    tree.start();
 
     try {
-      await destroy(current, ctx, {
-        onEvent(event: ApplyEvent) {
-          if (event.status === "pending") {
-            s.start(`${event.action} ${event.urn}`);
-          } else {
-            s.stop(`${event.action} ${event.urn}`);
-          }
-        },
-      });
+      await destroy(current, ctx, { onEvent: tree.onEvent });
     } finally {
+      tree.stop();
       await store.dispose();
     }
   });

@@ -12,16 +12,31 @@ import {
   inspectContainer,
   normalizeDockerContainer,
 } from "../client/inspect.ts";
-import { ensureNetwork } from "../client/network.ts";
 import type { DockerContext } from "../context.ts";
+
+async function resolveImage(
+  input: ServiceInput,
+  ctx: DockerContext,
+): Promise<string> {
+  if (!input.image) {
+    throw new Error(
+      `Service "${input.name}" requires an image`,
+    );
+  }
+  // Check if image exists locally (e.g. build-produced); pull only if not found
+  const inspectRes = await ctx.client.get(
+    `/images/${encodeURIComponent(input.image)}/json`,
+  );
+  if (inspectRes.status !== 200) {
+    await pullImage(ctx.client, input.image);
+  }
+  return input.image;
+}
 
 export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   async create({ input, ctx }) {
-    await ensureNetwork(ctx.client, ctx.networkName);
-
     const name = containerName(ctx.project, ctx.stage, input.name);
-    const image = input.image ?? "node:lts-slim";
-    await pullImage(ctx.client, image);
+    const image = await resolveImage(input, ctx);
     const config = buildContainerConfig(input, name, image, ctx);
     const containerId = await createContainer(ctx.client, name, config);
 
@@ -50,11 +65,8 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   },
 
   async update({ input, ctx }) {
-    await ensureNetwork(ctx.client, ctx.networkName);
-
     const name = containerName(ctx.project, ctx.stage, input.name);
-    const image = input.image ?? "node:lts-slim";
-    await pullImage(ctx.client, image);
+    const image = await resolveImage(input, ctx);
     const config = buildContainerConfig(input, name, image, ctx);
     const containerId = await recreateContainer(ctx.client, name, config);
 
@@ -69,9 +81,5 @@ export const serviceHandlers: Handlers<ServiceInput, DockerContext> = {
   async delete({ input, ctx }) {
     const name = containerName(ctx.project, ctx.stage, input.name);
     await removeContainer(ctx.client, name);
-  },
-
-  async diff() {
-    return { action: "recreate" };
   },
 };

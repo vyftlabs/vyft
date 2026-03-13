@@ -38,25 +38,43 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+/**
+ * Import user config and collect registered resources.
+ *
+ * The caller must call `registry.begin()` before and `registry.collect()`
+ * after if it needs to control the registry session (e.g. for two-phase
+ * deploy with init). For convenience, this function manages the registry
+ * session internally by default.
+ */
 export async function loadConfig(
   cwd: string,
   name?: string,
+  opts?: { noCache?: boolean; manualRegistry?: boolean },
 ): Promise<LoadedConfig> {
-  const jiti = createJiti(cwd);
+  const jiti = createJiti(cwd, {
+    moduleCache: opts?.noCache ? false : true,
+  });
+  const manual = opts?.manualRegistry === true;
 
   for (const file of CONFIG_FILES) {
     const filePath = path.join(cwd, file);
     if (!(await fileExists(filePath))) continue;
 
-    registry.begin();
+    if (!manual) registry.begin();
     await jiti.import(filePath);
+    if (manual) {
+      return { entries: [], providers: {} };
+    }
     const entries = registry.collect();
     return { entries, providers: collectProviders(entries) };
   }
 
   if (name) {
-    registry.begin();
+    if (!manual) registry.begin();
     service(name, {});
+    if (manual) {
+      return { entries: [], providers: {} };
+    }
     const entries = registry.collect();
     return { entries, providers: collectProviders(entries) };
   }

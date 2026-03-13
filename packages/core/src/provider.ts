@@ -11,6 +11,7 @@ export interface ProviderConfig<TCtx> {
   platform?: PlatformResources<TCtx>;
   // biome-ignore lint/suspicious/noExplicitAny: resources have varying input types
   resources?: Record<string, ResourceDefinition<any, any, TCtx>>;
+  init?: () => void;
 }
 
 export interface Provider<TCtx> {

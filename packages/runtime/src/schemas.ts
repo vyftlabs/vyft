@@ -10,14 +10,14 @@ export interface ServiceInput {
   mounts?: Array<{ source: string; target: string }> | undefined;
   health?:
     | {
-        path: string;
+        path?: string | undefined;
+        command?: string | undefined;
         interval?: string | undefined;
         timeout?: string | undefined;
         retries?: number | undefined;
       }
     | undefined;
   restart: "always" | "on-failure" | "unless-stopped" | "no";
-  expose?: boolean | undefined;
 }
 
 export interface VolumeInput {
@@ -35,6 +35,13 @@ export interface JobInput {
   mounts?: Array<{ source: string; target: string }> | undefined;
 }
 
+export interface BuildInput {
+  name: string;
+  path: string;
+  cwd?: string | undefined;
+  start?: string | undefined;
+}
+
 export interface CronJobInput {
   name: string;
   schedule: string;
@@ -46,7 +53,8 @@ export interface CronJobInput {
   mounts?: Array<{ source: string; target: string }> | undefined;
   health?:
     | {
-        path: string;
+        path?: string | undefined;
+        command?: string | undefined;
         interval?: string | undefined;
         timeout?: string | undefined;
         retries?: number | undefined;

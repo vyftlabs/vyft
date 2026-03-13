@@ -6,7 +6,10 @@ import deploy from "./commands/deploy.ts";
 import destroy from "./commands/destroy.ts";
 import diff from "./commands/diff.ts";
 import init from "./commands/init.ts";
-import local from "./commands/local/index.ts";
+import dev from "./commands/local/dev.ts";
+import down from "./commands/local/down.ts";
+import reset from "./commands/local/reset.ts";
+import up from "./commands/local/up.ts";
 import refresh from "./commands/refresh.ts";
 
 const pkg = JSON.parse(
@@ -25,7 +28,10 @@ program.addCommand(deploy);
 program.addCommand(destroy);
 program.addCommand(refresh);
 program.addCommand(diff);
-program.addCommand(local);
+program.addCommand(dev);
+program.addCommand(up);
+program.addCommand(down);
+program.addCommand(reset);
 program.addCommand(context);
 
 program.parse();

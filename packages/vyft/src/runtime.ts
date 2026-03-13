@@ -8,7 +8,7 @@ import type { State } from "@vyft/engine";
 import { LocalBackend, Store } from "@vyft/store";
 import { platforms, runtimes } from "./providers.ts";
 
-const VYFT_DIR = ".vyft";
+const VYFT_HOME = path.join(os.homedir(), ".vyft");
 
 export interface CommandOpts {
   stage?: string;
@@ -16,20 +16,24 @@ export interface CommandOpts {
 }
 
 export function resolveStateDir(
-  cwd: string,
+  _cwd: string,
   context: string,
   project: string,
   stage = "production",
 ): string {
-  return path.join(cwd, VYFT_DIR, "context", context, project, stage);
+  return path.join(VYFT_HOME, "context", context, "project", project, "stage", stage);
 }
 
-export function resolveLocalStateDir(cwd: string, project: string): string {
-  return path.join(cwd, VYFT_DIR, "local", project);
+export function resolveRuntimeStateDir(context: string): string {
+  return path.join(VYFT_HOME, "context", context, "runtime");
+}
+
+export function resolveLocalStateDir(_cwd: string, project: string): string {
+  return path.join(VYFT_HOME, "local", project);
 }
 
 function passphraseConfigPath(project: string): string {
-  return path.join(os.homedir(), ".config", "vyft", project, "passphrase");
+  return path.join(VYFT_HOME, "config", project, "passphrase");
 }
 
 async function readPersistedPassphrase(

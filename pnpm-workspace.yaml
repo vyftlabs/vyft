@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - demo
   - examples/*
   - packages/*
   - "!**/templates/**"

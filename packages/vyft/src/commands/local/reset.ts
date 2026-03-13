@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
-import { confirm, isCancel, spinner } from "@clack/prompts";
-import { type ApplyEvent, destroy, reconcile } from "@vyft/core";
+import { confirm, isCancel } from "@clack/prompts";
+import { destroy, reconcile } from "@vyft/core";
 import docker from "@vyft/docker";
 import { RUNTIME_PROVIDER_NAME } from "@vyft/runtime";
 import { Command } from "commander";
-import { resolveName } from "../../config.ts";
+import { loadConfig, resolveName } from "../../config.ts";
 import {
   buildContext,
   buildCurrentState,
@@ -14,6 +14,7 @@ import {
   resolveLocalStateDir,
   resolvePassphrase,
 } from "../../runtime.ts";
+import { createTreeRenderer } from "../../tree.ts";
 
 export default new Command("reset")
   .description("Reset local environment")
@@ -35,7 +36,9 @@ export default new Command("reset")
       if (isCancel(ok) || !ok) process.exit(0);
     }
 
+    const { providers: configProviders } = await loadConfig(cwd, project);
     const providers = {
+      ...configProviders,
       [RUNTIME_PROVIDER_NAME]: docker({ project, stage: "local" }),
     };
 
@@ -47,20 +50,15 @@ export default new Command("reset")
       const ctx = buildContext(store, cipher, providers, stateDir);
       await reconcile(ctx);
       const current = buildCurrentState(store);
+      const entries = Object.values(current.entries);
 
-      if (Object.keys(current.entries).length > 0) {
-        const s = spinner();
+      if (entries.length > 0) {
+        const tree = createTreeRenderer({ entries });
+        tree.start();
         try {
-          await destroy(current, ctx, {
-            onEvent(event: ApplyEvent) {
-              if (event.status === "pending") {
-                s.start(`${event.action} ${event.urn}`);
-              } else {
-                s.stop(`${event.action} ${event.urn}`);
-              }
-            },
-          });
+          await destroy(current, ctx, { onEvent: tree.onEvent });
         } finally {
+          tree.stop();
           await store.dispose();
         }
       } else {
