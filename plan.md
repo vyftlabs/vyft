@@ -154,9 +154,6 @@ For managed platforms (Hetzner, AWS), the host comes from the platform init serv
 
 ```
 ~/.vyft/
-├── config/
-│   └── {project}/
-│       └── passphrase         # Encryption key for state (existing)
 ├── context/
 │   └── {context}/
 │       ├── platform/          # Platform init resources (servers, networks)
