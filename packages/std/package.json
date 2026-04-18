@@ -27,8 +27,8 @@
   "dependencies": {
     "@vyft/core": "workspace:*",
     "@vyft/provider": "workspace:*",
-    "handlebars": "^4.7.8",
-    "tar": "^7.5.11",
-    "tinyglobby": "^0.2.15"
+    "handlebars": "^4.7.9",
+    "tar": "^7.5.13",
+    "tinyglobby": "^0.2.16"
   }
 }
