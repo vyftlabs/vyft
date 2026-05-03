@@ -6,6 +6,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { BoxIcon } from "lucide-react";
+import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
 const imageSlugMap: Record<string, string> = {
@@ -225,9 +226,9 @@ export function ProjectCard({
   );
   if (href) {
     return (
-      <a href={href} className={shellClass}>
+      <Link to={href} className={shellClass}>
         {inner}
-      </a>
+      </Link>
     );
   }
   return (
