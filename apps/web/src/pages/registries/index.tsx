@@ -32,11 +32,13 @@ import {
   ListItem,
   ListTitle,
 } from "@/components/ui/list";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import * as api from "@/lib/api";
 import { registryPresets } from "@/lib/registry-presets";
 
 export default function GlobalRegistries() {
-  const { data: registryList = [] } = useQuery(api.registries.list);
+  const { data: registryList, isLoading } = useQuery(api.registries.list);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -48,13 +50,23 @@ export default function GlobalRegistries() {
             Container registries available to all projects.
           </p>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() => setDialogOpen(true)}
+          disabled={isLoading}
+        >
           <PlusIcon />
           Add registry
         </Button>
       </div>
 
-      {registryList.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[62px] w-full rounded-none" />
+          ))}
+        </div>
+      ) : !registryList || registryList.length === 0 ? (
         <ListEmpty>
           No registries configured. Add one to pull private container images.
         </ListEmpty>

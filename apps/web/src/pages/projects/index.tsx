@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { FolderIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 import { ProjectCard } from "@/components/project/card";
 import { CreateProjectDialog } from "@/components/project/create";
 import { Button } from "@/components/ui/button";
@@ -32,9 +31,12 @@ export default function Projects() {
       {projectList && projectList.length > 0 ? (
         <div className="grid grid-cols-2 gap-4">
           {projectList.map((project) => (
-            <Link key={project.id} to={`/projects/${project.slug}`}>
-              <ProjectCard name={project.name} services={[]} />
-            </Link>
+            <ProjectCard
+              key={project.id}
+              name={project.name}
+              services={[]}
+              href={`/projects/${project.slug}`}
+            />
           ))}
         </div>
       ) : (

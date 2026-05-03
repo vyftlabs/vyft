@@ -169,7 +169,7 @@ export function RoutesForm({
                 </Field>
 
                 <div className="flex items-end gap-3">
-                  <Field className="!flex-1 !w-auto min-w-0">
+                  <Field className="!flex-1 !w-auto min-w-0 !mb-0">
                     <FieldLabel>Path</FieldLabel>
                     <Input
                       value={form.path}

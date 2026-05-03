@@ -35,7 +35,7 @@ export function GeneralForm({
         />
       )}
 
-      <div className={showPort ? "flex items-end gap-3" : ""}>
+      <div className={showPort ? "flex items-end gap-3 mb-4" : ""}>
         <Controller
           name="image"
           control={control}
@@ -43,7 +43,7 @@ export function GeneralForm({
           render={({ field, fieldState }) => (
             <Field
               data-invalid={fieldState.invalid || undefined}
-              className="!flex-1 !w-auto min-w-0"
+              className="!flex-1 !w-auto min-w-0 !mb-0"
             >
               <FieldLabel htmlFor={field.name}>Image</FieldLabel>
               <Input

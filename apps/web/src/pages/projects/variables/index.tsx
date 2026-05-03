@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AddVariableDialog } from "@/components/variable/add";
 import { Variables } from "@/components/service/form/variables";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 
 export default function SharedVariables() {
@@ -19,10 +20,16 @@ export default function SharedVariables() {
 
   const projectId = projectData?.id;
 
-  const { data: variables = [], refetch } = useQuery({
+  const {
+    data: variables = [],
+    refetch,
+    isLoading: variablesLoading,
+  } = useQuery({
     ...api.variables.list(projectId ?? ""),
     enabled: !!projectId,
   });
+
+  const isLoading = !projectId || variablesLoading;
 
   const createVariable = useMutation(api.variables.create);
 
@@ -46,30 +53,38 @@ export default function SharedVariables() {
         <Button
           size="sm"
           onClick={() => setDialogOpen(true)}
-          disabled={!projectId}
+          disabled={isLoading}
         >
           <PlusIcon />
           Add variable
         </Button>
       </div>
 
-      <Variables
-        variables={mapped}
-        onDelete={(key) => {
-          const v = variables.find((v) => v.key === key);
-          if (v && projectId) {
-            deleteVariable.mutate(
-              { projectId, id: v.id },
-              {
-                onSuccess: () => refetch(),
-                onError: (err: Error) => toast.error(err.message),
-              },
-            );
-          }
-        }}
-      >
-        <Variables.List />
-      </Variables>
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[44px] w-full rounded-none" />
+          ))}
+        </div>
+      ) : (
+        <Variables
+          variables={mapped}
+          onDelete={(key) => {
+            const v = variables.find((v) => v.key === key);
+            if (v && projectId) {
+              deleteVariable.mutate(
+                { projectId, id: v.id },
+                {
+                  onSuccess: () => refetch(),
+                  onError: (err: Error) => toast.error(err.message),
+                },
+              );
+            }
+          }}
+        >
+          <Variables.List />
+        </Variables>
+      )}
       <AddVariableDialog
         project={slug ?? ""}
         open={dialogOpen}
@@ -98,3 +113,4 @@ export default function SharedVariables() {
     </div>
   );
 }
+

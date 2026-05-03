@@ -77,7 +77,8 @@ function Field({
       data-orientation={orientation}
       className={cn(
         fieldVariants({ orientation }),
-        "border-0 p-0 m-0 min-w-0",
+        "border-0 p-0 mx-0 mt-0 min-w-0",
+        "data-[orientation=vertical]:not-last:mb-4 data-[orientation=horizontal]:mb-0",
         className,
       )}
       {...props}
