@@ -4,7 +4,6 @@ Open source platform for deploying apps. Connect a repo, pick what you want to r
 
 > Early development. Things will change.
 
-[![npm version](https://img.shields.io/npm/v/vyft)](https://www.npmjs.com/package/vyft)
 [![CI](https://github.com/vyftlabs/vyft/actions/workflows/ci.yml/badge.svg)](https://github.com/vyftlabs/vyft/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/vyftlabs/vyft)](LICENSE)
 
