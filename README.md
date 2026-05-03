@@ -17,13 +17,16 @@ Open source platform for deploying apps. Connect a repo, pick what you want to r
 
 ## Getting started
 
-Hosted:
+Hosted at [vyft.dev](https://vyft.dev).
 
-1. Sign up at [vyft.dev](https://vyft.dev)
-2. Connect your GitHub repo
-3. Deploy
+Self-host on Kubernetes with Helm:
 
-Self-hosted: see [vyft.dev/docs/self-host](https://vyft.dev/docs/self-host).
+```bash
+helm repo add vyft https://charts.vyft.dev
+helm install vyft vyft/vyft -n vyft --create-namespace
+```
+
+See [vyft.dev/docs/self-host](https://vyft.dev/docs/self-host) for config.
 
 ## Docs
 
