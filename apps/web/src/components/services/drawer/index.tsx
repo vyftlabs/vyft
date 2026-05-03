@@ -67,7 +67,6 @@ export interface OverviewProps {
   latency?: LatencyChartData;
   timeline?: TimelineEntry[];
   logs?: LogLine[];
-  onViewAll?: (view: "events" | "logs" | "metrics") => void;
 }
 
 export function Overview({
@@ -75,7 +74,6 @@ export function Overview({
   latency,
   timeline = [],
   logs,
-  onViewAll,
 }: OverviewProps) {
   const showTimeline = timeline !== undefined;
   const showLogs = logs !== undefined;
@@ -83,21 +81,12 @@ export function Overview({
     <div className="flex flex-col gap-5 h-full">
       {(sparklines.length > 0 || latency) && (
         <div className="space-y-2 shrink-0">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium">Metrics</p>
-            <button
-              type="button"
-              onClick={() => onViewAll?.("metrics")}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              View all
-            </button>
-          </div>
+          <p className="text-xs font-medium">Metrics</p>
           <Suspense fallback={null}>
             {((sparklines[0]?.length ?? 0) > 0 || latency) && (
               <div className="grid grid-cols-3 gap-2">
                 {sparklines[0]?.map((s) => (
-                  <Sparkline key={s.dataKey} {...s} />
+                  <Sparkline key={s.title} {...s} />
                 ))}
                 {latency && <LatencySparkline {...latency} />}
               </div>
@@ -110,7 +99,7 @@ export function Overview({
                 )}
               >
                 {sparklines[1].map((s) => (
-                  <Sparkline key={s.dataKey} {...s} />
+                  <Sparkline key={s.title} {...s} />
                 ))}
               </div>
             )}
@@ -127,15 +116,8 @@ export function Overview({
         >
           {showTimeline && (
             <div className="min-h-0 flex flex-col">
-              <div className="flex items-center justify-between mb-2 shrink-0">
+              <div className="mb-2 shrink-0">
                 <p className="text-xs font-medium">Events</p>
-                <button
-                  type="button"
-                  onClick={() => onViewAll?.("events")}
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all
-                </button>
               </div>
               <div className="flex-1 min-h-0 relative">
                 {timeline.length > 0 ? (
@@ -155,15 +137,8 @@ export function Overview({
           )}
           {showLogs && (
             <div className="min-h-0 flex flex-col">
-              <div className="flex items-center justify-between mb-2 shrink-0">
+              <div className="mb-2 shrink-0">
                 <p className="text-xs font-medium">Logs</p>
-                <button
-                  type="button"
-                  onClick={() => onViewAll?.("logs")}
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all
-                </button>
               </div>
               <div className="flex-1 min-h-0 relative">
                 {logs && logs.length > 0 ? (

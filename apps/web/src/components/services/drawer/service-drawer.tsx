@@ -7,7 +7,6 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
-import { useNavigate } from "react-router";
 
 type ResourceData = Resource;
 
@@ -57,12 +56,10 @@ import type { TimelineEntry } from "./timeline";
 function OverviewTab({
   resourceId,
   projectId,
-  onViewAll,
 }: {
   resourceId: string;
   projectId: string;
   project: string;
-  onViewAll?: (view: "events" | "logs" | "metrics") => void;
 }) {
   const { data: events = [] } = useQuery({
     ...api.observability.events(projectId, resourceId),
@@ -137,7 +134,6 @@ function OverviewTab({
       }}
       timeline={timeline}
       logs={logs}
-      onViewAll={onViewAll}
     />
   );
 }
@@ -1093,7 +1089,6 @@ function useServiceDrawerTabs(
   project: string,
   projectId: string,
   createProps?: { onCreated: (id: string) => void },
-  onViewAll?: (view: "events" | "logs" | "metrics") => void,
   onClose?: () => void,
 ): { tabs: DrawerTab[]; defaultTab: string } {
   const isCreating = !resource;
@@ -1128,7 +1123,6 @@ function useServiceDrawerTabs(
             resourceId={resource.id}
             projectId={projectId}
             project={project}
-            onViewAll={onViewAll}
           />
         ),
       },
@@ -1180,7 +1174,6 @@ export function ServiceDrawer({
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
-  const navigate = useNavigate();
   const isOpen = !!resourceId || !!creating;
   const isCreating = !resourceId && !!creating;
 
@@ -1188,20 +1181,6 @@ export function ServiceDrawer({
     ...api.resources.byId(projectId, resourceId ?? ""),
     enabled: !!resourceId,
   });
-
-  const handleViewAll = useCallback(
-    (view: "events" | "logs" | "metrics") => {
-      if (!resource) return;
-      const back = encodeURIComponent(
-        window.location.pathname + window.location.search,
-      );
-      const params = `?service=${resource.id}&back=${back}`;
-      const base = `/projects/${project}`;
-      if (view === "metrics" || view === "logs")
-        navigate(`${base}/observability${params}`);
-    },
-    [resource, project, navigate],
-  );
 
   const drawerName = isCreating
     ? "New service"
@@ -1211,7 +1190,6 @@ export function ServiceDrawer({
     project,
     projectId,
     isCreating ? { onCreated: (id: string) => onCreated?.(id) } : undefined,
-    handleViewAll,
     onClose,
   );
 
