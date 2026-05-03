@@ -61,7 +61,7 @@ export default function GlobalRegistries() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="space-y-px">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-[62px] w-full rounded-none" />
           ))}
