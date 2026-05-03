@@ -32,8 +32,8 @@ async function getProject(id: string): Promise<Project> {
 }
 
 async function getProjectBySlug(slug: string): Promise<Project> {
-  await delay();
-  const p = store.read("projects").find((p) => p.slug === slug);
+  const list = await listProjects();
+  const p = list.find((p) => p.slug === slug);
   if (!p) throw notFound("Project not found");
   return p;
 }
