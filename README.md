@@ -17,8 +17,6 @@ Open source platform for deploying apps. Connect a repo, pick what you want to r
 
 ## Getting started
 
-Hosted at [vyft.dev](https://vyft.dev).
-
 Self-host on Kubernetes with Helm:
 
 ```bash
