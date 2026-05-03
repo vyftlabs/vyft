@@ -6,6 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "nx run-many -t dev --outputStyle stream",
     "build": "nx run-many -t build --outputStyle stream",
     "test": "nx run-many -t test --outputStyle stream",
     "lint": "biome check . --fix"
