@@ -7,14 +7,14 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o /out/backend ./cmd/backend
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend ./cmd/backend
 
-FROM alpine:latest AS runtime
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
-WORKDIR /app
-
-COPY --from=build /out/backend /app/backend
+COPY --from=build /out/backend /backend
 
 EXPOSE 8080
 
-CMD ["/app/backend"]
+USER nonroot:nonroot
+
+CMD ["/backend"]
