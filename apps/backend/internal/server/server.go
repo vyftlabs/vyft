@@ -12,7 +12,7 @@ func Run(ctx context.Context) error {
 	config := LoadConfig()
 	server := New(config)
 
-	slog.Info("backend listening", "addr", config.Addr)
+	slog.Info("backend listening", "addr", config.Addr, "basic_auth", config.BasicAuthPass != "")
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- server.ListenAndServe()

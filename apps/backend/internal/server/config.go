@@ -17,7 +17,7 @@ func LoadConfig() Config {
 		Addr:            env("ADDR", ":8080"),
 		ShutdownTimeout: 10 * time.Second,
 		BasicAuthUser:   env("BASIC_AUTH_USER", "admin"),
-		BasicAuthPass:   env("BASIC_AUTH_PASS", ""),
+		BasicAuthPass:   env("BASIC_AUTH_PASS", "admin"),
 	}
 }
 
