@@ -6,6 +6,15 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/vyftlabs/vyft/apps/backend/internal/deployments"
+	"github.com/vyftlabs/vyft/apps/backend/internal/observability"
+	"github.com/vyftlabs/vyft/apps/backend/internal/projects"
+	"github.com/vyftlabs/vyft/apps/backend/internal/registries"
+	"github.com/vyftlabs/vyft/apps/backend/internal/resources"
+	"github.com/vyftlabs/vyft/apps/backend/internal/routes"
+	"github.com/vyftlabs/vyft/apps/backend/internal/variables"
+	"github.com/vyftlabs/vyft/apps/backend/internal/volumes"
 )
 
 func Run(ctx context.Context) error {
@@ -46,6 +55,18 @@ func Run(ctx context.Context) error {
 func New(config Config) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealthz)
+
+	api := http.NewServeMux()
+	projects.Register(api)
+	resources.Register(api)
+	variables.Register(api)
+	routes.Register(api)
+	volumes.Register(api)
+	registries.Register(api)
+	deployments.Register(api)
+	observability.Register(api)
+	mux.Handle("/api/", http.StripPrefix("/api", api))
+
 	mux.Handle("/", newStaticHandler())
 
 	handler := basicAuth(config.BasicAuthUser, config.BasicAuthPass, mux)
