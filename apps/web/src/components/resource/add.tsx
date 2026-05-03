@@ -1,18 +1,10 @@
-import { ContainerIcon } from "lucide-react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { componentDefinitions } from "@/lib/component-definitions";
+import {
+  ResourcePickerCommand,
+  type ResourceSelectHandler,
+} from "./picker";
 
-export interface ServiceSource {
-  type: "image";
-}
+export type { ServiceSource } from "./picker";
 
 export function AddResourceDialog({
   open,
@@ -23,7 +15,7 @@ export function AddResourceDialog({
 }: {
   open: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSelect: (type: string, source?: ServiceSource) => void;
+  onSelect: ResourceSelectHandler;
   dismissible?: boolean;
   container?: HTMLElement | null;
 }) {
@@ -38,45 +30,7 @@ export function AddResourceDialog({
         showCloseButton={dismissible}
         container={container}
       >
-        <Command className="rounded-none border-0 flex flex-col flex-1 min-h-0">
-          <CommandInput placeholder="Search resources..." />
-          <CommandList className="h-80 max-h-none pt-1">
-            <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup heading="Sources">
-              <CommandItem
-                onSelect={() => onSelect("service", { type: "image" })}
-                data-testid="service-source-image-option"
-              >
-                <ContainerIcon className="text-muted-foreground" />
-                Container Image
-              </CommandItem>
-            </CommandGroup>
-            {[...new Set(componentDefinitions.map((d) => d.category))].map(
-              (category) => (
-                <CommandGroup key={category} heading={category}>
-                  {componentDefinitions
-                    .filter((d) => d.category === category)
-                    .map((def) => {
-                      const Icon = def.icon;
-                      return (
-                        <CommandItem
-                          key={def.type}
-                          disabled
-                          className="opacity-50"
-                        >
-                          <Icon className="text-muted-foreground" />
-                          <span className="flex-1">{def.name}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            Coming soon
-                          </span>
-                        </CommandItem>
-                      );
-                    })}
-                </CommandGroup>
-              ),
-            )}
-          </CommandList>
-        </Command>
+        <ResourcePickerCommand onSelect={onSelect} />
       </DialogContent>
     </Dialog>
   );

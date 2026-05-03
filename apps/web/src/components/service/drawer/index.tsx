@@ -265,7 +265,10 @@ function SettingsTab({
   resource?: ResourceData;
   project: string;
   projectId: string;
-  createProps?: { onCreated: (id: string) => void };
+  createProps?: {
+    onCreated: (id: string) => void;
+    position?: { x: number; y: number };
+  };
   onClose?: () => void;
 }) {
   const isCreating = !resource;
@@ -382,8 +385,8 @@ function SettingsTab({
       const body: ResourceCreate = {
         type: "service",
         name: data.name.trim(),
-        positionX: 0,
-        positionY: 0,
+        positionX: createProps.position?.x ?? 0,
+        positionY: createProps.position?.y ?? 0,
         source,
         port: data.port ? parseInt(data.port, 10) : undefined,
         command: data.command.trim() || undefined,
@@ -1095,7 +1098,10 @@ function useServiceDrawerTabs(
   resource: ResourceData | undefined,
   project: string,
   projectId: string,
-  createProps?: { onCreated: (id: string) => void },
+  createProps?: {
+    onCreated: (id: string) => void;
+    position?: { x: number; y: number };
+  },
   onClose?: () => void,
 ): { tabs: DrawerTab[]; defaultTab: string } {
   const isCreating = !resource;
@@ -1163,6 +1169,7 @@ function useServiceDrawerTabs(
 export function ServiceDrawer({
   resourceId,
   creating,
+  createPosition,
   project,
   projectId,
   skipEntryAnimation,
@@ -1173,6 +1180,7 @@ export function ServiceDrawer({
 }: {
   resourceId: string | null;
   creating?: boolean;
+  createPosition?: { x: number; y: number };
   project: string;
   projectId: string;
   skipEntryAnimation?: boolean;
@@ -1196,7 +1204,12 @@ export function ServiceDrawer({
     resource ?? undefined,
     project,
     projectId,
-    isCreating ? { onCreated: (id: string) => onCreated?.(id) } : undefined,
+    isCreating
+      ? {
+          onCreated: (id: string) => onCreated?.(id),
+          position: createPosition,
+        }
+      : undefined,
     onClose,
   );
 

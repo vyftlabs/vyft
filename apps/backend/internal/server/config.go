@@ -8,12 +8,16 @@ import (
 type Config struct {
 	Addr            string
 	ShutdownTimeout time.Duration
+	BasicAuthUser   string
+	BasicAuthPass   string
 }
 
 func LoadConfig() Config {
 	return Config{
 		Addr:            env("ADDR", ":8080"),
 		ShutdownTimeout: 10 * time.Second,
+		BasicAuthUser:   env("BASIC_AUTH_USER", "admin"),
+		BasicAuthPass:   env("BASIC_AUTH_PASS", ""),
 	}
 }
 

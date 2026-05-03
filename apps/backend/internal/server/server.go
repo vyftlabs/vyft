@@ -48,9 +48,11 @@ func New(config Config) *http.Server {
 	mux.HandleFunc("/healthz", handleHealthz)
 	mux.Handle("/", newStaticHandler())
 
+	handler := basicAuth(config.BasicAuthUser, config.BasicAuthPass, mux)
+
 	return &http.Server{
 		Addr:              config.Addr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }

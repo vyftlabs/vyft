@@ -28,6 +28,16 @@ const AddResourceDialog = lazy(() =>
     default: m.AddResourceDialog,
   })),
 );
+const ResourcePickerPopover = lazy(() =>
+  import("@/components/resource/picker").then((m) => ({
+    default: m.ResourcePickerPopover,
+  })),
+);
+const NodeContextMenu = lazy(() =>
+  import("@/components/service/node-menu").then((m) => ({
+    default: m.NodeContextMenu,
+  })),
+);
 
 const nodeTypes = { service: ServiceNode };
 
@@ -75,6 +85,19 @@ function ServicesCanvas() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [creatingService, setCreatingService] = useState(false);
   const [drawerKey, setDrawerKey] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [createPosition, setCreatePosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [nodeMenu, setNodeMenu] = useState<{
+    x: number;
+    y: number;
+    nodeId: string;
+  } | null>(null);
 
   const queryClient = useQueryClient();
   const { data: projectData } = useQuery({
@@ -125,6 +148,7 @@ function ServicesCanvas() {
   }, [references]);
 
   const updatePosition = useMutation(api.resources.updatePosition);
+  const removeResource = useMutation(api.resources.remove);
 
   const baseNodes = useMemo(() => {
     return resources.map((r) => {
@@ -157,7 +181,7 @@ function ServicesCanvas() {
     [baseNodes, nodePositions],
   );
 
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
 
   const onAutoLayout = useCallback(async () => {
     const laid = await autoLayout(nodes, edges);
@@ -215,6 +239,16 @@ function ServicesCanvas() {
           setSelectedId(node.id);
           setDrawerKey((k) => k + 1);
         }}
+        onPaneContextMenu={(e) => {
+          if (isEmpty) return;
+          e.preventDefault();
+          setContextMenu({ x: e.clientX, y: e.clientY });
+        }}
+        onNodeContextMenu={(e, node) => {
+          if (isEmpty) return;
+          e.preventDefault();
+          setNodeMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
+        }}
         fitView
         fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
         zoomOnScroll
@@ -259,15 +293,18 @@ function ServicesCanvas() {
               key={`${drawerKey}-${selectedId ?? "create"}`}
               resourceId={selectedId}
               creating={creatingService}
+              createPosition={createPosition ?? undefined}
               project={project ?? ""}
               projectId={projectId}
               onClose={() => {
                 setSelectedId(null);
                 setCreatingService(false);
+                setCreatePosition(null);
               }}
               onCreated={() => {
                 setCreatingService(false);
                 setSelectedId(null);
+                setCreatePosition(null);
               }}
             />
           </Suspense>
@@ -283,6 +320,50 @@ function ServicesCanvas() {
             container={container}
             onSelect={() => {
               setAddDialogOpen(false);
+              setSelectedId(null);
+              setCreatingService(true);
+              setDrawerKey((k) => k + 1);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {nodeMenu && (
+        <Suspense fallback={null}>
+          <NodeContextMenu
+            x={nodeMenu.x}
+            y={nodeMenu.y}
+            onClose={() => setNodeMenu(null)}
+            onOpen={() => {
+              setSelectedId(nodeMenu.nodeId);
+              setDrawerKey((k) => k + 1);
+              setNodeMenu(null);
+            }}
+            onDelete={() => {
+              removeResource.mutate({ projectId, id: nodeMenu.nodeId });
+              if (selectedId === nodeMenu.nodeId) setSelectedId(null);
+              setNodeMenu(null);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {contextMenu && (
+        <Suspense fallback={null}>
+          <ResourcePickerPopover
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onSelect={() => {
+              const flow = screenToFlowPosition({
+                x: contextMenu.x,
+                y: contextMenu.y,
+              });
+              setCreatePosition({
+                x: flow.x - NODE_WIDTH / 2,
+                y: flow.y - NODE_HEIGHT / 2,
+              });
+              setContextMenu(null);
               setSelectedId(null);
               setCreatingService(true);
               setDrawerKey((k) => k + 1);

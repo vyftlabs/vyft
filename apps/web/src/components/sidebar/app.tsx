@@ -2,14 +2,11 @@ import {
   BoxIcon,
   ContainerIcon,
   KeyRoundIcon,
-  LifeBuoyIcon,
-  SendIcon,
   SettingsIcon,
   WorkflowIcon,
 } from "lucide-react";
 import type * as React from "react";
 import { Link, useParams } from "react-router";
-import { NavSecondary } from "@/components/nav/secondary";
 import {
   Sidebar,
   SidebarContent,
@@ -19,19 +16,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-
-const navSecondary = [
-  {
-    title: "Support",
-    url: "#",
-    icon: <LifeBuoyIcon />,
-  },
-  {
-    title: "Feedback",
-    url: "#",
-    icon: <SendIcon />,
-  },
-];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { project } = useParams();
@@ -117,7 +101,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         )}
 
-        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
     </Sidebar>
   );
