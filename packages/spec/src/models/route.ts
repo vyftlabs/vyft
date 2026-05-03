@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BaseFields, Uuid } from "./common.ts";
+import { BaseFields } from "./common.ts";
+import { Port } from "./service.ts";
 
 export const PathType = z.enum(["prefix", "exact"]).meta({ id: "PathType" });
 
@@ -36,11 +37,11 @@ export const RouteConfig = z
   });
 
 export const Route = BaseFields.extend({
-  serviceId: Uuid,
+  serviceId: z.uuid(),
   domain: z.string().min(1).max(255),
   path: z.string().min(1).max(500).regex(/^\//),
   pathType: PathType.default("prefix"),
-  port: z.number().int().min(1).max(65535),
+  port: Port,
   tls: z.boolean().default(true),
   config: RouteConfig.optional(),
 }).meta({ id: "Route" });

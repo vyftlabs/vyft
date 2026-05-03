@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BaseFields, Uuid } from "./common.ts";
+import { BaseFields } from "./common.ts";
 
 export const VariableScope = z
   .enum(["shared", "resource"])
@@ -10,18 +10,18 @@ export const Variable = BaseFields.extend({
   value: z.string().nullable(),
   sensitive: z.boolean().default(false),
   scope: VariableScope,
-  projectId: Uuid,
-  resourceId: Uuid.nullable(),
-  sourceVariableId: Uuid.nullable(),
+  projectId: z.uuid(),
+  resourceId: z.uuid().nullable(),
+  sourceVariableId: z.uuid().nullable(),
   source: z
     .object({
-      id: Uuid,
+      id: z.uuid(),
       key: z.string(),
-      resource: z.object({ id: Uuid, name: z.string() }).nullable(),
+      resource: z.object({ id: z.uuid(), name: z.string() }).nullable(),
     })
     .nullable()
     .optional(),
-  usedBy: z.array(z.object({ id: Uuid, name: z.string() })).optional(),
+  usedBy: z.array(z.object({ id: z.uuid(), name: z.string() })).optional(),
 }).meta({ id: "Variable" });
 
 export const VariableCreate = Variable.pick({
@@ -50,14 +50,14 @@ export const VariableUpdate = Variable.pick({
 
 export const VariableReference = z
   .object({
-    sourceResourceId: Uuid,
-    targetResourceId: Uuid,
+    sourceResourceId: z.uuid(),
+    targetResourceId: z.uuid(),
   })
   .meta({ id: "VariableReference" });
 
 export const SuggestionShared = z
   .object({
-    id: Uuid,
+    id: z.uuid(),
     key: z.string(),
     secret: z.boolean(),
   })
@@ -65,7 +65,7 @@ export const SuggestionShared = z
 
 export const SuggestionService = z
   .object({
-    id: Uuid,
+    id: z.uuid(),
     key: z.string(),
     secret: z.boolean(),
     resourceName: z.string().optional(),

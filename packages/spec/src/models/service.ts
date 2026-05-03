@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BaseFields, Uuid } from "./common.ts";
+import { BaseFields } from "./common.ts";
 
 export const Source = z
   .object({
@@ -20,31 +20,29 @@ export const Compute = z
     description: "CPU values are millicores. Memory values are bytes.",
   });
 
+export const Port = z.number().int().min(1).max(65535);
+export const Replicas = z.number().int().min(0).max(100);
+export const Command = z.string().max(2000);
+
 export const HealthCheck = z
   .discriminatedUnion("type", [
     z.object({ type: z.literal("none") }),
     z.object({
       type: z.literal("http"),
       path: z.string().min(1),
-      port: z.number().int().min(1).max(65535).optional(),
+      port: Port.optional(),
     }),
-    z.object({
-      type: z.literal("tcp"),
-      port: z.number().int().min(1).max(65535),
-    }),
-    z.object({
-      type: z.literal("exec"),
-      command: z.string().min(1),
-    }),
+    z.object({ type: z.literal("tcp"), port: Port }),
+    z.object({ type: z.literal("exec"), command: z.string().min(1) }),
   ])
   .meta({ id: "HealthCheck" });
 
 export const App = BaseFields.extend({
-  serviceId: Uuid,
+  serviceId: z.uuid(),
   source: Source,
-  port: z.number().int().min(1).max(65535).nullable(),
-  command: z.string().nullable(),
-  replicas: z.number().int().min(0).max(100),
+  port: Port.nullable(),
+  command: Command.nullable(),
+  replicas: Replicas,
   compute: Compute,
   healthCheck: HealthCheck,
 }).meta({ id: "App" });
@@ -52,7 +50,7 @@ export const App = BaseFields.extend({
 export const ServiceType = z.enum(["app"]).meta({ id: "ServiceType" });
 
 export const Service = BaseFields.extend({
-  resourceId: Uuid,
+  resourceId: z.uuid(),
   type: ServiceType,
   app: App.nullable(),
 }).meta({ id: "Service" });

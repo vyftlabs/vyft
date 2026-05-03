@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { collectionErrors, itemErrors, Uuid } from "../models/common.ts";
+import { collectionErrors, itemErrors } from "../models/common.ts";
 import { Registry, RegistryCreate } from "../models/registry.ts";
 
 export const registryPaths: ZodOpenApiPathsObject = {
@@ -38,7 +38,7 @@ export const registryPaths: ZodOpenApiPathsObject = {
       operationId: "deleteRegistry",
       summary: "Delete registry",
       tags: ["Registries"],
-      requestParams: { path: z.object({ id: Uuid }) },
+      requestParams: { path: z.object({ id: z.uuid() }) },
       responses: {
         204: { description: "Deleted" },
         ...itemErrors,

@@ -5,7 +5,6 @@ import {
   itemErrors,
   ProjectAndIdScope,
   ProjectScope,
-  Uuid,
 } from "../models/common.ts";
 import {
   Variable,
@@ -23,7 +22,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
       tags: ["Variables"],
       requestParams: {
         path: ProjectScope,
-        query: z.object({ resourceId: Uuid.optional() }),
+        query: z.object({ resourceId: z.uuid().optional() }),
       },
       responses: {
         200: {
@@ -74,7 +73,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
       tags: ["Variables"],
       requestParams: {
         path: ProjectScope,
-        query: z.object({ excludeResourceId: Uuid.optional() }),
+        query: z.object({ excludeResourceId: z.uuid().optional() }),
       },
       responses: {
         200: {

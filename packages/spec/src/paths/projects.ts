@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { collectionErrors, itemErrors, Uuid } from "../models/common.ts";
+import { collectionErrors, itemErrors } from "../models/common.ts";
 import {
   Project,
   ProjectCreate,
@@ -8,7 +8,7 @@ import {
   ProjectUpdate,
 } from "../models/project.ts";
 
-const IdParam = z.object({ id: Uuid });
+const IdParam = z.object({ id: z.uuid() });
 
 export const projectPaths: ZodOpenApiPathsObject = {
   "/projects": {

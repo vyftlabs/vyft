@@ -1,14 +1,16 @@
 import { z } from "zod";
 
-export const Uuid = z
-  .uuid()
-  .meta({ id: "Uuid", example: "01950000-0000-7000-8000-000000000000" });
-
 export const BaseFields = z.object({
-  id: Uuid,
+  id: z.uuid(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+
+export const KubeName = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
 
 export const ErrorCode = z
   .enum([
@@ -30,34 +32,32 @@ export const ErrorBody = z
 
 export type ErrorBody = z.infer<typeof ErrorBody>;
 
-const errorContent = { "application/json": { schema: ErrorBody } };
-
-export const errorResponses = {
-  400: { description: "Bad request", content: errorContent },
-  401: { description: "Unauthorized", content: errorContent },
-  403: { description: "Forbidden", content: errorContent },
-  404: { description: "Not found", content: errorContent },
-  409: { description: "Conflict", content: errorContent },
-} as const;
-
-export const collectionErrors = {
-  400: errorResponses[400],
-  401: errorResponses[401],
-  403: errorResponses[403],
-  409: errorResponses[409],
-} as const;
+const err = (description: string) => ({
+  description,
+  content: { "application/json": { schema: ErrorBody } },
+});
 
 export const itemErrors = {
-  400: errorResponses[400],
-  401: errorResponses[401],
-  403: errorResponses[403],
-  404: errorResponses[404],
-  409: errorResponses[409],
+  400: err("Bad request"),
+  401: err("Unauthorized"),
+  403: err("Forbidden"),
+  404: err("Not found"),
+  409: err("Conflict"),
 } as const;
 
-export const ProjectScope = z.object({ projectId: Uuid });
-export const ProjectAndIdScope = z.object({ projectId: Uuid, id: Uuid });
-export const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid });
-export const ResourceScope = z.object({ projectId: Uuid, resourceId: Uuid });
+const { 404: _, ...rest } = itemErrors;
+export const collectionErrors = rest;
 
-export const ProjectIdParam = ProjectScope.meta({ id: "ProjectIdParam" });
+export const ProjectScope = z.object({ projectId: z.uuid() });
+export const ProjectAndIdScope = z.object({
+  projectId: z.uuid(),
+  id: z.uuid(),
+});
+export const ServiceScope = z.object({
+  projectId: z.uuid(),
+  serviceId: z.uuid(),
+});
+export const ResourceScope = z.object({
+  projectId: z.uuid(),
+  resourceId: z.uuid(),
+});
