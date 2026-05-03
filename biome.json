@@ -8,6 +8,7 @@
   "files": {
     "includes": [
       "**",
+      "!!.agents/settings.local.json",
       "!!**/dist",
       "!!.nx",
       "!!packages/hcloud/assets/openapi.json",
