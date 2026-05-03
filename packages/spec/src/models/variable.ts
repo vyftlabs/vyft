@@ -63,26 +63,20 @@ export const SuggestionShared = z
   })
   .meta({ id: "SuggestionShared" });
 
-export const SuggestionService = z
-  .object({
-    id: z.uuid(),
-    key: z.string(),
-    secret: z.boolean(),
-    resourceName: z.string().optional(),
-    resourceImage: z.string().optional(),
-  })
-  .meta({ id: "SuggestionService" });
+export const SuggestionService = SuggestionShared.extend({
+  resourceName: z.string().optional(),
+  resourceImage: z.string().optional(),
+}).meta({ id: "SuggestionService" });
 
-export const SuggestionBuiltin = z
-  .object({
-    id: z.string(),
-    key: z.string(),
-    token: z.string(),
-    secret: z.boolean(),
-    resourceName: z.string(),
-    resourceImage: z.string().optional(),
-  })
-  .meta({ id: "SuggestionBuiltin" });
+export const SuggestionBuiltin = SuggestionShared.extend({
+  id: z.string(),
+  token: z.string(),
+  resourceName: z.string(),
+  resourceImage: z.string().optional(),
+}).meta({
+  id: "SuggestionBuiltin",
+  description: "`id` is a synthetic identifier, not a UUID.",
+});
 
 export const VariableSuggestions = z
   .object({

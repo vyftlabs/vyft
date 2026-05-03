@@ -3,7 +3,7 @@ import { BaseFields } from "./common.ts";
 
 export const Registry = BaseFields.extend({
   name: z.string().min(1).max(100),
-  url: z.string().min(1).max(500),
+  url: z.url().max(500),
   username: z.string().min(1).max(255),
 }).meta({ id: "Registry" });
 

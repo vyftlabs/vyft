@@ -10,6 +10,7 @@ export const RouteConfig = z
       .object({
         scheme: z.enum(["http", "https"]),
         statusCode: z.number().int().min(300).max(399),
+        location: z.url().optional(),
       })
       .optional(),
     rewrite: z
@@ -23,9 +24,9 @@ export const RouteConfig = z
     retries: z.number().int().min(0).max(10).optional(),
     cors: z
       .object({
-        origins: z.string().min(1),
-        methods: z.string().min(1),
-        headers: z.string().optional(),
+        origins: z.array(z.string().min(1)).min(1),
+        methods: z.array(z.string().min(1)).min(1),
+        headers: z.array(z.string().min(1)).optional(),
         maxAge: z.number().int().min(0).optional(),
       })
       .optional(),
@@ -33,7 +34,7 @@ export const RouteConfig = z
   .meta({
     id: "RouteConfig",
     description:
-      "`timeout` is milliseconds. `cors.maxAge` is seconds (HTTP spec).",
+      "`redirect.location` omitted = scheme-only redirect (preserves path/host). `timeout` is milliseconds. `cors.maxAge` is seconds (HTTP spec).",
   });
 
 export const Route = BaseFields.extend({
