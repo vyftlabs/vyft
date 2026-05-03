@@ -22,7 +22,7 @@ pnpm install
 | `pnpm test:e2e` | Run Playwright (`nx run @vyft/e2e:e2e`) |
 | `pnpm lint` | Run Biome lint and format checks |
 
-Playwright uses `http://localhost:3000` as `baseURL` for `pnpm test:e2e`; run whatever serves that URL locally.
+`pnpm test:e2e` starts the web app on port 3000 via Playwright’s `webServer` (or reuses one already listening). `pnpm dev` for `web` also uses port 3000 (`vite.config.ts`).
 
 ## Code Style
 
