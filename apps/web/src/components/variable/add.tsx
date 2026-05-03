@@ -11,7 +11,7 @@ import {
   type SuggestionGroup,
   VariableForm,
   type VariableSuggestion,
-} from "@/components/variable-form";
+} from "@/components/variable/form";
 import * as api from "@/lib/api";
 
 export function AddVariableDialog({

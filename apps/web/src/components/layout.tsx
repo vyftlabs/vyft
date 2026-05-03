@@ -3,8 +3,8 @@ import { RocketIcon } from "lucide-react";
 import * as React from "react";
 import { Link, Outlet, useParams } from "react-router";
 import { toast } from "sonner";
-import { AppSidebar } from "@/components/app-sidebar";
-import { ProjectSwitcher } from "@/components/project-switcher";
+import { AppSidebar } from "@/components/sidebar/app";
+import { ProjectSwitcher } from "@/components/project/switcher";
 import { Button } from "@/components/ui/button";
 import {
   SidebarInset,

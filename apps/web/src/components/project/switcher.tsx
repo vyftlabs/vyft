@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, FolderIcon, Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { CreateProjectDialog } from "@/components/project/create";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

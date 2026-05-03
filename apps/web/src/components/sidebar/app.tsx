@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type * as React from "react";
 import { Link, useParams } from "react-router";
-import { NavSecondary } from "@/components/nav-secondary";
+import { NavSecondary } from "@/components/nav/secondary";
 import {
   Sidebar,
   SidebarContent,

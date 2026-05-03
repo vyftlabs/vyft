@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import Layout from "./components/layout";
-import PageContainer from "./components/page-container";
+import PageContainer from "./components/page/container";
 import Projects from "./pages/projects/index";
 import Services from "./pages/projects/services/index";
 import ProjectSettings from "./pages/projects/settings/index";

@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { type Control, useFieldArray } from "react-hook-form";
-import { AddVariableDialog } from "@/components/add-variable-dialog";
-import type { SuggestionGroup } from "@/components/variable-form";
+import { AddVariableDialog } from "@/components/variable/add";
+import type { SuggestionGroup } from "@/components/variable/form";
 import * as api from "@/lib/api";
-import type { ServiceFormValues } from "./types";
-import { Variables } from "./variables";
+import type { ServiceFormValues } from "../types";
+import { Variables } from ".";
 
 export function VariablesSection({
   control,

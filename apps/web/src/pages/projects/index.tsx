@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { FolderIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { ProjectCard } from "@/components/projects/card";
-import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { ProjectCard } from "@/components/project/card";
+import { CreateProjectDialog } from "@/components/project/create";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
 

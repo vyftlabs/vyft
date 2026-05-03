@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ServiceFormValues } from "./types";
+import type { ServiceFormValues } from "../types";
 
 export function VolumesFormSection({
   control,

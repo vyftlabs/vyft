@@ -14,17 +14,17 @@ import "@xyflow/react/dist/style.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, WandSparklesIcon } from "lucide-react";
 import { AnimatePresence } from "motion/react";
-import type { ServiceNodeData } from "@/components/services/node";
-import { ServiceNode } from "@/components/services/node";
+import type { ServiceNodeData } from "@/components/service/node";
+import { ServiceNode } from "@/components/service/node";
 import * as api from "@/lib/api";
 
 const ServiceDrawer = lazy(() =>
-  import("@/components/services/drawer/service-drawer").then((m) => ({
+  import("@/components/service/drawer").then((m) => ({
     default: m.ServiceDrawer,
   })),
 );
 const AddResourceDialog = lazy(() =>
-  import("@/components/add-resource-dialog").then((m) => ({
+  import("@/components/resource/add").then((m) => ({
     default: m.AddResourceDialog,
   })),
 );

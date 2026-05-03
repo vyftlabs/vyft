@@ -1,7 +1,7 @@
 import { CheckIcon, CopyIcon, DicesIcon, LockIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { ServiceIcon } from "@/components/services/node";
+import { ServiceIcon } from "@/components/service/node";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";

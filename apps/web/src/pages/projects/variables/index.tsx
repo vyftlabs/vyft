@@ -3,8 +3,8 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
-import { AddVariableDialog } from "@/components/add-variable-dialog";
-import { Variables } from "@/components/services/form/variables";
+import { AddVariableDialog } from "@/components/variable/add";
+import { Variables } from "@/components/service/form/variables";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
 

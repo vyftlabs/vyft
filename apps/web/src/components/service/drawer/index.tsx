@@ -12,7 +12,7 @@ type ResourceData = Resource;
 
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { AddVariableDialog } from "@/components/add-variable-dialog";
+import { AddVariableDialog } from "@/components/variable/add";
 import {
   GeneralForm,
   type GeneralFormValues,
@@ -25,7 +25,7 @@ import {
   Variables,
   VariablesSection,
   type VolumeFormEntry,
-} from "@/components/services/form";
+} from "@/components/service/form";
 import { Button } from "@/components/ui/button";
 import { DangerZone } from "@/components/ui/danger-zone";
 import {
@@ -50,7 +50,7 @@ import {
 import * as api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ServiceIcon } from "../node";
-import { type DrawerTab, Overview, ServiceDrawerShell } from ".";
+import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
 import type { TimelineEntry } from "./timeline";
 
 function OverviewTab({
@@ -987,8 +987,8 @@ function useVariableSuggestionGroups(
 
   if (!data) return [];
 
-  type Suggestion = import("@/components/variable-form").VariableSuggestion;
-  type Group = import("@/components/variable-form").SuggestionGroup;
+  type Suggestion = import("@/components/variable/form").VariableSuggestion;
+  type Group = import("@/components/variable/form").SuggestionGroup;
   const groups: Group[] = [];
 
   if (data.shared.length > 0) {

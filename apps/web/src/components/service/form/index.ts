@@ -18,5 +18,5 @@ export {
   defaultServiceFormValues,
 } from "./types";
 export { type VariableEntry, Variables } from "./variables";
-export { VariablesSection } from "./variables-section";
-export { VolumesFormSection } from "./volumes-section";
+export { VariablesSection } from "./variables/section";
+export { VolumesFormSection } from "./volumes/section";

@@ -370,4 +370,3 @@ function ServiceDrawerTabs({
   );
 }
 
-export { ServiceDrawer } from "./service-drawer";

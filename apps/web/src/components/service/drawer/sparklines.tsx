@@ -4,7 +4,7 @@ import type {
   LatencyChartData,
   SparklineData,
   Threshold,
-} from "./index";
+} from "./shell";
 
 type Severity = "critical" | "warning" | null;
 
