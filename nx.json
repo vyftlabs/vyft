@@ -43,5 +43,6 @@
       "workspaceChangelog": true,
       "projectChangelogs": true
     }
-  }
+  },
+  "analytics": false
 }

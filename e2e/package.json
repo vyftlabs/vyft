@@ -8,10 +8,10 @@
     "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.59.1"
   },
   "devDependencies": {
-    "@types/node": "^24.12.2",
-    "typescript": "~6.0.2"
+    "@types/node": "^25.6.0",
+    "typescript": "~6.0.3"
   }
 }
