@@ -10,6 +10,36 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes("node_modules")) return;
+          if (
+            /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router)[\\/]/.test(
+              id,
+            )
+          ) {
+            return "vendor-react";
+          }
+          if (id.includes("@tanstack/")) return "vendor-query";
+          if (id.includes("@base-ui/")) return "vendor-baseui";
+          if (id.includes("@xyflow/")) return "vendor-xyflow";
+          if (id.includes("recharts") || id.includes("d3-"))
+            return "vendor-charts";
+          if (id.includes("/motion/") || id.includes("framer-motion"))
+            return "vendor-motion";
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("@hookform/") ||
+            id.includes("/zod/")
+          ) {
+            return "vendor-forms";
+          }
+        },
+      },
+    },
+  },
   server: {
     host: true,
     port: 3000,

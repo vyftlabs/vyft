@@ -1,66 +1,34 @@
 # Vyft
 
-> **WIP**: This project is under active development and not yet ready for production use.
+Open source platform for deploying apps. Connect a repo, pick what you want to run, and Vyft handles the rest. Self-host it on your own server, or use the hosted version.
 
-Deploy apps with TypeScript. Define services, databases, static sites, cron jobs, and more as code — then deploy to any runtime.
+> Early development. Things will change.
 
 [![npm version](https://img.shields.io/npm/v/vyft)](https://www.npmjs.com/package/vyft)
 [![CI](https://github.com/vyftlabs/vyft/actions/workflows/ci.yml/badge.svg)](https://github.com/vyftlabs/vyft/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/vyftlabs/vyft)](LICENSE)
 
-## Overview
+## What it does
 
-Vyft is an infrastructure-as-code framework that lets you define your entire deployment topology in TypeScript. Resources like databases, services, and cron jobs become typed objects in your codebase, and Vyft handles provisioning them across runtimes — from local Docker to cloud providers.
+- Deploy apps straight from a GitHub repo
+- Spin up databases like Postgres and Redis
+- Host static sites on a custom domain
+- Run scheduled jobs and background workers
+- Manage environment variables across services
 
-```ts
-// vyft.config.ts
+## Getting started
 
-import { service, postgres, site } from "vyft";
+Hosted:
 
-const db = postgres("db");
+1. Sign up at [vyft.dev](https://vyft.dev)
+2. Connect your GitHub repo
+3. Deploy
 
-export const api = service("api", {
-  domain: "api.example.com",
-  replicas: 2,
-  link: [db],
-});
+Self-hosted: see [vyft.dev/docs/self-host](https://vyft.dev/docs/self-host).
 
-export const web = site("web", { path: "./apps/web", domain: "example.com" });
+## Docs
 
-// index.ts
-
-import { bindings } from "@vyft/client";
-import { Hono } from "hono";
-import postgres from "postgres";
-
-const sql = postgres(bindings.db.url);
-
-const app = new Hono();
-
-app.get("/", async (c) => {
-  const users = await sql`SELECT * FROM users`;
-  return c.json(users);
-});
-
-export default app;
-```
-
-## Quick Start
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 24+
-- [pnpm](https://pnpm.io/) 10+
-
-### Install
-
-```sh
-npm install -g vyft
-```
-
-## Documentation
-
-Visit [vyft.dev/docs](https://vyft.dev/docs) for guides and API reference.
+Guides and reference at [vyft.dev/docs](https://vyft.dev/docs).
 
 ## Contributing
 
