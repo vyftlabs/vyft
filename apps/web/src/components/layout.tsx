@@ -134,6 +134,11 @@ function LayoutHeader() {
   );
 }
 
+function readProjectSidebarOpen() {
+  const saved = localStorage.getItem("vyft-sidebar-open");
+  return saved !== null ? saved === "true" : false;
+}
+
 function LayoutSidebarProvider({
   children,
   inProject,
@@ -141,11 +146,16 @@ function LayoutSidebarProvider({
   children: React.ReactNode;
   inProject: boolean;
 }) {
-  const [open, setOpen] = React.useState(() => {
-    if (!inProject) return true;
-    const saved = localStorage.getItem("vyft-sidebar-open");
-    return saved !== null ? saved === "true" : false;
-  });
+  const [open, setOpen] = React.useState(() =>
+    inProject ? readProjectSidebarOpen() : true,
+  );
+
+  const prevInProject = React.useRef(inProject);
+  React.useEffect(() => {
+    if (prevInProject.current === inProject) return;
+    prevInProject.current = inProject;
+    setOpen(inProject ? readProjectSidebarOpen() : true);
+  }, [inProject]);
 
   const handleOpenChange = React.useCallback(
     (value: boolean) => {
@@ -172,10 +182,7 @@ export default function Layout() {
 
   return (
     <TooltipProvider>
-      <LayoutSidebarProvider
-        key={inProject ? "project" : "workspace"}
-        inProject={inProject}
-      >
+      <LayoutSidebarProvider inProject={inProject}>
         <LayoutHeader />
         <div className="flex flex-1 min-h-0">
           <AppSidebar />

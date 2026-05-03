@@ -202,7 +202,7 @@ function ServicesCanvas() {
   return (
     <div ref={setContainer} className="relative h-full w-full">
       {(!resourcesReady || resourceDialogOpen) && (
-        <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[0.5px]" />
       )}
 
       <ReactFlow
