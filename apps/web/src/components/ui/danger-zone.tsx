@@ -1,7 +1,4 @@
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,17 +8,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface DangerZoneProps {
-  title: string
-  description: string
-  action: string
-  onAction: () => void | Promise<void>
-  disabled?: boolean
-  confirmTitle?: string
-  confirmDescription?: string
-  confirmInput?: string
+  title: string;
+  description: string;
+  action: string;
+  onAction: () => void | Promise<void>;
+  disabled?: boolean;
+  confirmTitle?: string;
+  confirmDescription?: string;
+  confirmInput?: string;
 }
 
 export function DangerZone({
@@ -34,25 +34,25 @@ export function DangerZone({
   confirmDescription,
   confirmInput,
 }: DangerZoneProps) {
-  const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
-  const [inputValue, setInputValue] = useState("")
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
-  const isBlocked = disabled || pending
+  const isBlocked = disabled || pending;
   const isConfirmDisabled =
-    isBlocked || (confirmInput ? inputValue !== confirmInput : false)
+    isBlocked || (confirmInput ? inputValue !== confirmInput : false);
 
   const handleAction = async () => {
-    setPending(true)
+    setPending(true);
     try {
-      await onAction()
-      setOpen(false)
+      await onAction();
+      setOpen(false);
     } catch {
       // keep dialog open — parent handles error display (e.g. toast)
     } finally {
-      setPending(false)
+      setPending(false);
     }
-  }
+  };
 
   return (
     <>
@@ -75,8 +75,8 @@ export function DangerZone({
       <AlertDialog
         open={open}
         onOpenChange={(v) => {
-          if (!pending) setOpen(v)
-          if (!v) setInputValue("")
+          if (!pending) setOpen(v);
+          if (!v) setInputValue("");
         }}
       >
         <AlertDialogContent>
@@ -112,8 +112,8 @@ export function DangerZone({
               variant="destructive"
               disabled={isConfirmDisabled}
               onClick={(e) => {
-                e.preventDefault()
-                handleAction()
+                e.preventDefault();
+                handleAction();
               }}
             >
               {pending && <Spinner className="size-4" />}
@@ -123,5 +123,5 @@ export function DangerZone({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

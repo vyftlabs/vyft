@@ -1,7 +1,16 @@
-import * as React from "react"
-import { Link, useParams } from "react-router"
-
-import { NavSecondary } from "@/components/nav-secondary"
+import {
+  BoxIcon,
+  ContainerIcon,
+  KeyRoundIcon,
+  LifeBuoyIcon,
+  PlugIcon,
+  SendIcon,
+  SettingsIcon,
+  WorkflowIcon,
+} from "lucide-react";
+import type * as React from "react";
+import { Link, useParams } from "react-router";
+import { NavSecondary } from "@/components/nav-secondary";
 import {
   Sidebar,
   SidebarContent,
@@ -10,17 +19,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import {
-  WorkflowIcon,
-  BoxIcon,
-  KeyRoundIcon,
-  ContainerIcon,
-  SettingsIcon,
-  LifeBuoyIcon,
-  SendIcon,
-  PlugIcon,
-} from "lucide-react"
+} from "@/components/ui/sidebar";
 
 const navSecondary = [
   {
@@ -33,19 +32,23 @@ const navSecondary = [
     url: "#",
     icon: <SendIcon />,
   },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { project } = useParams()
+  const { project } = useParams();
 
-  const base = `/projects/${project}`
+  const base = `/projects/${project}`;
 
   const projectNavItems = project
     ? [
         { title: "Services", url: `${base}/services`, icon: <WorkflowIcon /> },
-        { title: "Variables", url: `${base}/variables`, icon: <KeyRoundIcon /> },
+        {
+          title: "Variables",
+          url: `${base}/variables`,
+          icon: <KeyRoundIcon />,
+        },
       ]
-    : []
+    : [];
 
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
@@ -87,7 +90,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroup>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Projects" render={<Link to="/projects" />}>
+                <SidebarMenuButton
+                  tooltip="Projects"
+                  render={<Link to="/projects" />}
+                >
                   <BoxIcon />
                   <span>Projects</span>
                 </SidebarMenuButton>
@@ -100,13 +106,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>Manage</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Registries" render={<Link to="/registries" />}>
+                <SidebarMenuButton
+                  tooltip="Registries"
+                  render={<Link to="/registries" />}
+                >
                   <ContainerIcon />
                   <span>Registries</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Integrations" render={<Link to="/integrations" />}>
+                <SidebarMenuButton
+                  tooltip="Integrations"
+                  render={<Link to="/integrations" />}
+                >
                   <PlugIcon />
                   <span>Integrations</span>
                 </SidebarMenuButton>
@@ -118,5 +130,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

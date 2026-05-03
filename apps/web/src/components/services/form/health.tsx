@@ -1,21 +1,21 @@
-import { type Control, Controller, useWatch } from "react-hook-form"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { type Control, Controller, useWatch } from "react-hook-form";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { HealthFormValues } from "./types"
+} from "@/components/ui/select";
+import type { HealthFormValues } from "./types";
 
 export function HealthForm({
   control,
 }: {
-  control: Control<HealthFormValues>
+  control: Control<HealthFormValues>;
 }) {
-  const healthCheckType = useWatch({ control, name: "healthCheckType" })
+  const healthCheckType = useWatch({ control, name: "healthCheckType" });
 
   return (
     <div className="space-y-3">
@@ -48,7 +48,12 @@ export function HealthForm({
             render={({ field }) => (
               <Field>
                 <FieldLabel htmlFor={field.name}>Path</FieldLabel>
-                <Input {...field} id={field.name} placeholder="/health" className="font-mono" />
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="/health"
+                  className="font-mono"
+                />
               </Field>
             )}
           />
@@ -58,7 +63,12 @@ export function HealthForm({
             render={({ field }) => (
               <Field>
                 <FieldLabel htmlFor={field.name}>Port</FieldLabel>
-                <Input {...field} id={field.name} type="number" placeholder="8080" />
+                <Input
+                  {...field}
+                  id={field.name}
+                  type="number"
+                  placeholder="8080"
+                />
               </Field>
             )}
           />
@@ -72,7 +82,12 @@ export function HealthForm({
           render={({ field }) => (
             <Field>
               <FieldLabel htmlFor={field.name}>Port</FieldLabel>
-              <Input {...field} id={field.name} type="number" placeholder="8080" />
+              <Input
+                {...field}
+                id={field.name}
+                type="number"
+                placeholder="8080"
+              />
             </Field>
           )}
         />
@@ -85,11 +100,16 @@ export function HealthForm({
           render={({ field }) => (
             <Field>
               <FieldLabel htmlFor={field.name}>Command</FieldLabel>
-              <Input {...field} id={field.name} placeholder="curl -f http://localhost:8080/health" className="font-mono" />
+              <Input
+                {...field}
+                id={field.name}
+                placeholder="curl -f http://localhost:8080/health"
+                className="font-mono"
+              />
             </Field>
           )}
         />
       )}
     </div>
-  )
+  );
 }

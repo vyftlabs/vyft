@@ -9,6 +9,7 @@
     "dev": "nx run-many -t dev --outputStyle stream",
     "build": "nx run-many -t build --outputStyle stream",
     "test": "nx run-many -t test --outputStyle stream",
+    "test:e2e": "nx run @vyft/e2e:e2e --outputStyle stream",
     "lint": "biome check . --fix"
   },
   "pnpm": {

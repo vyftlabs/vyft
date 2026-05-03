@@ -1,48 +1,58 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
 import {
   Variable,
   VariableCreate,
   VariableUpdate,
-} from "../models/variable.ts"
+} from "../models/variable.ts";
 
-const ProjectScope = z.object({ projectId: Uuid })
-const VariableScope = z.object({ projectId: Uuid, id: Uuid })
+const ProjectScope = z.object({ projectId: Uuid });
+const VariableScope = z.object({ projectId: Uuid, id: Uuid });
 
-const VariableReference = z.object({
-  sourceResourceId: Uuid,
-  targetResourceId: Uuid,
-}).meta({ id: "VariableReference" })
+const VariableReference = z
+  .object({
+    sourceResourceId: Uuid,
+    targetResourceId: Uuid,
+  })
+  .meta({ id: "VariableReference" });
 
-const SuggestionShared = z.object({
-  id: Uuid,
-  key: z.string(),
-  secret: z.boolean(),
-}).meta({ id: "SuggestionShared" })
+const SuggestionShared = z
+  .object({
+    id: Uuid,
+    key: z.string(),
+    secret: z.boolean(),
+  })
+  .meta({ id: "SuggestionShared" });
 
-const SuggestionService = z.object({
-  id: Uuid,
-  key: z.string(),
-  secret: z.boolean(),
-  resourceName: z.string().optional(),
-  resourceImage: z.string().optional(),
-}).meta({ id: "SuggestionService" })
+const SuggestionService = z
+  .object({
+    id: Uuid,
+    key: z.string(),
+    secret: z.boolean(),
+    resourceName: z.string().optional(),
+    resourceImage: z.string().optional(),
+  })
+  .meta({ id: "SuggestionService" });
 
-const SuggestionBuiltin = z.object({
-  id: z.string(),
-  key: z.string(),
-  token: z.string(),
-  secret: z.boolean(),
-  resourceName: z.string(),
-  resourceImage: z.string().optional(),
-}).meta({ id: "SuggestionBuiltin" })
+const SuggestionBuiltin = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    token: z.string(),
+    secret: z.boolean(),
+    resourceName: z.string(),
+    resourceImage: z.string().optional(),
+  })
+  .meta({ id: "SuggestionBuiltin" });
 
-const VariableSuggestions = z.object({
-  shared: z.array(SuggestionShared),
-  service: z.array(SuggestionService),
-  builtin: z.array(SuggestionBuiltin),
-}).meta({ id: "VariableSuggestions" })
+const VariableSuggestions = z
+  .object({
+    shared: z.array(SuggestionShared),
+    service: z.array(SuggestionService),
+    builtin: z.array(SuggestionBuiltin),
+  })
+  .meta({ id: "VariableSuggestions" });
 
 export const variablePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/variables": {
@@ -55,7 +65,10 @@ export const variablePaths: ZodOpenApiPathsObject = {
         query: z.object({ resourceId: Uuid.optional() }),
       },
       responses: {
-        200: { description: "Variables", content: { "application/json": { schema: z.array(Variable) } } },
+        200: {
+          description: "Variables",
+          content: { "application/json": { schema: z.array(Variable) } },
+        },
         ...errorResponses,
       },
     },
@@ -64,9 +77,14 @@ export const variablePaths: ZodOpenApiPathsObject = {
       summary: "Create variable",
       tags: ["Variables"],
       requestParams: { path: ProjectScope },
-      requestBody: { content: { "application/json": { schema: VariableCreate } } },
+      requestBody: {
+        content: { "application/json": { schema: VariableCreate } },
+      },
       responses: {
-        201: { description: "Created", content: { "application/json": { schema: Variable } } },
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: Variable } },
+        },
         ...errorResponses,
       },
     },
@@ -78,7 +96,12 @@ export const variablePaths: ZodOpenApiPathsObject = {
       tags: ["Variables"],
       requestParams: { path: ProjectScope },
       responses: {
-        200: { description: "References", content: { "application/json": { schema: z.array(VariableReference) } } },
+        200: {
+          description: "References",
+          content: {
+            "application/json": { schema: z.array(VariableReference) },
+          },
+        },
         ...errorResponses,
       },
     },
@@ -93,7 +116,10 @@ export const variablePaths: ZodOpenApiPathsObject = {
         query: z.object({ excludeResourceId: Uuid.optional() }),
       },
       responses: {
-        200: { description: "Suggestions", content: { "application/json": { schema: VariableSuggestions } } },
+        200: {
+          description: "Suggestions",
+          content: { "application/json": { schema: VariableSuggestions } },
+        },
         ...errorResponses,
       },
     },
@@ -105,7 +131,10 @@ export const variablePaths: ZodOpenApiPathsObject = {
       tags: ["Variables"],
       requestParams: { path: VariableScope },
       responses: {
-        200: { description: "Variable", content: { "application/json": { schema: Variable } } },
+        200: {
+          description: "Variable",
+          content: { "application/json": { schema: Variable } },
+        },
         ...errorResponses,
       },
     },
@@ -114,9 +143,14 @@ export const variablePaths: ZodOpenApiPathsObject = {
       summary: "Update variable",
       tags: ["Variables"],
       requestParams: { path: VariableScope },
-      requestBody: { content: { "application/json": { schema: VariableUpdate } } },
+      requestBody: {
+        content: { "application/json": { schema: VariableUpdate } },
+      },
       responses: {
-        200: { description: "Updated", content: { "application/json": { schema: Variable } } },
+        200: {
+          description: "Updated",
+          content: { "application/json": { schema: Variable } },
+        },
         ...errorResponses,
       },
     },
@@ -131,4 +165,4 @@ export const variablePaths: ZodOpenApiPathsObject = {
       },
     },
   },
-}
+};

@@ -1,24 +1,28 @@
-import { useState } from "react"
-import { Link } from "react-router"
-import { useQuery } from "@tanstack/react-query"
-import { PlusIcon, FolderIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ProjectCard } from "@/components/projects/card"
-import { CreateProjectDialog } from "@/components/projects/create-dialog"
-import * as api from "@/lib/api"
+import { useQuery } from "@tanstack/react-query";
+import { FolderIcon, PlusIcon } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { ProjectCard } from "@/components/projects/card";
+import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { Button } from "@/components/ui/button";
+import * as api from "@/lib/api";
 
 export default function Projects() {
-  const { data: projectList, isLoading } = useQuery(api.projects.list())
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const { data: projectList, isLoading } = useQuery(api.projects.list());
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (isLoading) return null
+  if (isLoading) return null;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Projects</h1>
         {projectList && projectList.length > 0 && (
-          <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="project-create-button">
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            data-testid="project-create-button"
+          >
             <PlusIcon />
             New project
           </Button>
@@ -40,9 +44,15 @@ export default function Projects() {
           </div>
           <div className="text-center space-y-1">
             <p className="text-sm font-medium">No projects yet</p>
-            <p className="text-xs text-muted-foreground">Get started by creating your first project.</p>
+            <p className="text-xs text-muted-foreground">
+              Get started by creating your first project.
+            </p>
           </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="project-create-button">
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            data-testid="project-create-button"
+          >
             <PlusIcon />
             Create project
           </Button>
@@ -51,5 +61,5 @@ export default function Projects() {
 
       <CreateProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
-  )
+  );
 }

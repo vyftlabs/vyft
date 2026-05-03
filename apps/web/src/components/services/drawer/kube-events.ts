@@ -11,7 +11,7 @@ export type KubeEventCategory =
   | "node"
   | "network"
   | "lifecycle"
-  | "unknown"
+  | "unknown";
 
 // --- Well-known reasons ---
 
@@ -27,7 +27,7 @@ const containerReasons = [
   "ContainerCreating",
   "ContainerGCFailed",
   "OOMKilling",
-] as const
+] as const;
 
 // Kubelet: image
 const imageReasons = [
@@ -37,7 +37,7 @@ const imageReasons = [
   "ImagePullBackOff",
   "ErrImageNeverPull",
   "InspectFailed",
-] as const
+] as const;
 
 // Kubelet: probes
 const probeReasons = [
@@ -45,7 +45,7 @@ const probeReasons = [
   "ProbeWarning",
   "FailedPostStartHook",
   "FailedPreStopHook",
-] as const
+] as const;
 
 // Scheduler
 const schedulingReasons = [
@@ -53,7 +53,7 @@ const schedulingReasons = [
   "FailedScheduling",
   "Preempted",
   "WaitingForGates",
-] as const
+] as const;
 
 // Deployment / ReplicaSet controllers
 const scalingReasons = [
@@ -68,7 +68,7 @@ const scalingReasons = [
   "FailedComputeMetricsReplicas",
   "FailedGetResourceMetric",
   "InvalidMetricSourceType",
-] as const
+] as const;
 
 // Volume
 const volumeReasons = [
@@ -85,7 +85,7 @@ const volumeReasons = [
   "VolumeResizeSuccessful",
   "FileSystemResizeFailed",
   "FileSystemResizeSuccessful",
-] as const
+] as const;
 
 // Node
 const nodeReasons = [
@@ -104,14 +104,14 @@ const nodeReasons = [
   "EvictionThresholdMet",
   "Evicted",
   "OOMKilled",
-] as const
+] as const;
 
 // Network / sandbox
 const networkReasons = [
   "FailedCreatePodSandBox",
   "NetworkNotReady",
   "SandboxChanged",
-] as const
+] as const;
 
 // Pod lifecycle
 const lifecycleReasons = [
@@ -121,17 +121,17 @@ const lifecycleReasons = [
   "SuccessfulRescale",
   "TaintManagerEviction",
   "TerminatingEvictedPod",
-] as const
+] as const;
 
-export type ContainerReason = typeof containerReasons[number]
-export type ImageReason = typeof imageReasons[number]
-export type ProbeReason = typeof probeReasons[number]
-export type SchedulingReason = typeof schedulingReasons[number]
-export type ScalingReason = typeof scalingReasons[number]
-export type VolumeReason = typeof volumeReasons[number]
-export type NodeReason = typeof nodeReasons[number]
-export type NetworkReason = typeof networkReasons[number]
-export type LifecycleReason = typeof lifecycleReasons[number]
+export type ContainerReason = (typeof containerReasons)[number];
+export type ImageReason = (typeof imageReasons)[number];
+export type ProbeReason = (typeof probeReasons)[number];
+export type SchedulingReason = (typeof schedulingReasons)[number];
+export type ScalingReason = (typeof scalingReasons)[number];
+export type VolumeReason = (typeof volumeReasons)[number];
+export type NodeReason = (typeof nodeReasons)[number];
+export type NetworkReason = (typeof networkReasons)[number];
+export type LifecycleReason = (typeof lifecycleReasons)[number];
 
 export type KnownReason =
   | ContainerReason
@@ -142,7 +142,7 @@ export type KnownReason =
   | VolumeReason
   | NodeReason
   | NetworkReason
-  | LifecycleReason
+  | LifecycleReason;
 
 // Build a reason → category lookup
 const categoryMap = new Map<string, KubeEventCategory>([
@@ -155,25 +155,54 @@ const categoryMap = new Map<string, KubeEventCategory>([
   ...nodeReasons.map((r) => [r, "node"] as const),
   ...networkReasons.map((r) => [r, "network"] as const),
   ...lifecycleReasons.map((r) => [r, "lifecycle"] as const),
-])
+]);
 
 export function reasonCategory(reason: string): KubeEventCategory {
-  return categoryMap.get(reason) ?? "unknown"
+  return categoryMap.get(reason) ?? "unknown";
 }
 
 // Whether a reason typically indicates a problem
 const warningReasons = new Set<string>([
-  "Failed", "BackOff", "ExceededGracePeriod", "ContainerGCFailed", "OOMKilling",
-  "ErrImagePull", "ImagePullBackOff", "ErrImageNeverPull", "InspectFailed",
-  "Unhealthy", "ProbeWarning", "FailedPostStartHook", "FailedPreStopHook",
+  "Failed",
+  "BackOff",
+  "ExceededGracePeriod",
+  "ContainerGCFailed",
+  "OOMKilling",
+  "ErrImagePull",
+  "ImagePullBackOff",
+  "ErrImageNeverPull",
+  "InspectFailed",
+  "Unhealthy",
+  "ProbeWarning",
+  "FailedPostStartHook",
+  "FailedPreStopHook",
   "FailedScheduling",
-  "FailedCreate", "FailedDelete", "FailedComputeMetricsReplicas", "FailedGetResourceMetric", "InvalidMetricSourceType",
-  "FailedAttachVolume", "FailedMount", "FailedDetach", "FailedBinding", "ProvisioningFailed", "VolumeResizeFailed", "FileSystemResizeFailed",
-  "NodeNotReady", "NodeNotSchedulable", "NodeHasInsufficientMemory", "NodeHasDiskPressure", "NodeHasInsufficientPID", "EvictionThresholdMet", "Evicted", "OOMKilled",
-  "FailedCreatePodSandBox", "NetworkNotReady",
-  "FailedSync", "TaintManagerEviction",
-])
+  "FailedCreate",
+  "FailedDelete",
+  "FailedComputeMetricsReplicas",
+  "FailedGetResourceMetric",
+  "InvalidMetricSourceType",
+  "FailedAttachVolume",
+  "FailedMount",
+  "FailedDetach",
+  "FailedBinding",
+  "ProvisioningFailed",
+  "VolumeResizeFailed",
+  "FileSystemResizeFailed",
+  "NodeNotReady",
+  "NodeNotSchedulable",
+  "NodeHasInsufficientMemory",
+  "NodeHasDiskPressure",
+  "NodeHasInsufficientPID",
+  "EvictionThresholdMet",
+  "Evicted",
+  "OOMKilled",
+  "FailedCreatePodSandBox",
+  "NetworkNotReady",
+  "FailedSync",
+  "TaintManagerEviction",
+]);
 
 export function isWarningReason(reason: string): boolean {
-  return warningReasons.has(reason)
+  return warningReasons.has(reason);
 }

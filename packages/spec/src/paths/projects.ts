@@ -1,13 +1,12 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses } from "../models/common.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
 import {
   Project,
   ProjectCreate,
-  ProjectUpdate,
   ProjectListQuery,
-} from "../models/project.ts"
-import { Uuid } from "../models/common.ts"
+  ProjectUpdate,
+} from "../models/project.ts";
 
 export const projectPaths: ZodOpenApiPathsObject = {
   "/projects": {
@@ -28,9 +27,14 @@ export const projectPaths: ZodOpenApiPathsObject = {
       operationId: "createProject",
       summary: "Create project",
       tags: ["Projects"],
-      requestBody: { content: { "application/json": { schema: ProjectCreate } } },
+      requestBody: {
+        content: { "application/json": { schema: ProjectCreate } },
+      },
       responses: {
-        201: { description: "Created", content: { "application/json": { schema: Project } } },
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: Project } },
+        },
         ...errorResponses,
       },
     },
@@ -42,7 +46,10 @@ export const projectPaths: ZodOpenApiPathsObject = {
       tags: ["Projects"],
       requestParams: { path: z.object({ id: Uuid }) },
       responses: {
-        200: { description: "Project", content: { "application/json": { schema: Project } } },
+        200: {
+          description: "Project",
+          content: { "application/json": { schema: Project } },
+        },
         ...errorResponses,
       },
     },
@@ -51,9 +58,14 @@ export const projectPaths: ZodOpenApiPathsObject = {
       summary: "Update project",
       tags: ["Projects"],
       requestParams: { path: z.object({ id: Uuid }) },
-      requestBody: { content: { "application/json": { schema: ProjectUpdate } } },
+      requestBody: {
+        content: { "application/json": { schema: ProjectUpdate } },
+      },
       responses: {
-        200: { description: "Updated", content: { "application/json": { schema: Project } } },
+        200: {
+          description: "Updated",
+          content: { "application/json": { schema: Project } },
+        },
         ...errorResponses,
       },
     },
@@ -75,9 +87,12 @@ export const projectPaths: ZodOpenApiPathsObject = {
       tags: ["Projects"],
       requestParams: { path: z.object({ slug: z.string() }) },
       responses: {
-        200: { description: "Project", content: { "application/json": { schema: Project } } },
+        200: {
+          description: "Project",
+          content: { "application/json": { schema: Project } },
+        },
         ...errorResponses,
       },
     },
   },
-}
+};

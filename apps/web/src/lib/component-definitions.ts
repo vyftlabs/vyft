@@ -1,18 +1,24 @@
-import type React from "react"
-import { SiPostgresql, SiRedis, SiMinio, SiRabbitmq, SiNatsdotio } from "@icons-pack/react-simple-icons"
-import { ZapIcon } from "lucide-react"
+import {
+  SiMinio,
+  SiNatsdotio,
+  SiPostgresql,
+  SiRabbitmq,
+  SiRedis,
+} from "@icons-pack/react-simple-icons";
+import { ZapIcon } from "lucide-react";
+import type React from "react";
 
 export interface ComponentOutput {
-  key: string
-  secret: boolean
+  key: string;
+  secret: boolean;
 }
 
 export interface ComponentDefinition {
-  type: string
-  name: string
-  category: string
-  icon: React.FC<{ className?: string }>
-  outputs: ComponentOutput[]
+  type: string;
+  name: string;
+  category: string;
+  icon: React.FC<{ className?: string }>;
+  outputs: ComponentOutput[];
 }
 
 export const componentDefinitions: ComponentDefinition[] = [
@@ -90,4 +96,4 @@ export const componentDefinitions: ComponentDefinition[] = [
       { key: "NATS_PORT", secret: false },
     ],
   },
-]
+];

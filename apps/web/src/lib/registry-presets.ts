@@ -1,11 +1,18 @@
-import type React from "react"
-import { GitBranch, Container, Package, Cloud, Box, Settings } from "lucide-react"
+import {
+  Box,
+  Cloud,
+  Container,
+  GitBranch,
+  Package,
+  Settings,
+} from "lucide-react";
+import type React from "react";
 
 export interface RegistryPreset {
-  id: string
-  name: string
-  url: string
-  icon: React.FC<{ className?: string }>
+  id: string;
+  name: string;
+  url: string;
+  icon: React.FC<{ className?: string }>;
 }
 
 export const registryPresets: RegistryPreset[] = [
@@ -15,4 +22,4 @@ export const registryPresets: RegistryPreset[] = [
   { id: "gcr", name: "Google", url: "us-docker.pkg.dev", icon: Cloud },
   { id: "ecr", name: "AWS", url: "", icon: Box },
   { id: "custom", name: "Custom", url: "", icon: Settings },
-]
+];

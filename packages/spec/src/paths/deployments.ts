@@ -1,13 +1,13 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
 import {
   Deployment,
   DeploymentChecksum,
   DeploymentLatest,
-} from "../models/deployment.ts"
+} from "../models/deployment.ts";
 
-const ProjectScope = z.object({ projectId: Uuid })
+const ProjectScope = z.object({ projectId: Uuid });
 
 export const deploymentPaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/deployments": {
@@ -17,7 +17,10 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
       tags: ["Deployments"],
       requestParams: { path: ProjectScope },
       responses: {
-        201: { description: "Deployment enqueued", content: { "application/json": { schema: Deployment } } },
+        201: {
+          description: "Deployment enqueued",
+          content: { "application/json": { schema: Deployment } },
+        },
         ...errorResponses,
       },
     },
@@ -29,7 +32,10 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
       tags: ["Deployments"],
       requestParams: { path: ProjectScope },
       responses: {
-        200: { description: "Checksum", content: { "application/json": { schema: DeploymentChecksum } } },
+        200: {
+          description: "Checksum",
+          content: { "application/json": { schema: DeploymentChecksum } },
+        },
         ...errorResponses,
       },
     },
@@ -41,9 +47,12 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
       tags: ["Deployments"],
       requestParams: { path: ProjectScope },
       responses: {
-        200: { description: "Latest", content: { "application/json": { schema: DeploymentLatest } } },
+        200: {
+          description: "Latest",
+          content: { "application/json": { schema: DeploymentLatest } },
+        },
         ...errorResponses,
       },
     },
   },
-}
+};

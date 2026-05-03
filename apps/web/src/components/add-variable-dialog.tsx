@@ -1,14 +1,18 @@
-import { toast } from "sonner"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { VariableForm, type VariableSuggestion, type SuggestionGroup } from "@/components/variable-form"
-import * as api from "@/lib/api"
+} from "@/components/ui/dialog";
+import {
+  type SuggestionGroup,
+  VariableForm,
+  type VariableSuggestion,
+} from "@/components/variable-form";
+import * as api from "@/lib/api";
 
 export function AddVariableDialog({
   project: _project,
@@ -20,22 +24,27 @@ export function AddVariableDialog({
   onOpenChange,
   onAddLocal,
 }: {
-  project: string
-  projectId?: string
-  resourceId?: string
-  suggestions?: VariableSuggestion[]
-  suggestionGroups?: SuggestionGroup[]
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onAddLocal?: (v: { key: string; value: string; secret?: boolean; sourceVariableId?: string }) => void
+  project: string;
+  projectId?: string;
+  resourceId?: string;
+  suggestions?: VariableSuggestion[];
+  suggestionGroups?: SuggestionGroup[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddLocal?: (v: {
+    key: string;
+    value: string;
+    secret?: boolean;
+    sourceVariableId?: string;
+  }) => void;
 }) {
-  const isResourceScope = !!resourceId
+  const isResourceScope = !!resourceId;
 
   const allSuggestions = suggestionGroups
     ? suggestionGroups.flatMap((g) => g.items)
-    : suggestions
+    : suggestions;
 
-  const createVar = useMutation(api.variables.create)
+  const createVar = useMutation(api.variables.create);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,12 +62,19 @@ export function AddVariableDialog({
           suggestionGroups={suggestionGroups}
           isPending={createVar.isPending}
           onSubmit={(data) => {
-            const linked = data.linkedKey ? allSuggestions.find((s) => s.key === data.linkedKey) : undefined
+            const linked = data.linkedKey
+              ? allSuggestions.find((s) => s.key === data.linkedKey)
+              : undefined;
 
             if (onAddLocal) {
-              onAddLocal({ key: data.key, value: linked ? "" : data.value, secret: data.secret, sourceVariableId: linked?.id })
-              onOpenChange(false)
-              return
+              onAddLocal({
+                key: data.key,
+                value: linked ? "" : data.value,
+                secret: data.secret,
+                sourceVariableId: linked?.id,
+              });
+              onOpenChange(false);
+              return;
             }
             if (projectId) {
               createVar.mutate(
@@ -72,12 +88,15 @@ export function AddVariableDialog({
                     sourceVariableId: linked?.id,
                   },
                 },
-                { onSuccess: () => onOpenChange(false), onError: (err: Error) => toast.error(err.message) },
-              )
+                {
+                  onSuccess: () => onOpenChange(false),
+                  onError: (err: Error) => toast.error(err.message),
+                },
+              );
             }
           }}
         />
       </DialogContent>
     </Dialog>
-  )
+  );
 }

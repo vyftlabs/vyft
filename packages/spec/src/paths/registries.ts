@@ -1,7 +1,7 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
-import { Registry, RegistryCreate } from "../models/registry.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
+import { Registry, RegistryCreate } from "../models/registry.ts";
 
 export const registryPaths: ZodOpenApiPathsObject = {
   "/registries": {
@@ -10,7 +10,10 @@ export const registryPaths: ZodOpenApiPathsObject = {
       summary: "List registries",
       tags: ["Registries"],
       responses: {
-        200: { description: "Registries", content: { "application/json": { schema: z.array(Registry) } } },
+        200: {
+          description: "Registries",
+          content: { "application/json": { schema: z.array(Registry) } },
+        },
         ...errorResponses,
       },
     },
@@ -18,9 +21,14 @@ export const registryPaths: ZodOpenApiPathsObject = {
       operationId: "createRegistry",
       summary: "Create registry",
       tags: ["Registries"],
-      requestBody: { content: { "application/json": { schema: RegistryCreate } } },
+      requestBody: {
+        content: { "application/json": { schema: RegistryCreate } },
+      },
       responses: {
-        201: { description: "Created", content: { "application/json": { schema: Registry } } },
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: Registry } },
+        },
         ...errorResponses,
       },
     },
@@ -37,4 +45,4 @@ export const registryPaths: ZodOpenApiPathsObject = {
       },
     },
   },
-}
+};

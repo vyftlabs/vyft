@@ -18,8 +18,11 @@ pnpm install
 | Command | Description |
 |---------|-------------|
 | `pnpm build` | Build all packages |
-| `pnpm test` | Run tests for all packages |
+| `pnpm test` | Run Nx `test` targets across packages (Playwright uses the separate `e2e` target) |
+| `pnpm test:e2e` | Run Playwright (`nx run @vyft/e2e:e2e`) |
 | `pnpm lint` | Run Biome lint and format checks |
+
+Playwright uses `http://localhost:3000` as `baseURL` for `pnpm test:e2e`; run whatever serves that URL locally.
 
 ## Code Style
 
@@ -32,7 +35,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for versioni
 ## Pull Request Process
 
 1. Fork the repository and create a branch from `main`
-2. Make your changes and ensure `pnpm lint` and `pnpm test` pass
+2. Make your changes and ensure `pnpm lint` and `pnpm test` pass (run `pnpm test:e2e` when you change flows covered there)
 3. Open a pull request with a clear description of the change
 4. Address any review feedback
 

@@ -1,9 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-
-import { cn } from "@/lib/utils";
+import { CheckIcon, SearchIcon } from "lucide-react";
+import type * as React from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
-import { SearchIcon, CheckIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 function Command({
   className,
@@ -93,7 +92,12 @@ function CommandList({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
-    <ScrollArea className={cn("max-h-72 **:data-[slot=scroll-area-scrollbar]:hidden", className)}>
+    <ScrollArea
+      className={cn(
+        "max-h-72 **:data-[slot=scroll-area-scrollbar]:hidden",
+        className,
+      )}
+    >
       <CommandPrimitive.List
         data-slot="command-list"
         className="scroll-py-1 outline-none"

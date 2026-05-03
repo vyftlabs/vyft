@@ -1,148 +1,170 @@
-import { useState, useRef } from "react"
-import { Controller, useForm } from "react-hook-form"
-import { LockIcon, XIcon, DicesIcon, CopyIcon, CheckIcon } from "lucide-react"
-import { ServiceIcon } from "@/components/services/node"
-import { Spinner } from "@/components/ui/spinner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Field, FieldLabel, FieldError } from "@/components/ui/field"
-import { cn } from "@/lib/utils"
+import { CheckIcon, CopyIcon, DicesIcon, LockIcon, XIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { ServiceIcon } from "@/components/services/node";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 export interface VariableFormValues {
-  key: string
-  value: string
-  secret: boolean
+  key: string;
+  value: string;
+  secret: boolean;
 }
 
 export interface VariableSuggestion {
-  id: string
-  key: string
-  secret: boolean
-  resourceName?: string
-  resourceImage?: string
+  id: string;
+  key: string;
+  secret: boolean;
+  resourceName?: string;
+  resourceImage?: string;
   /**
    * When set, clicking this suggestion inserts the token string at the
    * value input's cursor position instead of linking via sourceVariableId.
    * Used for built-in resource outputs like `${api.HOST}`.
    */
-  token?: string
+  token?: string;
 }
 
 export interface SuggestionGroup {
-  label: string
-  image?: string
-  items: VariableSuggestion[]
+  label: string;
+  image?: string;
+  items: VariableSuggestion[];
 }
 
 export interface VariableFormProps {
-  suggestions?: VariableSuggestion[]
-  suggestionGroups?: SuggestionGroup[]
-  isPending?: boolean
-  onSubmit: (data: VariableFormValues & { linkedKey?: string }) => void
+  suggestions?: VariableSuggestion[];
+  suggestionGroups?: SuggestionGroup[];
+  isPending?: boolean;
+  onSubmit: (data: VariableFormValues & { linkedKey?: string }) => void;
 }
 
-export function VariableForm({ suggestions = [], suggestionGroups, isPending, onSubmit }: VariableFormProps) {
-  const { control, handleSubmit, reset, watch, setValue: setFormValue } = useForm<VariableFormValues>({
+export function VariableForm({
+  suggestions = [],
+  suggestionGroups,
+  isPending,
+  onSubmit,
+}: VariableFormProps) {
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue: setFormValue,
+  } = useForm<VariableFormValues>({
     defaultValues: { key: "", value: "", secret: true },
-  })
+  });
 
-  const [linked, setLinked] = useState<string | null>(null)
-  const [focused, setFocused] = useState(false)
-  const [highlightIndex, setHighlightIndex] = useState(-1)
-  const [copied, setCopied] = useState(false)
-  const value = watch("value")
-  const isSecret = watch("secret")
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [linked, setLinked] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [copied, setCopied] = useState(false);
+  const value = watch("value");
+  const isSecret = watch("secret");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const allSuggestions = suggestionGroups
     ? suggestionGroups.flatMap((g) => g.items)
-    : suggestions
+    : suggestions;
 
   const filtered = !linked
-    ? allSuggestions.filter((v) => !value || v.key.toLowerCase().includes(value.toLowerCase()))
-    : []
+    ? allSuggestions.filter(
+        (v) => !value || v.key.toLowerCase().includes(value.toLowerCase()),
+      )
+    : [];
 
-  const filteredGroups = suggestionGroups && !linked
-    ? suggestionGroups
-        .map((g) => ({
-          ...g,
-          items: g.items.filter((v) => !value || v.key.toLowerCase().includes(value.toLowerCase())),
-        }))
-        .filter((g) => g.items.length > 0)
-    : []
+  const filteredGroups =
+    suggestionGroups && !linked
+      ? suggestionGroups
+          .map((g) => ({
+            ...g,
+            items: g.items.filter(
+              (v) =>
+                !value || v.key.toLowerCase().includes(value.toLowerCase()),
+            ),
+          }))
+          .filter((g) => g.items.length > 0)
+      : [];
 
   const flatFilteredCount = suggestionGroups
     ? filteredGroups.reduce((n, g) => n + g.items.length, 0)
-    : filtered.length
+    : filtered.length;
 
-  const showDropdown = focused && flatFilteredCount > 0
+  const showDropdown = focused && flatFilteredCount > 0;
 
   const selectVar = (v: VariableSuggestion) => {
-    if (v.token) {
-      // Built-in — insert token at cursor; don't engage the linked-source flow.
-      const input = inputRef.current
-      const start = input?.selectionStart ?? value.length
-      const end = input?.selectionEnd ?? value.length
-      const next = value.slice(0, start) + v.token + value.slice(end)
-      setFormValue("value", next)
-      setHighlightIndex(-1)
-      setFocused(false)
+    const token = v.token;
+    if (token) {
+      const input = inputRef.current;
+      const start = input?.selectionStart ?? value.length;
+      const end = input?.selectionEnd ?? value.length;
+      const next = value.slice(0, start) + token + value.slice(end);
+      setFormValue("value", next);
+      setHighlightIndex(-1);
+      setFocused(false);
       setTimeout(() => {
-        input?.focus()
-        const pos = start + v.token!.length
-        input?.setSelectionRange(pos, pos)
-      }, 0)
-      return
+        input?.focus();
+        const pos = start + token.length;
+        input?.setSelectionRange(pos, pos);
+      }, 0);
+      return;
     }
-    setLinked(v.key)
-    setFormValue("value", v.key)
-    setFocused(false)
-    setHighlightIndex(-1)
-  }
+    setLinked(v.key);
+    setFormValue("value", v.key);
+    setFocused(false);
+    setHighlightIndex(-1);
+  };
 
   const handleFormSubmit = (data: VariableFormValues) => {
     onSubmit({
       key: data.key.trim(),
-      value: linked ? "secret://" + linked : data.value,
+      value: linked ? `secret://${linked}` : data.value,
       secret: linked ? false : data.secret,
       linkedKey: linked ?? undefined,
-    })
-    reset()
-    setLinked(null)
-    setFocused(false)
-    setHighlightIndex(-1)
-  }
+    });
+    reset();
+    setLinked(null);
+    setFocused(false);
+    setHighlightIndex(-1);
+  };
 
   const getFlatItem = (index: number): VariableSuggestion | undefined => {
     if (suggestionGroups) {
-      let offset = 0
+      let offset = 0;
       for (const g of filteredGroups) {
-        if (index < offset + g.items.length) return g.items[index - offset]
-        offset += g.items.length
+        if (index < offset + g.items.length) return g.items[index - offset];
+        offset += g.items.length;
       }
-      return undefined
+      return undefined;
     }
-    return filtered[index]
-  }
+    return filtered[index];
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showDropdown) return
+    if (!showDropdown) return;
     if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setHighlightIndex((i) => Math.min(i + 1, flatFilteredCount - 1))
+      e.preventDefault();
+      setHighlightIndex((i) => Math.min(i + 1, flatFilteredCount - 1));
     } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setHighlightIndex((i) => Math.max(i - 1, 0))
+      e.preventDefault();
+      setHighlightIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter" && highlightIndex >= 0) {
-      e.preventDefault()
-      const item = getFlatItem(highlightIndex)
-      if (item) selectVar(item)
+      e.preventDefault();
+      const item = getFlatItem(highlightIndex);
+      if (item) selectVar(item);
     }
-  }
+  };
 
   return (
-    <form onSubmit={(e) => { e.stopPropagation(); handleSubmit(handleFormSubmit)(e) }}>
+    <form
+      onSubmit={(e) => {
+        e.stopPropagation();
+        handleSubmit(handleFormSubmit)(e);
+      }}
+    >
       <div className="space-y-4">
         <Controller
           name="key"
@@ -169,14 +191,16 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
             <FieldLabel>Value</FieldLabel>
             <div className="flex items-center gap-2 h-8 rounded-lg border border-input px-2.5 text-sm font-mono">
               <LockIcon className="size-3 text-muted-foreground shrink-0" />
-              <span className="flex-1 text-muted-foreground truncate">{linked}</span>
+              <span className="flex-1 text-muted-foreground truncate">
+                {linked}
+              </span>
               <button
                 type="button"
                 className="shrink-0 text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  setLinked(null)
-                  setFormValue("value", "")
-                  setTimeout(() => inputRef.current?.focus(), 0)
+                  setLinked(null);
+                  setFormValue("value", "");
+                  setTimeout(() => inputRef.current?.focus(), 0);
                 }}
               >
                 <XIcon className="size-3.5" />
@@ -200,7 +224,10 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
                     placeholder={isSecret ? "••••••••" : "value"}
                     className="font-mono pr-14"
                     autoComplete="off"
-                    onFocus={() => { setFocused(true); setHighlightIndex(0) }}
+                    onFocus={() => {
+                      setFocused(true);
+                      setHighlightIndex(0);
+                    }}
                     onBlur={() => setTimeout(() => setFocused(false), 150)}
                     onKeyDown={handleKeyDown}
                   />
@@ -210,22 +237,28 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
                       className="text-muted-foreground hover:text-foreground"
                       title="Copy value"
                       onClick={() => {
-                        navigator.clipboard.writeText(field.value)
-                        setCopied(true)
-                        setTimeout(() => setCopied(false), 1500)
+                        navigator.clipboard.writeText(field.value);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
                       }}
                     >
-                      {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+                      {copied ? (
+                        <CheckIcon className="size-3.5" />
+                      ) : (
+                        <CopyIcon className="size-3.5" />
+                      )}
                     </button>
                     <button
                       type="button"
                       className="text-muted-foreground hover:text-foreground"
                       title="Generate random value"
                       onClick={() => {
-                        const array = new Uint8Array(24)
-                        crypto.getRandomValues(array)
-                        const generated = btoa(String.fromCharCode(...array)).replace(/[+/=]/g, "").slice(0, 32)
-                        field.onChange(generated)
+                        const array = new Uint8Array(24);
+                        crypto.getRandomValues(array);
+                        const generated = btoa(String.fromCharCode(...array))
+                          .replace(/[+/=]/g, "")
+                          .slice(0, 32);
+                        field.onChange(generated);
                       }}
                     >
                       <DicesIcon className="size-3.5" />
@@ -233,54 +266,69 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
                   </div>
                   {showDropdown && (
                     <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-md border bg-popover shadow-md overflow-hidden max-h-56 overflow-y-auto">
-                      {suggestionGroups ? (
-                        filteredGroups.map((group, gi) => {
-                          const offset = filteredGroups.slice(0, gi).reduce((n, g) => n + g.items.length, 0)
-                          return (
-                            <div key={group.label}>
-                              <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                                {group.image ? <ServiceIcon image={group.image} size="xs" /> : <LockIcon className="size-2.5" />}
-                                {group.label}
+                      {suggestionGroups
+                        ? filteredGroups.map((group, gi) => {
+                            const offset = filteredGroups
+                              .slice(0, gi)
+                              .reduce((n, g) => n + g.items.length, 0);
+                            return (
+                              <div key={group.label}>
+                                <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                  {group.image ? (
+                                    <ServiceIcon
+                                      image={group.image}
+                                      size="xs"
+                                    />
+                                  ) : (
+                                    <LockIcon className="size-2.5" />
+                                  )}
+                                  {group.label}
+                                </div>
+                                {group.items.map((v, i) => {
+                                  const flatIndex = offset + i;
+                                  return (
+                                    <button
+                                      key={v.id}
+                                      type="button"
+                                      className={cn(
+                                        "flex items-center gap-2 w-full px-3 py-1.5 text-xs font-mono text-left",
+                                        flatIndex === highlightIndex
+                                          ? "bg-accent text-accent-foreground"
+                                          : "hover:bg-accent",
+                                      )}
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => selectVar(v)}
+                                      onMouseEnter={() =>
+                                        setHighlightIndex(flatIndex)
+                                      }
+                                    >
+                                      {v.key}
+                                    </button>
+                                  );
+                                })}
                               </div>
-                              {group.items.map((v, i) => {
-                                const flatIndex = offset + i
-                                return (
-                                  <button
-                                    key={v.id}
-                                    type="button"
-                                    className={cn(
-                                      "flex items-center gap-2 w-full px-3 py-1.5 text-xs font-mono text-left",
-                                      flatIndex === highlightIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent",
-                                    )}
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => selectVar(v)}
-                                    onMouseEnter={() => setHighlightIndex(flatIndex)}
-                                  >
-                                    {v.key}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )
-                        })
-                      ) : (
-                        filtered.map((v, i) => (
-                          <button
-                            key={v.id}
-                            type="button"
-                            className={cn(
-                              "flex items-center gap-2 w-full px-3 py-2 text-xs font-mono text-left",
-                              i === highlightIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent",
-                            )}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => selectVar(v)}
-                            onMouseEnter={() => setHighlightIndex(i)}
-                          >
-                            {v.secret && <LockIcon className="size-3 text-muted-foreground" />}
-                            {v.key}
-                          </button>
-                        ))
-                      )}
+                            );
+                          })
+                        : filtered.map((v, i) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              className={cn(
+                                "flex items-center gap-2 w-full px-3 py-2 text-xs font-mono text-left",
+                                i === highlightIndex
+                                  ? "bg-accent text-accent-foreground"
+                                  : "hover:bg-accent",
+                              )}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => selectVar(v)}
+                              onMouseEnter={() => setHighlightIndex(i)}
+                            >
+                              {v.secret && (
+                                <LockIcon className="size-3 text-muted-foreground" />
+                              )}
+                              {v.key}
+                            </button>
+                          ))}
                     </div>
                   )}
                 </div>
@@ -298,7 +346,9 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Secret</p>
-                  <p className="text-xs text-muted-foreground">Encrypt and hide the value</p>
+                  <p className="text-xs text-muted-foreground">
+                    Encrypt and hide the value
+                  </p>
                 </div>
                 <Switch
                   checked={field.value}
@@ -316,5 +366,5 @@ export function VariableForm({ suggestions = [], suggestionGroups, isPending, on
         </Button>
       </div>
     </form>
-  )
+  );
 }

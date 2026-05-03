@@ -1,22 +1,22 @@
-export { GeneralForm } from "./general"
-export { ScalingForm } from "./scaling"
-export { HealthForm } from "./health"
-export { Variables, type VariableEntry } from "./variables"
-export { VariablesSection } from "./variables-section"
-export { VolumesFormSection } from "./volumes-section"
-export { RoutesForm } from "./routes"
-export type { RouteEntry } from "./routes"
-export {
-  defaultGeneralValues,
-  defaultScalingValues,
-  defaultHealthValues,
-  defaultServiceFormValues,
-} from "./types"
+export { GeneralForm } from "./general";
+export { HealthForm } from "./health";
+export type { RouteEntry } from "./routes";
+export { RoutesForm } from "./routes";
+export { ScalingForm } from "./scaling";
 export type {
   GeneralFormValues,
-  ScalingFormValues,
   HealthFormValues,
-  ServiceFormValues,
   RouteFormEntry,
+  ScalingFormValues,
+  ServiceFormValues,
   VolumeFormEntry,
-} from "./types"
+} from "./types";
+export {
+  defaultGeneralValues,
+  defaultHealthValues,
+  defaultScalingValues,
+  defaultServiceFormValues,
+} from "./types";
+export { type VariableEntry, Variables } from "./variables";
+export { VariablesSection } from "./variables-section";
+export { VolumesFormSection } from "./volumes-section";

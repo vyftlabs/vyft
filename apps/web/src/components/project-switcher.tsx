@@ -1,9 +1,9 @@
-import { useState } from "react"
-import { useNavigate, useParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
-import { ChevronsUpDown, Plus, FolderIcon } from "lucide-react"
-import * as api from "@/lib/api"
-
+import { useQuery } from "@tanstack/react-query";
+import { ChevronsUpDown, FolderIcon, Plus } from "lucide-react";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,19 +12,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { CreateProjectDialog } from "@/components/projects/create-dialog"
+} from "@/components/ui/dropdown-menu";
+import * as api from "@/lib/api";
 
 export function ProjectSwitcher() {
-  const navigate = useNavigate()
-  const { project: projectSlug } = useParams()
-  const { data: projectList = [], isSuccess } = useQuery(api.projects.list())
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const navigate = useNavigate();
+  const { project: projectSlug } = useParams();
+  const { data: projectList = [], isSuccess } = useQuery(api.projects.list());
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const activeProject = projectList.find((p) => p.slug === projectSlug)
+  const activeProject = projectList.find((p) => p.slug === projectSlug);
 
-  if (!isSuccess) return null
+  if (!isSuccess) return null;
 
   return (
     <>
@@ -51,7 +50,7 @@ export function ProjectSwitcher() {
               <DropdownMenuItem
                 key={project.id}
                 onClick={() => {
-                  navigate(`/projects/${project.slug}`)
+                  navigate(`/projects/${project.slug}`);
                 }}
                 className="gap-2 p-2"
               >
@@ -63,15 +62,20 @@ export function ProjectSwitcher() {
             ))}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2 p-2" onClick={() => setDialogOpen(true)}>
+          <DropdownMenuItem
+            className="gap-2 p-2"
+            onClick={() => setDialogOpen(true)}
+          >
             <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
               <Plus className="size-4" />
             </div>
-            <div className="font-medium text-muted-foreground">Create project</div>
+            <div className="font-medium text-muted-foreground">
+              Create project
+            </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <CreateProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
-  )
+  );
 }

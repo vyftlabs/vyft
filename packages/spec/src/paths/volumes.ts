@@ -1,10 +1,10 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
-import { Volume, VolumeCreate } from "../models/volume.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
+import { Volume, VolumeCreate } from "../models/volume.ts";
 
-const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid })
-const VolumeScope = z.object({ projectId: Uuid, id: Uuid })
+const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid });
+const VolumeScope = z.object({ projectId: Uuid, id: Uuid });
 
 export const volumePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/services/{serviceId}/volumes": {
@@ -14,7 +14,10 @@ export const volumePaths: ZodOpenApiPathsObject = {
       tags: ["Volumes"],
       requestParams: { path: ServiceScope },
       responses: {
-        200: { description: "Volumes", content: { "application/json": { schema: z.array(Volume) } } },
+        200: {
+          description: "Volumes",
+          content: { "application/json": { schema: z.array(Volume) } },
+        },
         ...errorResponses,
       },
     },
@@ -23,9 +26,14 @@ export const volumePaths: ZodOpenApiPathsObject = {
       summary: "Create + mount volume",
       tags: ["Volumes"],
       requestParams: { path: ServiceScope },
-      requestBody: { content: { "application/json": { schema: VolumeCreate } } },
+      requestBody: {
+        content: { "application/json": { schema: VolumeCreate } },
+      },
       responses: {
-        201: { description: "Created", content: { "application/json": { schema: Volume } } },
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: Volume } },
+        },
         ...errorResponses,
       },
     },
@@ -42,4 +50,4 @@ export const volumePaths: ZodOpenApiPathsObject = {
       },
     },
   },
-}
+};

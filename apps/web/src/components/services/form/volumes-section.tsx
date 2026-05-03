@@ -1,6 +1,6 @@
-import { type Control, useFieldArray } from "react-hook-form"
-import { PlusIcon, Trash2Icon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { PlusIcon, Trash2Icon } from "lucide-react";
+import { type Control, useFieldArray } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -8,19 +8,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { ServiceFormValues } from "./types"
+} from "@/components/ui/table";
+import type { ServiceFormValues } from "./types";
 
 export function VolumesFormSection({
   control,
   onAdd,
   addDialog,
 }: {
-  control: Control<ServiceFormValues>
-  onAdd: () => void
-  addDialog?: React.ReactNode
+  control: Control<ServiceFormValues>;
+  onAdd: () => void;
+  addDialog?: React.ReactNode;
 }) {
-  const { fields, remove } = useFieldArray({ control, name: "volumes" })
+  const { fields, remove } = useFieldArray({ control, name: "volumes" });
 
   return (
     <div className="space-y-3">
@@ -37,9 +37,15 @@ export function VolumesFormSection({
           <TableBody>
             {fields.map((field, index) => (
               <TableRow key={field.id} className="group">
-                <TableCell className="font-mono text-xs">{field.name}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{field.mountPath}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{field.size}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {field.name}
+                </TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {field.mountPath}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {field.size}
+                </TableCell>
                 <TableCell>
                   <Button
                     type="button"
@@ -57,12 +63,18 @@ export function VolumesFormSection({
         </Table>
       )}
 
-      <Button type="button" variant="outline" size="sm" className="w-full" onClick={onAdd}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={onAdd}
+      >
         <PlusIcon />
         Add volume
       </Button>
 
       {addDialog}
     </div>
-  )
+  );
 }

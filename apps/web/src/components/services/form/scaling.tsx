@@ -1,69 +1,73 @@
-import { type Control, Controller } from "react-hook-form"
-import { MinusIcon, PlusIcon } from "lucide-react"
-import { Field, FieldLabel, FieldError } from "@/components/ui/field"
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group"
-import { Slider } from "@/components/ui/slider"
-import type { ScalingFormValues } from "./types"
+import { MinusIcon, PlusIcon } from "lucide-react";
+import { type Control, Controller } from "react-hook-form";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Slider } from "@/components/ui/slider";
+import type { ScalingFormValues } from "./types";
 
 const cpuSteps = [
-  50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
-  750, 1000, 1250, 1500, 1750, 2000,
-  2500, 3000, 3500, 4000,
-  5000, 6000, 7000, 8000,
-]
+  50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 750, 1000, 1250, 1500, 1750,
+  2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000,
+];
 
 const memSteps = [
-  64, 128, 192, 256, 320, 384, 448, 512,
-  640, 768, 896, 1024, 1280, 1536, 1792, 2048,
-  2560, 3072, 3584, 4096,
-  5120, 6144, 7168, 8192,
-  10240, 12288, 14336, 16384,
-]
+  64, 128, 192, 256, 320, 384, 448, 512, 640, 768, 896, 1024, 1280, 1536, 1792,
+  2048, 2560, 3072, 3584, 4096, 5120, 6144, 7168, 8192, 10240, 12288, 14336,
+  16384,
+];
 
 function parseCpu(v: string): number {
-  if (!v) return 0
+  if (!v) return 0;
   // Always store as millicores internally
-  if (v.endsWith("m")) return parseInt(v) || 0
+  if (v.endsWith("m")) return parseInt(v, 10) || 0;
   // Bare number = could be cores (from formatCpu) or millicores
-  const n = parseFloat(v)
-  if (isNaN(n)) return 0
+  const n = parseFloat(v);
+  if (Number.isNaN(n)) return 0;
   // If it looks like cores (small number without 'm'), convert to millicores
-  return n < 50 ? n * 1000 : n
+  return n < 50 ? n * 1000 : n;
 }
 
 function parseMem(v: string): number {
-  if (!v) return 0
-  if (v.endsWith("Gi")) return (parseFloat(v) || 0) * 1024
-  if (v.endsWith("Mi")) return parseInt(v) || 0
-  return parseInt(v) || 0
+  if (!v) return 0;
+  if (v.endsWith("Gi")) return (parseFloat(v) || 0) * 1024;
+  if (v.endsWith("Mi")) return parseInt(v, 10) || 0;
+  return parseInt(v, 10) || 0;
 }
 
 function formatCpu(v: number): string {
-  if (v === 0) return ""
-  return `${v}m`
+  if (v === 0) return "";
+  return `${v}m`;
 }
 
 function formatCpuDisplay(v: number): string {
-  if (v >= 1000) return `${v / 1000} core${v > 1000 ? "s" : ""}`
-  return `${v}m`
+  if (v >= 1000) return `${v / 1000} core${v > 1000 ? "s" : ""}`;
+  return `${v}m`;
 }
 
 function formatMem(v: number): string {
-  if (v === 0) return ""
-  return `${v}Mi`
+  if (v === 0) return "";
+  return `${v}Mi`;
 }
 
 function formatMemDisplay(v: number): string {
-  if (v >= 1024) return `${(v / 1024).toFixed(v % 1024 === 0 ? 0 : 1)}Gi`
-  return `${v}Mi`
+  if (v >= 1024) return `${(v / 1024).toFixed(v % 1024 === 0 ? 0 : 1)}Gi`;
+  return `${v}Mi`;
 }
 
 function closestIndex(steps: number[], value: number): number {
-  let best = 0
+  let best = 0;
   for (let i = 0; i < steps.length; i++) {
-    if (Math.abs((steps[i] ?? 0) - value) < Math.abs((steps[best] ?? 0) - value)) best = i
+    if (
+      Math.abs((steps[i] ?? 0) - value) < Math.abs((steps[best] ?? 0) - value)
+    )
+      best = i;
   }
-  return best
+  return best;
 }
 
 function ResourceRange({
@@ -77,20 +81,20 @@ function ResourceRange({
   formatDisplay,
   parse,
 }: {
-  label: string
-  minValue: string
-  maxValue: string
-  onMinChange: (v: string) => void
-  onMaxChange: (v: string) => void
-  steps: number[]
-  format: (v: number) => string
-  formatDisplay: (v: number) => string
-  parse: (v: string) => number
+  label: string;
+  minValue: string;
+  maxValue: string;
+  onMinChange: (v: string) => void;
+  onMaxChange: (v: string) => void;
+  steps: number[];
+  format: (v: number) => string;
+  formatDisplay: (v: number) => string;
+  parse: (v: string) => number;
 }) {
-  const minNum = parse(minValue)
-  const maxNum = parse(maxValue)
-  const minIdx = closestIndex(steps, minNum)
-  const maxIdx = closestIndex(steps, maxNum)
+  const minNum = parse(minValue);
+  const maxNum = parse(maxValue);
+  const minIdx = closestIndex(steps, minNum);
+  const maxIdx = closestIndex(steps, maxNum);
 
   return (
     <div className="grid gap-2">
@@ -103,23 +107,25 @@ function ResourceRange({
       <Slider
         value={[minIdx, maxIdx]}
         onValueChange={([lo, hi]) => {
-          if (lo !== undefined && steps[lo] !== undefined) onMinChange(format(steps[lo]))
-          if (hi !== undefined && steps[hi] !== undefined) onMaxChange(format(steps[hi]))
+          if (lo !== undefined && steps[lo] !== undefined)
+            onMinChange(format(steps[lo]));
+          if (hi !== undefined && steps[hi] !== undefined)
+            onMaxChange(format(steps[hi]));
         }}
         min={0}
         max={steps.length - 1}
         step={1}
       />
     </div>
-  )
+  );
 }
 
 export function ScalingForm({
   control,
   showReplicas = true,
 }: {
-  control: Control<ScalingFormValues>
-  showReplicas?: boolean
+  control: Control<ScalingFormValues>;
+  showReplicas?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -129,7 +135,7 @@ export function ScalingForm({
           control={control}
           rules={{ required: "Replicas is required" }}
           render={({ field, fieldState }) => {
-            const value = parseInt(field.value) || 1
+            const value = parseInt(field.value, 10) || 1;
             return (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor={field.name}>Replicas</FieldLabel>
@@ -138,7 +144,9 @@ export function ScalingForm({
                     <InputGroupButton
                       size="icon-xs"
                       disabled={value <= 1}
-                      onClick={() => field.onChange(String(Math.max(1, value - 1)))}
+                      onClick={() =>
+                        field.onChange(String(Math.max(1, value - 1)))
+                      }
                     >
                       <MinusIcon />
                     </InputGroupButton>
@@ -161,7 +169,7 @@ export function ScalingForm({
                 </InputGroup>
                 <FieldError errors={[fieldState.error]} />
               </Field>
-            )
+            );
           }}
         />
       )}
@@ -216,5 +224,5 @@ export function ScalingForm({
         />
       </div>
     </div>
-  )
+  );
 }

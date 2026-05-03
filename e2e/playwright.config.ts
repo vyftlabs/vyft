@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test"
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./src/specs",
@@ -8,15 +8,18 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   retries: 0,
   reporter: "list",
-  globalSetup: "./src/global-setup.ts",
-  globalTeardown: "./src/global-teardown.ts",
+  webServer: {
+    command: "pnpm exec nx dev web",
+    cwd: "..",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   use: {
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
-  ],
-})
+  projects: [{ name: "chromium", use: { browserName: "chromium" } }],
+});

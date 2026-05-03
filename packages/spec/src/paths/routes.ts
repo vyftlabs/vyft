@@ -1,10 +1,10 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
-import { Route, RouteCreate, RouteUpdate } from "../models/route.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
+import { Route, RouteCreate, RouteUpdate } from "../models/route.ts";
 
-const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid })
-const RouteScope = z.object({ projectId: Uuid, id: Uuid })
+const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid });
+const RouteScope = z.object({ projectId: Uuid, id: Uuid });
 
 export const routePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/services/{serviceId}/routes": {
@@ -14,7 +14,10 @@ export const routePaths: ZodOpenApiPathsObject = {
       tags: ["Routes"],
       requestParams: { path: ServiceScope },
       responses: {
-        200: { description: "Routes", content: { "application/json": { schema: z.array(Route) } } },
+        200: {
+          description: "Routes",
+          content: { "application/json": { schema: z.array(Route) } },
+        },
         ...errorResponses,
       },
     },
@@ -25,7 +28,10 @@ export const routePaths: ZodOpenApiPathsObject = {
       requestParams: { path: ServiceScope },
       requestBody: { content: { "application/json": { schema: RouteCreate } } },
       responses: {
-        201: { description: "Created", content: { "application/json": { schema: Route } } },
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: Route } },
+        },
         ...errorResponses,
       },
     },
@@ -38,7 +44,10 @@ export const routePaths: ZodOpenApiPathsObject = {
       requestParams: { path: RouteScope },
       requestBody: { content: { "application/json": { schema: RouteUpdate } } },
       responses: {
-        200: { description: "Updated", content: { "application/json": { schema: Route } } },
+        200: {
+          description: "Updated",
+          content: { "application/json": { schema: Route } },
+        },
         ...errorResponses,
       },
     },
@@ -53,4 +62,4 @@ export const routePaths: ZodOpenApiPathsObject = {
       },
     },
   },
-}
+};

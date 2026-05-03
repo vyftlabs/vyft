@@ -1,12 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import Layout from "./components/layout"
-import PageContainer from "./components/page-container"
-import Projects from "./pages/projects/index"
-import Services from "./pages/projects/services/index"
-import Registries from "./pages/registries/index"
-import Integrations from "./pages/integrations/index"
-import ProjectSettings from "./pages/projects/settings/index"
-import SharedVariables from "./pages/projects/variables/index"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import Layout from "./components/layout";
+import PageContainer from "./components/page-container";
+import Integrations from "./pages/integrations/index";
+import Projects from "./pages/projects/index";
+import Services from "./pages/projects/services/index";
+import ProjectSettings from "./pages/projects/settings/index";
+import SharedVariables from "./pages/projects/variables/index";
+import Registries from "./pages/registries/index";
 
 export default function App() {
   return (
@@ -32,5 +32,5 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }

@@ -1,14 +1,18 @@
-import * as React from "react";
-import { Link, Outlet, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RocketIcon } from "lucide-react";
+import * as React from "react";
+import { Link, Outlet, useParams } from "react-router";
 import { toast } from "sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProjectSwitcher } from "@/components/project-switcher";
+import { Button } from "@/components/ui/button";
+import {
+  SidebarInset,
+  SidebarProvider,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import * as api from "@/lib/api";
 
 function DeployButton({ projectId }: { projectId: string }) {
@@ -27,8 +31,10 @@ function DeployButton({ projectId }: { projectId: string }) {
     },
   });
 
-  const isDeploying = latest?.status === "pending" || latest?.status === "applying";
-  const hasChanges = current?.checksum && (!latest || latest.checksum !== current.checksum);
+  const isDeploying =
+    latest?.status === "pending" || latest?.status === "applying";
+  const hasChanges =
+    current?.checksum && (!latest || latest.checksum !== current.checksum);
   const wasDeploying = React.useRef(false);
 
   const deploy = useMutation(api.deployments.create);
@@ -39,12 +45,14 @@ function DeployButton({ projectId }: { projectId: string }) {
     } else if (wasDeploying.current && latest) {
       wasDeploying.current = false;
       if (latest.status === "applied") {
-        queryClient.invalidateQueries({ queryKey: api.deployments.checksum(projectId).queryKey });
+        queryClient.invalidateQueries({
+          queryKey: api.deployments.checksum(projectId).queryKey,
+        });
       } else if (latest.status === "failed") {
         toast.error("Deployment failed");
       }
     }
-  }, [latest?.status, queryClient, projectId]);
+  }, [latest?.status, queryClient, projectId, isDeploying, latest]);
 
   if (!hasChanges && !isDeploying) return null;
 
@@ -72,7 +80,7 @@ function LayoutHeader() {
   const { open, isMobile } = useSidebar();
 
   const { data: projectData } = useQuery({
-    ...api.projects.bySlug(project!),
+    ...api.projects.bySlug(project ?? ""),
     enabled: !!project,
   });
 
@@ -81,17 +89,41 @@ function LayoutHeader() {
       <Link
         to="/"
         className="flex items-center shrink-0 overflow-hidden pl-3 pr-2 md:pl-0 md:pr-0 md:transition-[width] md:duration-200 md:ease-linear"
-        style={isMobile ? undefined : { width: open ? "var(--sidebar-width)" : "var(--sidebar-width-icon)" }}
+        style={
+          isMobile
+            ? undefined
+            : {
+                width: open
+                  ? "var(--sidebar-width)"
+                  : "var(--sidebar-width-icon)",
+              }
+        }
       >
         <div className="flex items-center justify-center shrink-0 md:w-(--sidebar-width-icon) w-auto">
-          <div className="h-5 bg-foreground shrink-0" style={{ aspectRatio: "560/676", maskImage: "url(/logo.svg)", maskSize: "contain", maskRepeat: "no-repeat", maskPosition: "center", WebkitMaskImage: "url(/logo.svg)", WebkitMaskSize: "contain", WebkitMaskRepeat: "no-repeat", WebkitMaskPosition: "center" }} />
+          <div
+            className="h-5 bg-foreground shrink-0"
+            style={{
+              aspectRatio: "560/676",
+              maskImage: "url(/logo.svg)",
+              maskSize: "contain",
+              maskRepeat: "no-repeat",
+              maskPosition: "center",
+              WebkitMaskImage: "url(/logo.svg)",
+              WebkitMaskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+            }}
+          />
         </div>
-        <span className="ml-2 md:-ml-2 text-sm font-semibold tracking-tight whitespace-nowrap md:transition-opacity md:duration-200" style={isMobile ? undefined : { opacity: open ? 1 : 0 }}>Vyft</span>
+        <span
+          className="ml-2 md:-ml-2 text-sm font-semibold tracking-tight whitespace-nowrap md:transition-opacity md:duration-200"
+          style={isMobile ? undefined : { opacity: open ? 1 : 0 }}
+        >
+          Vyft
+        </span>
       </Link>
       <div className="flex flex-1 items-center gap-1">
-        {project && (
-          <ProjectSwitcher />
-        )}
+        {project && <ProjectSwitcher />}
         {projectData?.id && (
           <div className="ml-auto pr-3">
             <DeployButton projectId={projectData.id} />
@@ -112,10 +144,13 @@ export default function Layout() {
     return saved !== null ? saved === "true" : false;
   });
 
-  const handleOpenChange = React.useCallback((value: boolean) => {
-    setOpen(value);
-    if (inProject) localStorage.setItem("vyft-sidebar-open", String(value));
-  }, [inProject]);
+  const handleOpenChange = React.useCallback(
+    (value: boolean) => {
+      setOpen(value);
+      if (inProject) localStorage.setItem("vyft-sidebar-open", String(value));
+    },
+    [inProject],
+  );
 
   React.useEffect(() => {
     if (!inProject) {
@@ -128,7 +163,11 @@ export default function Layout() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider open={open} onOpenChange={handleOpenChange} className="h-svh !min-h-0 flex-col">
+      <SidebarProvider
+        open={open}
+        onOpenChange={handleOpenChange}
+        className="h-svh !min-h-0 flex-col"
+      >
         <LayoutHeader />
         <div className="flex flex-1 min-h-0">
           <AppSidebar />

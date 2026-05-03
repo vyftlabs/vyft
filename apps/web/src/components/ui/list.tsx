@@ -1,5 +1,5 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import type * as React from "react";
+import { cn } from "@/lib/utils";
 
 function List({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -8,7 +8,7 @@ function List({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("divide-y divide-border", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListItem({ className, ...props }: React.ComponentProps<"div">) {
@@ -21,7 +21,7 @@ function ListItem({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function ListIcon({ className, ...props }: React.ComponentProps<"div">) {
@@ -31,7 +31,7 @@ function ListIcon({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("shrink-0 text-muted-foreground [&_svg]:size-4", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListContent({ className, ...props }: React.ComponentProps<"div">) {
@@ -41,7 +41,7 @@ function ListContent({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("flex flex-1 flex-col gap-0.5 min-w-0", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListTitle({ className, ...props }: React.ComponentProps<"p">) {
@@ -51,7 +51,7 @@ function ListTitle({ className, ...props }: React.ComponentProps<"p">) {
       className={cn("text-sm font-medium truncate", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListDescription({ className, ...props }: React.ComponentProps<"p">) {
@@ -61,7 +61,7 @@ function ListDescription({ className, ...props }: React.ComponentProps<"p">) {
       className={cn("text-xs text-muted-foreground truncate", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListAction({ className, ...props }: React.ComponentProps<"div">) {
@@ -71,17 +71,20 @@ function ListAction({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("shrink-0", className)}
       {...props}
     />
-  )
+  );
 }
 
 function ListEmpty({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="list-empty"
-      className={cn("py-16 text-center text-sm text-muted-foreground", className)}
+      className={cn(
+        "py-16 text-center text-sm text-muted-foreground",
+        className,
+      )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -93,4 +96,4 @@ export {
   ListDescription,
   ListAction,
   ListEmpty,
-}
+};

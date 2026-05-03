@@ -1,13 +1,13 @@
-import { z } from "zod"
-import type { ZodOpenApiPathsObject } from "zod-openapi"
-import { errorResponses, Uuid } from "../models/common.ts"
+import { z } from "zod";
+import type { ZodOpenApiPathsObject } from "zod-openapi";
+import { errorResponses, Uuid } from "../models/common.ts";
 import {
-  ServiceEvent,
   LogLine,
   MetricsOverview,
-} from "../models/observability.ts"
+  ServiceEvent,
+} from "../models/observability.ts";
 
-const ResourceScope = z.object({ projectId: Uuid, resourceId: Uuid })
+const ResourceScope = z.object({ projectId: Uuid, resourceId: Uuid });
 
 export const observabilityPaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/resources/{resourceId}/events": {
@@ -17,7 +17,10 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       tags: ["Observability"],
       requestParams: { path: ResourceScope },
       responses: {
-        200: { description: "Events", content: { "application/json": { schema: z.array(ServiceEvent) } } },
+        200: {
+          description: "Events",
+          content: { "application/json": { schema: z.array(ServiceEvent) } },
+        },
         ...errorResponses,
       },
     },
@@ -29,10 +32,15 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       tags: ["Observability"],
       requestParams: {
         path: ResourceScope,
-        query: z.object({ limit: z.coerce.number().int().min(1).max(1000).default(100) }),
+        query: z.object({
+          limit: z.coerce.number().int().min(1).max(1000).default(100),
+        }),
       },
       responses: {
-        200: { description: "Log lines", content: { "application/json": { schema: z.array(LogLine) } } },
+        200: {
+          description: "Log lines",
+          content: { "application/json": { schema: z.array(LogLine) } },
+        },
         ...errorResponses,
       },
     },
@@ -44,9 +52,12 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       tags: ["Observability"],
       requestParams: { path: ResourceScope },
       responses: {
-        200: { description: "Metrics", content: { "application/json": { schema: MetricsOverview } } },
+        200: {
+          description: "Metrics",
+          content: { "application/json": { schema: MetricsOverview } },
+        },
         ...errorResponses,
       },
     },
   },
-}
+};

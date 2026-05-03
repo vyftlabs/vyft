@@ -4,13 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test",
-    "test:headed": "playwright test --headed",
-    "test:setup": "node src/global-setup.ts",
-    "test:down": "node src/global-teardown.ts"
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^1.4.0",
     "@playwright/test": "^1.49.0"
   },
   "devDependencies": {

@@ -1,25 +1,15 @@
-import { useMemo, useState } from "react"
-import { useForm } from "react-hook-form"
 import {
-  PlusIcon,
+  ArrowLeftIcon,
   CheckCircle2Icon,
   CircleIcon,
-  XCircleIcon,
   LoaderIcon,
-  ArrowLeftIcon,
-} from "lucide-react"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
+  PlusIcon,
+  XCircleIcon,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -27,37 +17,47 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
+import { DangerZone } from "@/components/ui/danger-zone";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   List,
-  ListItem,
-  ListIcon,
-  ListContent,
-  ListTitle,
-  ListDescription,
   ListAction,
-} from "@/components/ui/list"
-import { DangerZone } from "@/components/ui/danger-zone"
-import { cn } from "@/lib/utils"
+  ListContent,
+  ListDescription,
+  ListIcon,
+  ListItem,
+  ListTitle,
+} from "@/components/ui/list";
 import {
+  getProvider,
+  type IntegrationProvider,
+  type IntegrationSlot,
   integrationCategories,
   providersForCapability,
-  getProvider,
-  type IntegrationSlot,
-  type IntegrationProvider,
-} from "@/lib/integration-presets"
+} from "@/lib/integration-presets";
+import { cn } from "@/lib/utils";
 
 type SlotState = {
-  providerId: string
-  config: Record<string, string>
-  status: "healthy" | "error" | "unknown"
-}
+  providerId: string;
+  config: Record<string, string>;
+  status: "healthy" | "error" | "unknown";
+};
 
-type IntegrationsState = Record<string, SlotState | undefined>
+type IntegrationsState = Record<string, SlotState | undefined>;
 
 export default function Integrations() {
-  const [state, setState] = useState<IntegrationsState>({})
-  const [editing, setEditing] = useState<IntegrationSlot | null>(null)
+  const [state, setState] = useState<IntegrationsState>({});
+  const [editing, setEditing] = useState<IntegrationSlot | null>(null);
 
   return (
     <div className="space-y-6">
@@ -73,7 +73,9 @@ export default function Integrations() {
           <div key={cat.id} className="space-y-3">
             <div>
               <h2 className="text-sm font-medium">{cat.name}</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{cat.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {cat.description}
+              </p>
             </div>
             <div className="rounded-lg border bg-card overflow-hidden">
               <List>
@@ -96,20 +98,20 @@ export default function Integrations() {
         state={editing ? state[editing.id] : undefined}
         onClose={() => setEditing(null)}
         onSave={(slotId, next) => {
-          setState((prev) => ({ ...prev, [slotId]: next }))
-          setEditing(null)
+          setState((prev) => ({ ...prev, [slotId]: next }));
+          setEditing(null);
         }}
         onDisconnect={(slotId) => {
           setState((prev) => {
-            const next = { ...prev }
-            delete next[slotId]
-            return next
-          })
-          setEditing(null)
+            const next = { ...prev };
+            delete next[slotId];
+            return next;
+          });
+          setEditing(null);
         }}
       />
     </div>
-  )
+  );
 }
 
 function SlotRow({
@@ -117,19 +119,17 @@ function SlotRow({
   state,
   onConfigure,
 }: {
-  slot: IntegrationSlot
-  state: SlotState | undefined
-  onConfigure: () => void
+  slot: IntegrationSlot;
+  state: SlotState | undefined;
+  onConfigure: () => void;
 }) {
-  const provider = state ? getProvider(state.providerId) : undefined
-  const SlotIcon = slot.icon
-  const ProviderIcon = provider?.icon
+  const provider = state ? getProvider(state.providerId) : undefined;
+  const SlotIcon = slot.icon;
+  const ProviderIcon = provider?.icon;
 
   return (
     <ListItem className="cursor-pointer" onClick={onConfigure}>
-      <ListIcon>
-        {ProviderIcon ? <ProviderIcon /> : <SlotIcon />}
-      </ListIcon>
+      <ListIcon>{ProviderIcon ? <ProviderIcon /> : <SlotIcon />}</ListIcon>
       <ListContent>
         <div className="flex items-center gap-2">
           <ListTitle>{slot.name}</ListTitle>
@@ -143,23 +143,37 @@ function SlotRow({
         {state ? (
           <span className="text-xs text-muted-foreground">Configure</span>
         ) : (
-          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onConfigure() }}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onConfigure();
+            }}
+          >
             <PlusIcon />
             Connect
           </Button>
         )}
       </ListAction>
     </ListItem>
-  )
+  );
 }
 
 function StatusDot({ status }: { status: SlotState["status"] }) {
-  const cls = status === "healthy"
-    ? "bg-emerald-500"
-    : status === "error"
-      ? "bg-destructive"
-      : "bg-muted-foreground"
-  return <span className={cn("inline-block size-1.5 rounded-full", cls)} aria-label={status} />
+  const cls =
+    status === "healthy"
+      ? "bg-emerald-500"
+      : status === "error"
+        ? "bg-destructive"
+        : "bg-muted-foreground";
+  return (
+    <span
+      role="img"
+      className={cn("inline-block size-1.5 rounded-full", cls)}
+      aria-label={status}
+    />
+  );
 }
 
 function ConfigureDialog({
@@ -169,14 +183,19 @@ function ConfigureDialog({
   onSave,
   onDisconnect,
 }: {
-  slot: IntegrationSlot | null
-  state: SlotState | undefined
-  onClose: () => void
-  onSave: (slotId: string, next: SlotState) => void
-  onDisconnect: (slotId: string) => void
+  slot: IntegrationSlot | null;
+  state: SlotState | undefined;
+  onClose: () => void;
+  onSave: (slotId: string, next: SlotState) => void;
+  onDisconnect: (slotId: string) => void;
 }) {
   return (
-    <Dialog open={slot !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={slot !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
         {slot && (
           <ConfigureDialogBody
@@ -188,7 +207,7 @@ function ConfigureDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function ConfigureDialogBody({
@@ -197,40 +216,50 @@ function ConfigureDialogBody({
   onSave,
   onDisconnect,
 }: {
-  slot: IntegrationSlot
-  state: SlotState | undefined
-  onSave: (next: SlotState) => void
-  onDisconnect: () => void
+  slot: IntegrationSlot;
+  state: SlotState | undefined;
+  onSave: (next: SlotState) => void;
+  onDisconnect: () => void;
 }) {
-  const providers = useMemo(() => providersForCapability(slot.capability), [slot.capability])
-  const [providerId, setProviderId] = useState<string | null>(state?.providerId ?? null)
-  const [picking, setPicking] = useState(state == null)
+  const providers = useMemo(
+    () => providersForCapability(slot.capability),
+    [slot.capability],
+  );
+  const [providerId, setProviderId] = useState<string | null>(
+    state?.providerId ?? null,
+  );
+  const [picking, setPicking] = useState(state == null);
 
-  const provider = providerId ? getProvider(providerId) : undefined
+  const provider = providerId ? getProvider(providerId) : undefined;
 
   if (picking || !provider) {
     return (
       <Command className="rounded-none border-0">
-        <CommandInput placeholder={`Search ${slot.name.toLowerCase()} providers...`} />
+        <CommandInput
+          placeholder={`Search ${slot.name.toLowerCase()} providers...`}
+        />
         <CommandList>
           <CommandEmpty>No provider found.</CommandEmpty>
           <CommandGroup heading={`${slot.name} providers`}>
             {providers.map((p) => {
-              const PIcon = p.icon
+              const PIcon = p.icon;
               return (
                 <CommandItem
                   key={p.id}
-                  onSelect={() => { setProviderId(p.id); setPicking(false) }}
+                  onSelect={() => {
+                    setProviderId(p.id);
+                    setPicking(false);
+                  }}
                 >
                   <PIcon className="text-muted-foreground" />
                   {p.name}
                 </CommandItem>
-              )
+              );
             })}
           </CommandGroup>
         </CommandList>
       </Command>
-    )
+    );
   }
 
   return (
@@ -242,7 +271,7 @@ function ConfigureDialogBody({
       onSave={onSave}
       onDisconnect={state ? onDisconnect : undefined}
     />
-  )
+  );
 }
 
 function ProviderForm({
@@ -253,47 +282,54 @@ function ProviderForm({
   onSave,
   onDisconnect,
 }: {
-  slot: IntegrationSlot
-  provider: IntegrationProvider
-  state: SlotState | undefined
-  onBack: () => void
-  onSave: (next: SlotState) => void
-  onDisconnect?: () => void
+  slot: IntegrationSlot;
+  provider: IntegrationProvider;
+  state: SlotState | undefined;
+  onBack: () => void;
+  onSave: (next: SlotState) => void;
+  onDisconnect?: () => void;
 }) {
-  const [testStatus, setTestStatus] = useState<SlotState["status"]>(state?.status ?? "unknown")
-  const [testing, setTesting] = useState(false)
+  const [testStatus, setTestStatus] = useState<SlotState["status"]>(
+    state?.status ?? "unknown",
+  );
+  const [testing, setTesting] = useState(false);
 
   const { register, handleSubmit, getValues } = useForm({
     defaultValues: provider.fields.reduce<Record<string, string>>((acc, f) => {
-      acc[f.key] = state?.config?.[f.key] ?? ""
-      return acc
+      acc[f.key] = state?.config?.[f.key] ?? "";
+      return acc;
     }, {}),
-  })
+  });
 
   const onSubmit = handleSubmit((data) => {
     const trimmed = Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v]),
-    )
-    onSave({ providerId: provider.id, config: trimmed, status: testStatus })
-  })
+      Object.entries(data).map(([k, v]) => [
+        k,
+        typeof v === "string" ? v.trim() : v,
+      ]),
+    );
+    onSave({ providerId: provider.id, config: trimmed, status: testStatus });
+  });
 
   const onTest = () => {
-    const values = getValues()
-    const missing = provider.fields.some((f) => f.required && !values[f.key]?.trim())
+    const values = getValues();
+    const missing = provider.fields.some(
+      (f) => f.required && !values[f.key]?.trim(),
+    );
     if (missing) {
-      toast.error("Fill required fields first.")
-      return
+      toast.error("Fill required fields first.");
+      return;
     }
-    setTesting(true)
+    setTesting(true);
     setTimeout(() => {
-      const ok = Math.random() > 0.2
-      setTestStatus(ok ? "healthy" : "error")
-      setTesting(false)
-      if (!ok) toast.error("Connection failed.")
-    }, 800)
-  }
+      const ok = Math.random() > 0.2;
+      setTestStatus(ok ? "healthy" : "error");
+      setTesting(false);
+      if (!ok) toast.error("Connection failed.");
+    }, 800);
+  };
 
-  const ProviderIcon = provider.icon
+  const ProviderIcon = provider.icon;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col">
@@ -325,7 +361,13 @@ function ProviderForm({
         ))}
 
         <div className="flex items-center gap-3 pt-1">
-          <Button type="button" variant="outline" size="sm" onClick={onTest} disabled={testing}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onTest}
+            disabled={testing}
+          >
             {testing ? <LoaderIcon className="size-3.5 animate-spin" /> : null}
             Test connection
           </Button>
@@ -347,21 +389,30 @@ function ProviderForm({
       </div>
 
       <DialogFooter className="px-6 py-4 border-t mx-0 mb-0 rounded-none">
-        <Button type="submit" className="w-full">Save</Button>
+        <Button type="submit" className="w-full">
+          Save
+        </Button>
       </DialogFooter>
     </form>
-  )
+  );
 }
 
-function TestStatus({ status, testing }: { status: SlotState["status"]; testing: boolean }) {
-  if (testing) return <span className="text-xs text-muted-foreground">Testing...</span>
+function TestStatus({
+  status,
+  testing,
+}: {
+  status: SlotState["status"];
+  testing: boolean;
+}) {
+  if (testing)
+    return <span className="text-xs text-muted-foreground">Testing...</span>;
   if (status === "healthy") {
     return (
       <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-500">
         <CheckCircle2Icon className="size-3.5" />
         Connected
       </span>
-    )
+    );
   }
   if (status === "error") {
     return (
@@ -369,12 +420,12 @@ function TestStatus({ status, testing }: { status: SlotState["status"]; testing:
         <XCircleIcon className="size-3.5" />
         Failed
       </span>
-    )
+    );
   }
   return (
     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <CircleIcon className="size-3.5" />
       Not tested
     </span>
-  )
+  );
 }

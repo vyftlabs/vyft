@@ -1,13 +1,10 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { ArrowLeftIcon, PlusIcon, Trash2Icon, LoaderIcon } from "lucide-react"
-import { toast } from "sonner"
-import { useMutation, useQuery } from "@tanstack/react-query"
-import type { Registry } from "@vyft/spec"
-import * as api from "@/lib/api"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { Registry } from "@vyft/spec";
+import { ArrowLeftIcon, LoaderIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -15,20 +12,32 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { List, ListItem, ListIcon, ListContent, ListTitle, ListDescription, ListAction, ListEmpty } from "@/components/ui/list"
-import { registryPresets } from "@/lib/registry-presets"
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  List,
+  ListAction,
+  ListContent,
+  ListDescription,
+  ListEmpty,
+  ListIcon,
+  ListItem,
+  ListTitle,
+} from "@/components/ui/list";
+import * as api from "@/lib/api";
+import { registryPresets } from "@/lib/registry-presets";
 
 export default function GlobalRegistries() {
-  const { data: registryList = [] } = useQuery(api.registries.list)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const { data: registryList = [] } = useQuery(api.registries.list);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -46,7 +55,9 @@ export default function GlobalRegistries() {
       </div>
 
       {registryList.length === 0 ? (
-        <ListEmpty>No registries configured. Add one to pull private container images.</ListEmpty>
+        <ListEmpty>
+          No registries configured. Add one to pull private container images.
+        </ListEmpty>
       ) : (
         <List>
           {registryList.map((reg: Registry) => (
@@ -57,18 +68,26 @@ export default function GlobalRegistries() {
 
       <AddRegistryDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
-  )
+  );
 }
 
-function RegistryRow({ registry }: { registry: { id: string; name: string; url: string; username: string } }) {
-  const preset = registryPresets.find((p) => p.id === registry.name)
-  const Icon = preset?.icon
+function RegistryRow({
+  registry,
+}: {
+  registry: { id: string; name: string; url: string; username: string };
+}) {
+  const preset = registryPresets.find((p) => p.id === registry.name);
+  const Icon = preset?.icon;
 
-  const deleteRegistry = useMutation(api.registries.remove)
+  const deleteRegistry = useMutation(api.registries.remove);
 
   return (
     <ListItem>
-      {Icon && <ListIcon><Icon /></ListIcon>}
+      {Icon && (
+        <ListIcon>
+          <Icon />
+        </ListIcon>
+      )}
       <ListContent>
         <ListTitle>{preset?.name ?? registry.name}</ListTitle>
         <ListDescription className="font-mono">{registry.url}</ListDescription>
@@ -80,39 +99,55 @@ function RegistryRow({ registry }: { registry: { id: string; name: string; url: 
           className="text-muted-foreground hover:text-destructive"
           disabled={deleteRegistry.isPending}
           onClick={() =>
-            deleteRegistry.mutate(registry.id, { onError: (err: Error) => toast.error(err.message) })}
+            deleteRegistry.mutate(registry.id, {
+              onError: (err: Error) => toast.error(err.message),
+            })
+          }
         >
-          {deleteRegistry.isPending ? <LoaderIcon className="size-3.5 animate-spin" /> : <Trash2Icon className="size-3.5" />}
+          {deleteRegistry.isPending ? (
+            <LoaderIcon className="size-3.5 animate-spin" />
+          ) : (
+            <Trash2Icon className="size-3.5" />
+          )}
         </Button>
       </ListAction>
     </ListItem>
-  )
+  );
 }
 
 function AddRegistryDialog({
   open,
   onOpenChange,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [page, setPage] = useState<"picker" | string>("picker")
-  const { register, handleSubmit, reset: resetForm } = useForm({
-    defaultValues: { customName: "", customUrl: "", username: "", password: "" },
-  })
+  const [page, setPage] = useState<"picker" | string>("picker");
+  const {
+    register,
+    handleSubmit,
+    reset: resetForm,
+  } = useForm({
+    defaultValues: {
+      customName: "",
+      customUrl: "",
+      username: "",
+      password: "",
+    },
+  });
 
-  const selectedPreset = registryPresets.find((r) => r.id === page)
-  const isCustom = page === "custom"
+  const selectedPreset = registryPresets.find((r) => r.id === page);
+  const isCustom = page === "custom";
 
-  const createRegistry = useMutation(api.registries.create)
+  const createRegistry = useMutation(api.registries.create);
 
   const reset = () => {
-    setPage("picker")
-    resetForm()
-  }
+    setPage("picker");
+    resetForm();
+  };
 
   const onSubmit = handleSubmit((data) => {
-    if (!selectedPreset) return
+    if (!selectedPreset) return;
     createRegistry.mutate(
       {
         name: isCustom ? data.customName.trim() : selectedPreset.id,
@@ -122,16 +157,22 @@ function AddRegistryDialog({
       },
       {
         onSuccess: () => {
-          reset()
-          onOpenChange(false)
+          reset();
+          onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
       },
-    )
-  })
+    );
+  });
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="p-0 gap-0 overflow-hidden">
         {page === "picker" && (
           <Command className="rounded-none border-0">
@@ -140,13 +181,16 @@ function AddRegistryDialog({
               <CommandEmpty>No registry found.</CommandEmpty>
               <CommandGroup heading="Registries">
                 {registryPresets.map((preset) => {
-                  const PIcon = preset.icon
+                  const PIcon = preset.icon;
                   return (
-                    <CommandItem key={preset.id} onSelect={() => setPage(preset.id)}>
+                    <CommandItem
+                      key={preset.id}
+                      onSelect={() => setPage(preset.id)}
+                    >
                       <PIcon className="text-muted-foreground" />
                       {preset.name}
                     </CommandItem>
-                  )
+                  );
                 })}
               </CommandGroup>
             </CommandList>
@@ -156,7 +200,15 @@ function AddRegistryDialog({
         {selectedPreset && (
           <form onSubmit={onSubmit} className="flex flex-col">
             <DialogHeader className="px-6 pt-4 pb-0 flex-row items-center gap-3 space-y-0">
-              <Button type="button" variant="ghost" size="icon-sm" onClick={() => { setPage("picker"); resetForm() }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  setPage("picker");
+                  resetForm();
+                }}
+              >
                 <ArrowLeftIcon className="size-4" />
               </Button>
               <DialogTitle>{selectedPreset.name}</DialogTitle>
@@ -167,26 +219,46 @@ function AddRegistryDialog({
                 <>
                   <Field>
                     <FieldLabel>Name</FieldLabel>
-                    <Input {...register("customName", { required: isCustom })} placeholder="My registry" autoFocus />
+                    <Input
+                      {...register("customName", { required: isCustom })}
+                      placeholder="My registry"
+                      autoFocus
+                    />
                   </Field>
                   <Field>
                     <FieldLabel>URL</FieldLabel>
-                    <Input {...register("customUrl", { required: isCustom })} placeholder="https://registry.example.com" className="font-mono" />
+                    <Input
+                      {...register("customUrl", { required: isCustom })}
+                      placeholder="https://registry.example.com"
+                      className="font-mono"
+                    />
                   </Field>
                 </>
               )}
               <Field>
                 <FieldLabel>Username</FieldLabel>
-                <Input {...register("username", { required: true })} placeholder="username" autoFocus={!isCustom} />
+                <Input
+                  {...register("username", { required: true })}
+                  placeholder="username"
+                  autoFocus={!isCustom}
+                />
               </Field>
               <Field>
                 <FieldLabel>Password / Token</FieldLabel>
-                <Input {...register("password", { required: true })} type="password" placeholder="••••••••" />
+                <Input
+                  {...register("password", { required: true })}
+                  type="password"
+                  placeholder="••••••••"
+                />
               </Field>
             </div>
 
             <DialogFooter className="px-6 py-4 border-t mx-0 mb-0 rounded-none">
-              <Button type="submit" className="w-full" disabled={createRegistry.isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={createRegistry.isPending}
+              >
                 {createRegistry.isPending ? "Adding..." : "Add registry"}
               </Button>
             </DialogFooter>
@@ -194,5 +266,5 @@ function AddRegistryDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

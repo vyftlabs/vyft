@@ -1,16 +1,16 @@
-import { useState } from "react"
-import { useParams, useNavigate, useSearchParams } from "react-router"
-import { DangerZone } from "@/components/ui/danger-zone"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useMutation, useQuery } from "@tanstack/react-query"
-import * as api from "@/lib/api"
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Button } from "@/components/ui/button";
+import { DangerZone } from "@/components/ui/danger-zone";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import * as api from "@/lib/api";
 
 const triggerClasses =
-  "after:!hidden data-active:bg-accent data-active:text-foreground rounded-md"
+  "after:!hidden data-active:bg-accent data-active:text-foreground rounded-md";
 
 function Section({
   title,
@@ -18,10 +18,10 @@ function Section({
   trailing,
   children,
 }: {
-  title: string
-  description?: string
-  trailing?: React.ReactNode
-  children?: React.ReactNode
+  title: string;
+  description?: string;
+  trailing?: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="space-y-4">
@@ -29,40 +29,45 @@ function Section({
         <div className="flex-1">
           <h2 className="text-base font-semibold">{title}</h2>
           {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {description}
+            </p>
           )}
         </div>
         {trailing}
       </div>
       {children}
     </div>
-  )
+  );
 }
 
 // ─── General Tab ────────────────────────────────────────────────────
 
 function GeneralTab() {
-  const { project: slug } = useParams()
-  const navigate = useNavigate()
+  const { project: slug } = useParams();
+  const navigate = useNavigate();
   const { data: projectData } = useQuery({
-    ...api.projects.bySlug(slug!),
+    ...api.projects.bySlug(slug ?? ""),
     enabled: !!slug,
-  })
-  const [name, setName] = useState("")
+  });
+  const [name, setName] = useState("");
 
-  const [initialized, setInitialized] = useState(false)
+  const [initialized, setInitialized] = useState(false);
   if (projectData && !initialized) {
-    setName(projectData.name)
-    setInitialized(true)
+    setName(projectData.name);
+    setInitialized(true);
   }
 
-  const updateProject = useMutation(api.projects.update)
+  const updateProject = useMutation(api.projects.update);
 
-  const deleteProject = useMutation(api.projects.remove)
+  const deleteProject = useMutation(api.projects.remove);
 
   return (
     <div className="space-y-8">
-      <Section title="Project" description="Manage your project name and identity.">
+      <Section
+        title="Project"
+        description="Manage your project name and identity."
+      >
         <div className="max-w-sm space-y-3">
           <Field>
             <FieldLabel className="text-xs">Name</FieldLabel>
@@ -70,9 +75,18 @@ function GeneralTab() {
           </Field>
           <Button
             size="sm"
-            disabled={!projectData || name === projectData.name || !name.trim() || updateProject.isPending}
+            disabled={
+              !projectData ||
+              name === projectData.name ||
+              !name.trim() ||
+              updateProject.isPending
+            }
             onClick={() => {
-              if (projectData) updateProject.mutate({ id: projectData.id, body: { name: name.trim() } })
+              if (projectData)
+                updateProject.mutate({
+                  id: projectData.id,
+                  body: { name: name.trim() },
+                });
             }}
           >
             Save
@@ -85,9 +99,9 @@ function GeneralTab() {
         description="Permanently delete this project and all of its resources. This action cannot be undone."
         action="Delete project"
         onAction={async () => {
-          if (!projectData) return
-          await deleteProject.mutateAsync(projectData.id)
-          navigate("/")
+          if (!projectData) return;
+          await deleteProject.mutateAsync(projectData.id);
+          navigate("/");
         }}
         disabled={deleteProject.isPending}
         confirmTitle="Are you absolutely sure?"
@@ -95,14 +109,14 @@ function GeneralTab() {
         confirmInput={slug}
       />
     </div>
-  )
+  );
 }
 
 // ─── Page ───────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get("tab") ?? "general"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") ?? "general";
 
   return (
     <Tabs
@@ -111,11 +125,11 @@ export default function Settings() {
       className="gap-8 h-full"
       onValueChange={(tab) => {
         if (tab === "general") {
-          searchParams.delete("tab")
+          searchParams.delete("tab");
         } else {
-          searchParams.set("tab", tab)
+          searchParams.set("tab", tab);
         }
-        setSearchParams(searchParams, { replace: true })
+        setSearchParams(searchParams, { replace: true });
       }}
     >
       <div className="w-44 shrink-0 p-12">
@@ -134,5 +148,5 @@ export default function Settings() {
         </div>
       </ScrollArea>
     </Tabs>
-  )
+  );
 }
