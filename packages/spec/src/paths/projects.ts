@@ -82,19 +82,4 @@ export const projectPaths: ZodOpenApiPathsObject = {
       },
     },
   },
-  "/projects/by-slug/{slug}": {
-    get: {
-      operationId: "getProjectBySlug",
-      summary: "Get project by slug",
-      tags: ["Projects"],
-      requestParams: { path: z.object({ slug: z.string() }) },
-      responses: {
-        200: {
-          description: "Project",
-          content: { "application/json": { schema: Project } },
-        },
-        ...itemErrors,
-      },
-    },
-  },
 };
