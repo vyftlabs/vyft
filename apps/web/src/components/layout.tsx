@@ -134,10 +134,13 @@ function LayoutHeader() {
   );
 }
 
-export default function Layout() {
-  const { project } = useParams();
-  const inProject = !!project;
-
+function LayoutSidebarProvider({
+  children,
+  inProject,
+}: {
+  children: React.ReactNode;
+  inProject: boolean;
+}) {
   const [open, setOpen] = React.useState(() => {
     if (!inProject) return true;
     const saved = localStorage.getItem("vyft-sidebar-open");
@@ -152,21 +155,26 @@ export default function Layout() {
     [inProject],
   );
 
-  React.useEffect(() => {
-    if (!inProject) {
-      setOpen(true);
-    } else {
-      const saved = localStorage.getItem("vyft-sidebar-open");
-      setOpen(saved === "true");
-    }
-  }, [inProject]);
+  return (
+    <SidebarProvider
+      open={open}
+      onOpenChange={handleOpenChange}
+      className="h-svh !min-h-0 flex-col"
+    >
+      {children}
+    </SidebarProvider>
+  );
+}
+
+export default function Layout() {
+  const { project } = useParams();
+  const inProject = !!project;
 
   return (
     <TooltipProvider>
-      <SidebarProvider
-        open={open}
-        onOpenChange={handleOpenChange}
-        className="h-svh !min-h-0 flex-col"
+      <LayoutSidebarProvider
+        key={inProject ? "project" : "workspace"}
+        inProject={inProject}
       >
         <LayoutHeader />
         <div className="flex flex-1 min-h-0">
@@ -177,7 +185,7 @@ export default function Layout() {
             </div>
           </SidebarInset>
         </div>
-      </SidebarProvider>
+      </LayoutSidebarProvider>
     </TooltipProvider>
   );
 }

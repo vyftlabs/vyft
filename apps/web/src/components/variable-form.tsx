@@ -1,6 +1,6 @@
 import { CheckIcon, CopyIcon, DicesIcon, LockIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { ServiceIcon } from "@/components/services/node";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -52,7 +52,6 @@ export function VariableForm({
     control,
     handleSubmit,
     reset,
-    watch,
     setValue: setFormValue,
   } = useForm<VariableFormValues>({
     defaultValues: { key: "", value: "", secret: true },
@@ -62,8 +61,8 @@ export function VariableForm({
   const [focused, setFocused] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [copied, setCopied] = useState(false);
-  const value = watch("value");
-  const isSecret = watch("secret");
+  const value = useWatch({ control, name: "value" });
+  const isSecret = useWatch({ control, name: "secret" });
   const inputRef = useRef<HTMLInputElement>(null);
 
   const allSuggestions = suggestionGroups

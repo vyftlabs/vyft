@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { LoaderIcon } from "lucide-react";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod/v3";
@@ -48,17 +48,17 @@ export function CreateProjectDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", slug: "" },
   });
 
-  const name = watch("name");
+  const name = useWatch({ control, name: "name" });
 
   useEffect(() => {
     if (open) reset();

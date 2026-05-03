@@ -1,5 +1,4 @@
 import {
-  applyNodeChanges,
   Background,
   BackgroundVariant,
   type Edge,
@@ -9,7 +8,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import "@xyflow/react/dist/style.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +25,8 @@ const nodeTypes = { service: ServiceNode };
 
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 60;
+
+type NodePosition = { x: number; y: number };
 
 function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
   const g = new dagre.graphlib.Graph();
@@ -60,7 +61,7 @@ export default function Services() {
 
 function ServicesCanvas() {
   const { project } = useParams();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [creatingService, setCreatingService] = useState(false);
@@ -77,9 +78,13 @@ function ServicesCanvas() {
     ...api.resources.list(projectId),
     enabled: !!projectId,
   });
-  const resources = resourceQuery.data ?? [];
+  const resources = useMemo(
+    () => resourceQuery.data ?? [],
+    [resourceQuery.data],
+  );
   const resourcesReady = resourceQuery.isSuccess;
   const isEmpty = resourcesReady && resources.length === 0;
+  const resourceDialogOpen = isEmpty || addDialogOpen;
 
   const { data: references = [] } = useQuery({
     ...api.variables.references(projectId),
@@ -110,57 +115,68 @@ function ServicesCanvas() {
       }));
   }, [references]);
 
-  useEffect(() => {
-    if (isEmpty && !addDialogOpen && !creatingService) {
-      setAddDialogOpen(true);
-    }
-  }, [isEmpty, addDialogOpen, creatingService]);
-
   const updatePosition = useMutation(api.resources.updatePosition);
 
-  const [nodes, setNodes] = useState<Node[]>([]);
-
-  useEffect(() => {
-    setNodes(
-      resources.map((r) => {
-        const image = r.service?.app?.source?.image;
-        return {
-          id: r.id,
-          position: { x: r.positionX, y: r.positionY },
-          type: "service",
-          data: {
-            label: r.name,
-            image,
-            status: { state: "running" },
-            onHover: () =>
-              queryClient.prefetchQuery(api.resources.byId(projectId, r.id)),
-          } satisfies ServiceNodeData,
-        };
-      }),
-    );
+  const baseNodes = useMemo(() => {
+    return resources.map((r) => {
+      const image = r.service?.app?.source?.image;
+      return {
+        id: r.id,
+        position: { x: r.positionX, y: r.positionY },
+        type: "service",
+        data: {
+          label: r.name,
+          image,
+          status: { state: "running" },
+          onHover: () =>
+            queryClient.prefetchQuery(api.resources.byId(projectId, r.id)),
+        } satisfies ServiceNodeData,
+      };
+    });
   }, [resources, projectId, queryClient]);
+
+  const [nodePositions, setNodePositions] = useState<
+    Record<string, NodePosition>
+  >({});
+
+  const nodes = useMemo(
+    () =>
+      baseNodes.map((node) => ({
+        ...node,
+        position: nodePositions[node.id] ?? node.position,
+      })),
+    [baseNodes, nodePositions],
+  );
 
   const { fitView } = useReactFlow();
 
   const onAutoLayout = useCallback(() => {
-    setNodes((nds) => {
-      const laid = autoLayout(nds, edges);
-      for (const node of laid) {
-        updatePosition.mutate({
-          projectId,
-          id: node.id,
-          body: { positionX: node.position.x, positionY: node.position.y },
-        });
-      }
-      return laid;
-    });
+    const laid = autoLayout(nodes, edges);
+    const nextPositions: Record<string, NodePosition> = {};
+    for (const node of laid) {
+      nextPositions[node.id] = node.position;
+      updatePosition.mutate({
+        projectId,
+        id: node.id,
+        body: { positionX: node.position.x, positionY: node.position.y },
+      });
+    }
+    setNodePositions(nextPositions);
     requestAnimationFrame(() =>
       fitView({ padding: 0.3, maxZoom: 1, duration: 300 }),
     );
-  }, [edges, updatePosition, fitView, projectId]);
+  }, [nodes, edges, updatePosition, fitView, projectId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nds) => applyNodeChanges(changes, nds));
+    setNodePositions((current) => {
+      let next = current;
+      for (const change of changes) {
+        if (change.type !== "position" || !change.position) continue;
+        if (next === current) next = { ...current };
+        next[change.id] = change.position;
+      }
+      return next;
+    });
   }, []);
 
   const onNodeDragStop = useCallback(
@@ -175,8 +191,8 @@ function ServicesCanvas() {
   );
 
   return (
-    <div ref={containerRef} className="relative h-full w-full">
-      {(!resourcesReady || isEmpty || addDialogOpen) && (
+    <div ref={setContainer} className="relative h-full w-full">
+      {(!resourcesReady || resourceDialogOpen) && (
         <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[1px]" />
       )}
 
@@ -237,7 +253,6 @@ function ServicesCanvas() {
           onClose={() => {
             setSelectedId(null);
             setCreatingService(false);
-            if (isEmpty) setAddDialogOpen(true);
           }}
           onCreated={() => {
             setCreatingService(false);
@@ -247,10 +262,10 @@ function ServicesCanvas() {
       </AnimatePresence>
 
       <AddResourceDialog
-        open={addDialogOpen}
+        open={resourceDialogOpen}
         onOpenChange={isEmpty ? undefined : setAddDialogOpen}
         dismissible={!isEmpty}
-        container={containerRef.current}
+        container={container}
         onSelect={() => {
           setAddDialogOpen(false);
           setSelectedId(null);

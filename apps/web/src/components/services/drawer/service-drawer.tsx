@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Resource, ResourceCreate, ResourceUpdate } from "@vyft/spec";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
   useFieldArray,
@@ -350,7 +350,7 @@ function SettingsTab({
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const onSubmit = (data: ServiceFormValues) => {
+  const onSubmit = useCallback((data: ServiceFormValues) => {
     const source = { type: "image" as const, image: data.image.trim() };
 
     const healthCheck =
@@ -431,13 +431,20 @@ function SettingsTab({
       };
       updateResource.mutate({ projectId, id: resource.id, body });
     }
-  };
+  }, [createProps, createResource, isCreating, projectId, resource, updateResource]);
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const submitRef = useRef(() => handleSubmit(onSubmit)());
-  submitRef.current = () => handleSubmit(onSubmit)();
+  const submit = useCallback(
+    () => handleSubmit(onSubmit)(),
+    [handleSubmit, onSubmit],
+  );
+  const submitRef = useRef(submit);
+
+  useEffect(() => {
+    submitRef.current = submit;
+  }, [submit]);
 
   useEffect(() => {
     if (isCreating || !resource || !isDirty) return;
@@ -456,11 +463,11 @@ function SettingsTab({
     };
   }, []);
 
-  const visibleSections = settingsSections.filter((s) => {
+  const visibleSections = useMemo(() => settingsSections.filter((s) => {
     if (s.id === "variables") return isCreating;
     if (s.id === "danger") return !!resource;
     return true;
-  });
+  }), [isCreating, resource]);
 
   const [activeSection, setActiveSection] = useState(
     visibleSections[0]?.id ?? "",
@@ -502,7 +509,7 @@ function SettingsTab({
     viewport.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => viewport.removeEventListener("scroll", handleScroll);
-  }, [visibleSections.map, visibleSections[0]?.id]);
+  }, [visibleSections]);
 
   const scrollTo = (id: string) => {
     const el = scrollRef.current?.querySelector(`#${id}`);

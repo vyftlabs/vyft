@@ -1,6 +1,6 @@
 import { XIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -610,12 +610,7 @@ export function ServiceDrawerShell({
   expandedContent,
   onClose,
 }: ServiceDrawerShellProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab ?? tabs[0]?.id);
-  const prevDefaultTab = useRef(defaultTab);
-  if (defaultTab !== prevDefaultTab.current) {
-    prevDefaultTab.current = defaultTab;
-    setActiveTab(defaultTab ?? tabs[0]?.id);
-  }
+  const initialTab = defaultTab ?? tabs[0]?.id;
 
   return (
     <>
@@ -707,34 +702,12 @@ export function ServiceDrawerShell({
             </div>
 
             {tabs.length > 0 && (
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="flex flex-col flex-1 min-h-0"
-              >
-                {tabs.length > 1 && (
-                  <TabsList
-                    variant="line"
-                    className="px-6 border-b !w-full !justify-start [&>*]:!flex-none [&>*]:mb-[-1px]"
-                  >
-                    {tabs.map((tab) => (
-                      <TabsTrigger key={tab.id} value={tab.id}>
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                )}
-                {banner}
-                {tabs.map((tab) => (
-                  <TabsContent
-                    key={tab.id}
-                    value={tab.id}
-                    className="flex-1 min-h-0 px-6 pt-4 pb-6"
-                  >
-                    {tab.content}
-                  </TabsContent>
-                ))}
-              </Tabs>
+              <ServiceDrawerTabs
+                key={initialTab}
+                initialTab={initialTab}
+                tabs={tabs}
+                banner={banner}
+              />
             )}
 
             {footer}
@@ -742,6 +715,49 @@ export function ServiceDrawerShell({
         )}
       </motion.div>
     </>
+  );
+}
+
+function ServiceDrawerTabs({
+  initialTab,
+  tabs,
+  banner,
+}: {
+  initialTab?: string;
+  tabs: DrawerTab[];
+  banner?: React.ReactNode;
+}) {
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  return (
+    <Tabs
+      value={activeTab}
+      onValueChange={setActiveTab}
+      className="flex flex-col flex-1 min-h-0"
+    >
+      {tabs.length > 1 && (
+        <TabsList
+          variant="line"
+          className="px-6 border-b !w-full !justify-start [&>*]:!flex-none [&>*]:mb-[-1px]"
+        >
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      )}
+      {banner}
+      {tabs.map((tab) => (
+        <TabsContent
+          key={tab.id}
+          value={tab.id}
+          className="flex-1 min-h-0 px-6 pt-4 pb-6"
+        >
+          {tab.content}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }
 

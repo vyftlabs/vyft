@@ -15,7 +15,6 @@ import {
 import * as api from "@/lib/api";
 
 export function AddVariableDialog({
-  project: _project,
   projectId,
   resourceId,
   suggestions = [],
@@ -24,7 +23,7 @@ export function AddVariableDialog({
   onOpenChange,
   onAddLocal,
 }: {
-  project: string;
+  project?: string;
   projectId?: string;
   resourceId?: string;
   suggestions?: VariableSuggestion[];
