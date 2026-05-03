@@ -1,58 +1,19 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import {
+  collectionErrors,
+  itemErrors,
+  ProjectAndIdScope,
+  ProjectScope,
+  Uuid,
+} from "../models/common.ts";
 import {
   Variable,
   VariableCreate,
+  VariableReference,
+  VariableSuggestions,
   VariableUpdate,
 } from "../models/variable.ts";
-
-const ProjectScope = z.object({ projectId: Uuid });
-const VariableScope = z.object({ projectId: Uuid, id: Uuid });
-
-const VariableReference = z
-  .object({
-    sourceResourceId: Uuid,
-    targetResourceId: Uuid,
-  })
-  .meta({ id: "VariableReference" });
-
-const SuggestionShared = z
-  .object({
-    id: Uuid,
-    key: z.string(),
-    secret: z.boolean(),
-  })
-  .meta({ id: "SuggestionShared" });
-
-const SuggestionService = z
-  .object({
-    id: Uuid,
-    key: z.string(),
-    secret: z.boolean(),
-    resourceName: z.string().optional(),
-    resourceImage: z.string().optional(),
-  })
-  .meta({ id: "SuggestionService" });
-
-const SuggestionBuiltin = z
-  .object({
-    id: z.string(),
-    key: z.string(),
-    token: z.string(),
-    secret: z.boolean(),
-    resourceName: z.string(),
-    resourceImage: z.string().optional(),
-  })
-  .meta({ id: "SuggestionBuiltin" });
-
-const VariableSuggestions = z
-  .object({
-    shared: z.array(SuggestionShared),
-    service: z.array(SuggestionService),
-    builtin: z.array(SuggestionBuiltin),
-  })
-  .meta({ id: "VariableSuggestions" });
 
 export const variablePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/variables": {
@@ -69,7 +30,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
           description: "Variables",
           content: { "application/json": { schema: z.array(Variable) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -85,7 +46,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Variable } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -102,7 +63,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
             "application/json": { schema: z.array(VariableReference) },
           },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -120,7 +81,7 @@ export const variablePaths: ZodOpenApiPathsObject = {
           description: "Suggestions",
           content: { "application/json": { schema: VariableSuggestions } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -129,20 +90,20 @@ export const variablePaths: ZodOpenApiPathsObject = {
       operationId: "getVariable",
       summary: "Get variable",
       tags: ["Variables"],
-      requestParams: { path: VariableScope },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         200: {
           description: "Variable",
           content: { "application/json": { schema: Variable } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     patch: {
       operationId: "updateVariable",
       summary: "Update variable",
       tags: ["Variables"],
-      requestParams: { path: VariableScope },
+      requestParams: { path: ProjectAndIdScope },
       requestBody: {
         content: { "application/json": { schema: VariableUpdate } },
       },
@@ -151,17 +112,17 @@ export const variablePaths: ZodOpenApiPathsObject = {
           description: "Updated",
           content: { "application/json": { schema: Variable } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     delete: {
       operationId: "deleteVariable",
       summary: "Delete variable",
       tags: ["Variables"],
-      requestParams: { path: VariableScope },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

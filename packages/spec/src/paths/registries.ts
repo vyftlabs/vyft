@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import { collectionErrors, itemErrors, Uuid } from "../models/common.ts";
 import { Registry, RegistryCreate } from "../models/registry.ts";
 
 export const registryPaths: ZodOpenApiPathsObject = {
@@ -14,7 +14,7 @@ export const registryPaths: ZodOpenApiPathsObject = {
           description: "Registries",
           content: { "application/json": { schema: z.array(Registry) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -29,7 +29,7 @@ export const registryPaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Registry } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -41,7 +41,7 @@ export const registryPaths: ZodOpenApiPathsObject = {
       requestParams: { path: z.object({ id: Uuid }) },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

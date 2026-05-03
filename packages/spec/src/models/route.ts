@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Uuid } from "./common.ts";
+import { BaseFields, Uuid } from "./common.ts";
 
 export const PathType = z.enum(["prefix", "exact"]).meta({ id: "PathType" });
 
@@ -7,7 +7,7 @@ export const RouteConfig = z
   .object({
     redirect: z
       .object({
-        scheme: z.string().min(1),
+        scheme: z.enum(["http", "https"]),
         statusCode: z.number().int().min(300).max(399),
       })
       .optional(),
@@ -18,7 +18,7 @@ export const RouteConfig = z
       })
       .optional(),
     rateLimit: z.number().int().min(1).optional(),
-    timeout: z.number().int().min(1).max(300).optional(),
+    timeout: z.number().int().min(1).max(300_000).optional(),
     retries: z.number().int().min(0).max(10).optional(),
     cors: z
       .object({
@@ -29,22 +29,21 @@ export const RouteConfig = z
       })
       .optional(),
   })
-  .meta({ id: "RouteConfig" });
+  .meta({
+    id: "RouteConfig",
+    description:
+      "`timeout` is milliseconds. `cors.maxAge` is seconds (HTTP spec).",
+  });
 
-export const Route = z
-  .object({
-    id: Uuid,
-    serviceId: Uuid,
-    domain: z.string().min(1).max(255),
-    path: z.string().min(1).max(500).regex(/^\//),
-    pathType: PathType.default("prefix"),
-    port: z.number().int().min(1).max(65535),
-    tls: z.boolean().default(true),
-    config: RouteConfig.optional(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .meta({ id: "Route" });
+export const Route = BaseFields.extend({
+  serviceId: Uuid,
+  domain: z.string().min(1).max(255),
+  path: z.string().min(1).max(500).regex(/^\//),
+  pathType: PathType.default("prefix"),
+  port: z.number().int().min(1).max(65535),
+  tls: z.boolean().default(true),
+  config: RouteConfig.optional(),
+}).meta({ id: "Route" });
 
 export const RouteCreate = Route.pick({
   domain: true,

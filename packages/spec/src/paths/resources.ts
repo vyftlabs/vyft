@@ -1,15 +1,17 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import {
+  collectionErrors,
+  itemErrors,
+  ProjectAndIdScope,
+  ProjectScope,
+} from "../models/common.ts";
 import {
   Resource,
   ResourceCreate,
   ResourcePosition,
   ResourceUpdate,
 } from "../models/resource.ts";
-
-const ProjectScope = z.object({ projectId: Uuid });
-const ProjectAndResource = z.object({ projectId: Uuid, id: Uuid });
 
 export const resourcePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/resources": {
@@ -23,7 +25,7 @@ export const resourcePaths: ZodOpenApiPathsObject = {
           description: "Resources",
           content: { "application/json": { schema: z.array(Resource) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -39,7 +41,7 @@ export const resourcePaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Resource } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -48,20 +50,20 @@ export const resourcePaths: ZodOpenApiPathsObject = {
       operationId: "getResource",
       summary: "Get resource",
       tags: ["Resources"],
-      requestParams: { path: ProjectAndResource },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         200: {
           description: "Resource",
           content: { "application/json": { schema: Resource } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     patch: {
       operationId: "updateResource",
       summary: "Update resource",
       tags: ["Resources"],
-      requestParams: { path: ProjectAndResource },
+      requestParams: { path: ProjectAndIdScope },
       requestBody: {
         content: { "application/json": { schema: ResourceUpdate } },
       },
@@ -70,17 +72,17 @@ export const resourcePaths: ZodOpenApiPathsObject = {
           description: "Updated",
           content: { "application/json": { schema: Resource } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     delete: {
       operationId: "deleteResource",
       summary: "Delete resource",
       tags: ["Resources"],
-      requestParams: { path: ProjectAndResource },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },
@@ -89,7 +91,7 @@ export const resourcePaths: ZodOpenApiPathsObject = {
       operationId: "updateResourcePosition",
       summary: "Update resource position",
       tags: ["Resources"],
-      requestParams: { path: ProjectAndResource },
+      requestParams: { path: ProjectAndIdScope },
       requestBody: {
         content: { "application/json": { schema: ResourcePosition } },
       },
@@ -98,7 +100,7 @@ export const resourcePaths: ZodOpenApiPathsObject = {
           description: "Updated",
           content: { "application/json": { schema: Resource } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

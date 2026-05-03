@@ -1,10 +1,12 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import {
+  collectionErrors,
+  itemErrors,
+  ProjectAndIdScope,
+  ServiceScope,
+} from "../models/common.ts";
 import { Volume, VolumeCreate } from "../models/volume.ts";
-
-const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid });
-const VolumeScope = z.object({ projectId: Uuid, id: Uuid });
 
 export const volumePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/services/{serviceId}/volumes": {
@@ -18,7 +20,7 @@ export const volumePaths: ZodOpenApiPathsObject = {
           description: "Volumes",
           content: { "application/json": { schema: z.array(Volume) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -34,7 +36,7 @@ export const volumePaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Volume } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -43,10 +45,10 @@ export const volumePaths: ZodOpenApiPathsObject = {
       operationId: "deleteVolume",
       summary: "Delete volume",
       tags: ["Volumes"],
-      requestParams: { path: VolumeScope },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

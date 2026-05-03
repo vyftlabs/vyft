@@ -16,7 +16,7 @@ export const ServiceEvent = z
 export const LogLine = z
   .object({
     timestamp: z.iso.datetime(),
-    level: z.enum(["info", "warn", "error", "debug"]),
+    level: z.string(),
     message: z.string(),
   })
   .meta({ id: "LogLine" });
@@ -45,7 +45,10 @@ export const MetricsOverview = z
     memory: z.array(RangePoint),
     latency: z.array(LatencyPoint),
   })
-  .meta({ id: "MetricsOverview" });
+  .meta({
+    id: "MetricsOverview",
+    description: "`cpu` values are millicores. `memory` values are bytes.",
+  });
 
 export type ServiceEvent = z.infer<typeof ServiceEvent>;
 export type LogLine = z.infer<typeof LogLine>;

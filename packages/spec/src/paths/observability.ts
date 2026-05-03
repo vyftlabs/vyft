@@ -1,13 +1,11 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import { collectionErrors, ResourceScope } from "../models/common.ts";
 import {
   LogLine,
   MetricsOverview,
   ServiceEvent,
 } from "../models/observability.ts";
-
-const ResourceScope = z.object({ projectId: Uuid, resourceId: Uuid });
 
 export const observabilityPaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/resources/{resourceId}/events": {
@@ -21,7 +19,7 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
           description: "Events",
           content: { "application/json": { schema: z.array(ServiceEvent) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -41,7 +39,7 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
           description: "Log lines",
           content: { "application/json": { schema: z.array(LogLine) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -56,7 +54,7 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
           description: "Metrics",
           content: { "application/json": { schema: MetricsOverview } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },

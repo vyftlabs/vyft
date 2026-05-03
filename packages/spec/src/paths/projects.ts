@@ -1,12 +1,14 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import { collectionErrors, itemErrors, Uuid } from "../models/common.ts";
 import {
   Project,
   ProjectCreate,
   ProjectListQuery,
   ProjectUpdate,
 } from "../models/project.ts";
+
+const IdParam = z.object({ id: Uuid });
 
 export const projectPaths: ZodOpenApiPathsObject = {
   "/projects": {
@@ -20,7 +22,7 @@ export const projectPaths: ZodOpenApiPathsObject = {
           description: "Projects",
           content: { "application/json": { schema: z.array(Project) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -35,7 +37,7 @@ export const projectPaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Project } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -44,20 +46,20 @@ export const projectPaths: ZodOpenApiPathsObject = {
       operationId: "getProject",
       summary: "Get project",
       tags: ["Projects"],
-      requestParams: { path: z.object({ id: Uuid }) },
+      requestParams: { path: IdParam },
       responses: {
         200: {
           description: "Project",
           content: { "application/json": { schema: Project } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     patch: {
       operationId: "updateProject",
       summary: "Update project",
       tags: ["Projects"],
-      requestParams: { path: z.object({ id: Uuid }) },
+      requestParams: { path: IdParam },
       requestBody: {
         content: { "application/json": { schema: ProjectUpdate } },
       },
@@ -66,17 +68,17 @@ export const projectPaths: ZodOpenApiPathsObject = {
           description: "Updated",
           content: { "application/json": { schema: Project } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     delete: {
       operationId: "deleteProject",
       summary: "Delete project",
       tags: ["Projects"],
-      requestParams: { path: z.object({ id: Uuid }) },
+      requestParams: { path: IdParam },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },
@@ -91,7 +93,7 @@ export const projectPaths: ZodOpenApiPathsObject = {
           description: "Project",
           content: { "application/json": { schema: Project } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

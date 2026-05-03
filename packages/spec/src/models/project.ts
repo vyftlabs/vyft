@@ -1,31 +1,25 @@
+import { BaseFields } from "./common.ts";
 import { z } from "zod";
-import { Uuid } from "./common.ts";
 
-export const Project = z
-  .object({
-    id: Uuid,
-    name: z.string().min(1).max(100),
-    slug: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9-]+$/),
-    description: z.string().max(500).nullable().optional(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .meta({ id: "Project" });
+export const Project = BaseFields.extend({
+  name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/),
+  description: z.string().max(500).nullable(),
+}).meta({ id: "Project" });
 
 export const ProjectCreate = Project.pick({
   name: true,
   slug: true,
   description: true,
-}).meta({ id: "ProjectCreate" });
-
-export const ProjectUpdate = ProjectCreate.pick({
-  name: true,
-  description: true,
 })
+  .extend({ description: Project.shape.description.optional() })
+  .meta({ id: "ProjectCreate" });
+
+export const ProjectUpdate = Project.pick({ name: true, description: true })
   .partial()
   .meta({ id: "ProjectUpdate" });
 

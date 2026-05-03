@@ -48,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import * as api from "@/lib/api";
+import { formatBytes, formatCpu, parseBytes, parseCpu } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
@@ -282,10 +283,14 @@ function SettingsTab({
       port: String(app?.port ?? 8080),
       command: app?.command ?? "",
       replicas: String(app?.replicas ?? 1),
-      cpuRequest: app?.compute?.cpuRequest ?? "100m",
-      cpuLimit: app?.compute?.cpuLimit ?? "500m",
-      memoryRequest: app?.compute?.memoryRequest ?? "128Mi",
-      memoryLimit: app?.compute?.memoryLimit ?? "512Mi",
+      cpuRequest: app?.compute ? formatCpu(app.compute.cpuRequest) : "100m",
+      cpuLimit: app?.compute ? formatCpu(app.compute.cpuLimit) : "500m",
+      memoryRequest: app?.compute
+        ? formatBytes(app.compute.memoryRequest)
+        : "128Mi",
+      memoryLimit: app?.compute
+        ? formatBytes(app.compute.memoryLimit)
+        : "512Mi",
       healthCheckType: app?.healthCheck?.type ?? "none",
       healthCheckPath:
         app?.healthCheck?.type === "http"
@@ -314,10 +319,12 @@ function SettingsTab({
         port: String(a?.port ?? 8080),
         command: a?.command ?? "",
         replicas: String(a?.replicas ?? 1),
-        cpuRequest: a?.compute?.cpuRequest ?? "100m",
-        cpuLimit: a?.compute?.cpuLimit ?? "500m",
-        memoryRequest: a?.compute?.memoryRequest ?? "128Mi",
-        memoryLimit: a?.compute?.memoryLimit ?? "512Mi",
+        cpuRequest: a?.compute ? formatCpu(a.compute.cpuRequest) : "100m",
+        cpuLimit: a?.compute ? formatCpu(a.compute.cpuLimit) : "500m",
+        memoryRequest: a?.compute
+          ? formatBytes(a.compute.memoryRequest)
+          : "128Mi",
+        memoryLimit: a?.compute ? formatBytes(a.compute.memoryLimit) : "512Mi",
         healthCheckType: a?.healthCheck?.type ?? "none",
         healthCheckPath:
           a?.healthCheck?.type === "http"
@@ -365,10 +372,10 @@ function SettingsTab({
             : { type: "exec" as const, command: data.healthCheckCommand };
 
     const compute = {
-      cpuRequest: data.cpuRequest,
-      cpuLimit: data.cpuLimit,
-      memoryRequest: data.memoryRequest,
-      memoryLimit: data.memoryLimit,
+      cpuRequest: parseCpu(data.cpuRequest),
+      cpuLimit: parseCpu(data.cpuLimit),
+      memoryRequest: parseBytes(data.memoryRequest),
+      memoryLimit: parseBytes(data.memoryLimit),
     };
 
     if (isCreating && createProps) {
@@ -395,7 +402,7 @@ function SettingsTab({
           .filter((v) => v.name.trim() && v.mountPath.trim())
           .map((v) => ({
             name: v.name.trim(),
-            size: v.size,
+            size: parseBytes(v.size),
             mountPath: v.mountPath.trim(),
           })),
         routes: data.routes
@@ -730,7 +737,7 @@ function VolumesSection({
               serviceId,
               body: {
                 name: vol.name,
-                size: vol.size,
+                size: parseBytes(vol.size),
                 mountPath: vol.mountPath,
               },
             },

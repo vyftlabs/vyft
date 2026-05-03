@@ -1,10 +1,12 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import {
+  collectionErrors,
+  itemErrors,
+  ProjectAndIdScope,
+  ServiceScope,
+} from "../models/common.ts";
 import { Route, RouteCreate, RouteUpdate } from "../models/route.ts";
-
-const ServiceScope = z.object({ projectId: Uuid, serviceId: Uuid });
-const RouteScope = z.object({ projectId: Uuid, id: Uuid });
 
 export const routePaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/services/{serviceId}/routes": {
@@ -18,7 +20,7 @@ export const routePaths: ZodOpenApiPathsObject = {
           description: "Routes",
           content: { "application/json": { schema: z.array(Route) } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
     post: {
@@ -32,7 +34,7 @@ export const routePaths: ZodOpenApiPathsObject = {
           description: "Created",
           content: { "application/json": { schema: Route } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -41,24 +43,24 @@ export const routePaths: ZodOpenApiPathsObject = {
       operationId: "updateRoute",
       summary: "Update route",
       tags: ["Routes"],
-      requestParams: { path: RouteScope },
+      requestParams: { path: ProjectAndIdScope },
       requestBody: { content: { "application/json": { schema: RouteUpdate } } },
       responses: {
         200: {
           description: "Updated",
           content: { "application/json": { schema: Route } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
     delete: {
       operationId: "deleteRoute",
       summary: "Delete route",
       tags: ["Routes"],
-      requestParams: { path: RouteScope },
+      requestParams: { path: ProjectAndIdScope },
       responses: {
         204: { description: "Deleted" },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

@@ -1,5 +1,14 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
-import type { Variable, VariableCreate, VariableUpdate } from "@vyft/spec";
+import type {
+  SuggestionBuiltin,
+  SuggestionService,
+  SuggestionShared,
+  Variable,
+  VariableCreate,
+  VariableReference,
+  VariableSuggestions,
+  VariableUpdate,
+} from "@vyft/spec";
 import { delay } from "../mock/latency";
 import { now, store, uuid } from "../mock/store";
 import { queryClient as qc } from "../reactquery";
@@ -7,39 +16,13 @@ import { badRequest, conflict, notFound } from "./errors";
 
 const ROOT = ["variables"] as const;
 
-export interface VariableReference {
-  sourceResourceId: string;
-  targetResourceId: string;
-}
-
-export interface SuggestionShared {
-  id: string;
-  key: string;
-  secret: boolean;
-}
-
-export interface SuggestionService {
-  id: string;
-  key: string;
-  secret: boolean;
-  resourceName?: string;
-  resourceImage?: string;
-}
-
-export interface SuggestionBuiltin {
-  id: string;
-  key: string;
-  token: string;
-  secret: boolean;
-  resourceName: string;
-  resourceImage?: string;
-}
-
-export interface VariableSuggestions {
-  shared: SuggestionShared[];
-  service: SuggestionService[];
-  builtin: SuggestionBuiltin[];
-}
+export type {
+  SuggestionBuiltin,
+  SuggestionService,
+  SuggestionShared,
+  VariableReference,
+  VariableSuggestions,
+};
 
 // ─── Service fns ─────────────────────────────────────────────────────────
 

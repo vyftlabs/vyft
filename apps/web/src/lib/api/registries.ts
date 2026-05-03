@@ -18,12 +18,14 @@ async function listRegistries(): Promise<Registry[]> {
 
 async function createRegistry(body: RegistryCreate): Promise<Registry> {
   await delay();
+  const ts = now();
   const r: Registry = {
     id: uuid(),
     name: body.name,
     url: body.url,
     username: body.username,
-    createdAt: now(),
+    createdAt: ts,
+    updatedAt: ts,
   };
   store.write("registries", [...store.read("registries"), r]);
   return r;

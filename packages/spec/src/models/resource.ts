@@ -1,46 +1,43 @@
 import { z } from "zod";
-import { Uuid } from "./common.ts";
+import { BaseFields, Uuid } from "./common.ts";
 import { Route, RouteCreate } from "./route.ts";
 import { Compute, HealthCheck, Service, Source } from "./service.ts";
-import { Variable } from "./variable.ts";
+import { Variable, VariableCreate } from "./variable.ts";
 import { Volume, VolumeCreate } from "./volume.ts";
 
 export const ResourceType = z.enum(["service"]).meta({ id: "ResourceType" });
 
-export const Resource = z
+const ResourceName = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+
+export const VolumeMount = z
   .object({
     id: Uuid,
-    name: z.string(),
-    type: ResourceType,
-    projectId: Uuid,
-    positionX: z.number(),
-    positionY: z.number(),
-    service: Service.extend({
-      routes: z.array(Route).optional(),
-      volumeMounts: z
-        .array(
-          z.object({
-            id: Uuid,
-            mountPath: z.string(),
-            volume: Volume,
-          }),
-        )
-        .optional(),
-    }).nullable(),
-    variables: z.array(Variable).optional(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
+    mountPath: z.string(),
+    volume: Volume,
   })
-  .meta({ id: "Resource" });
+  .meta({ id: "VolumeMount" });
+
+export const Resource = BaseFields.extend({
+  name: z.string(),
+  type: ResourceType,
+  projectId: Uuid,
+  positionX: z.number(),
+  positionY: z.number(),
+  service: Service.extend({
+    routes: z.array(Route).optional(),
+    volumeMounts: z.array(VolumeMount).optional(),
+  }).nullable(),
+  variables: z.array(Variable).optional(),
+}).meta({ id: "Resource" });
 
 export const ResourceCreate = z
   .object({
     type: ResourceType,
-    name: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/),
+    name: ResourceName,
     positionX: z.number().default(0),
     positionY: z.number().default(0),
     source: Source,
@@ -51,7 +48,7 @@ export const ResourceCreate = z
     healthCheck: HealthCheck.optional(),
     variables: z
       .array(
-        Variable.pick({
+        VariableCreate.pick({
           key: true,
           value: true,
           sensitive: true,
@@ -66,12 +63,7 @@ export const ResourceCreate = z
 
 export const ResourceUpdate = z
   .object({
-    name: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/)
-      .optional(),
+    name: ResourceName.optional(),
     source: Source.optional(),
     port: z.number().int().min(1).max(65535).nullable().optional(),
     command: z.string().max(2000).nullable().optional(),
@@ -81,14 +73,13 @@ export const ResourceUpdate = z
   })
   .meta({ id: "ResourceUpdate" });
 
-export const ResourcePosition = z
-  .object({
-    positionX: z.number(),
-    positionY: z.number(),
-  })
-  .meta({ id: "ResourcePosition" });
+export const ResourcePosition = Resource.pick({
+  positionX: true,
+  positionY: true,
+}).meta({ id: "ResourcePosition" });
 
 export type ResourceType = z.infer<typeof ResourceType>;
+export type VolumeMount = z.infer<typeof VolumeMount>;
 export type Resource = z.infer<typeof Resource>;
 export type ResourceCreate = z.infer<typeof ResourceCreate>;
 export type ResourceUpdate = z.infer<typeof ResourceUpdate>;

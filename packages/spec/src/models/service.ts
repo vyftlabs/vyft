@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Uuid } from "./common.ts";
+import { BaseFields, Uuid } from "./common.ts";
 
 export const Source = z
   .object({
@@ -10,12 +10,15 @@ export const Source = z
 
 export const Compute = z
   .object({
-    cpuRequest: z.string().min(1),
-    cpuLimit: z.string().min(1),
-    memoryRequest: z.string().min(1),
-    memoryLimit: z.string().min(1),
+    cpuRequest: z.number().int().positive(),
+    cpuLimit: z.number().int().positive(),
+    memoryRequest: z.number().int().positive(),
+    memoryLimit: z.number().int().positive(),
   })
-  .meta({ id: "Compute" });
+  .meta({
+    id: "Compute",
+    description: "CPU values are millicores. Memory values are bytes.",
+  });
 
 export const HealthCheck = z
   .discriminatedUnion("type", [
@@ -36,36 +39,27 @@ export const HealthCheck = z
   ])
   .meta({ id: "HealthCheck" });
 
-export const App = z
-  .object({
-    id: Uuid,
-    serviceId: Uuid,
-    source: Source,
-    port: z.number().int().min(1).max(65535).nullable(),
-    command: z.string().nullable(),
-    replicas: z.number().int().min(0).max(100),
-    compute: Compute,
-    healthCheck: HealthCheck,
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .meta({ id: "App" });
+export const App = BaseFields.extend({
+  serviceId: Uuid,
+  source: Source,
+  port: z.number().int().min(1).max(65535).nullable(),
+  command: z.string().nullable(),
+  replicas: z.number().int().min(0).max(100),
+  compute: Compute,
+  healthCheck: HealthCheck,
+}).meta({ id: "App" });
 
 export const ServiceType = z.enum(["app"]).meta({ id: "ServiceType" });
 
-export const Service = z
-  .object({
-    id: Uuid,
-    resourceId: Uuid,
-    type: ServiceType,
-    app: App.nullable(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .meta({ id: "Service" });
+export const Service = BaseFields.extend({
+  resourceId: Uuid,
+  type: ServiceType,
+  app: App.nullable(),
+}).meta({ id: "Service" });
 
 export type Source = z.infer<typeof Source>;
 export type Compute = z.infer<typeof Compute>;
 export type HealthCheck = z.infer<typeof HealthCheck>;
 export type App = z.infer<typeof App>;
+export type ServiceType = z.infer<typeof ServiceType>;
 export type Service = z.infer<typeof Service>;

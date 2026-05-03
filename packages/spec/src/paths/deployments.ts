@@ -1,13 +1,14 @@
-import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
-import { errorResponses, Uuid } from "../models/common.ts";
+import {
+  collectionErrors,
+  itemErrors,
+  ProjectScope,
+} from "../models/common.ts";
 import {
   Deployment,
   DeploymentChecksum,
   DeploymentLatest,
 } from "../models/deployment.ts";
-
-const ProjectScope = z.object({ projectId: Uuid });
 
 export const deploymentPaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/deployments": {
@@ -21,7 +22,7 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
           description: "Deployment enqueued",
           content: { "application/json": { schema: Deployment } },
         },
-        ...errorResponses,
+        ...collectionErrors,
       },
     },
   },
@@ -36,7 +37,7 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
           description: "Checksum",
           content: { "application/json": { schema: DeploymentChecksum } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },
@@ -51,7 +52,7 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
           description: "Latest",
           content: { "application/json": { schema: DeploymentLatest } },
         },
-        ...errorResponses,
+        ...itemErrors,
       },
     },
   },

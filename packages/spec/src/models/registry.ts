@@ -1,15 +1,11 @@
 import { z } from "zod";
-import { Uuid } from "./common.ts";
+import { BaseFields } from "./common.ts";
 
-export const Registry = z
-  .object({
-    id: Uuid,
-    name: z.string().min(1).max(100),
-    url: z.string().min(1).max(500),
-    username: z.string().min(1).max(255),
-    createdAt: z.iso.datetime(),
-  })
-  .meta({ id: "Registry" });
+export const Registry = BaseFields.extend({
+  name: z.string().min(1).max(100),
+  url: z.string().min(1).max(500),
+  username: z.string().min(1).max(255),
+}).meta({ id: "Registry" });
 
 export const RegistryCreate = Registry.pick({
   name: true,

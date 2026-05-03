@@ -56,7 +56,7 @@ export interface LatencyChartData {
 
 export interface LogLine {
   timestamp: string;
-  level: "info" | "warn" | "error" | "debug";
+  level: string;
   message: string;
 }
 
@@ -162,7 +162,7 @@ export function Overview({
   );
 }
 
-const logLevelClass: Record<LogLine["level"], string> = {
+const logLevelClass: Record<string, string> = {
   error: "text-severity-critical-text",
   warn: "text-severity-warning-text",
   info: "text-foreground",
