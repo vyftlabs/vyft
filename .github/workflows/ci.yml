@@ -31,6 +31,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm --dir e2e exec playwright install --with-deps chromium
+
       - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
 
       - run: pnpm nx affected -t lint -t build -t test -t e2e --parallel=3
