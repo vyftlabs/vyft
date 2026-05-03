@@ -16,7 +16,7 @@ export const ProjectCreate = Project.pick({
   slug: true,
   description: true,
 })
-  .extend({ description: Project.shape.description.optional() })
+  .partial({ description: true })
   .meta({ id: "ProjectCreate" });
 
 export const ProjectUpdate = Project.pick({ name: true, description: true })

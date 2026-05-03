@@ -13,8 +13,8 @@ export const Deployment = z
   })
   .meta({ id: "Deployment" });
 
-export const DeploymentChecksum = Deployment.pick({ checksum: true })
-  .extend({ checksum: Deployment.shape.checksum.nullable() })
+export const DeploymentChecksum = z
+  .object({ checksum: z.string().nullable() })
   .meta({ id: "DeploymentChecksum" });
 
 export const DeploymentLatest = Deployment.pick({

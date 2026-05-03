@@ -55,16 +55,7 @@ export const RouteCreate = Route.pick({
   config: true,
 }).meta({ id: "RouteCreate" });
 
-export const RouteUpdate = Route.pick({
-  domain: true,
-  path: true,
-  pathType: true,
-  port: true,
-  tls: true,
-  config: true,
-})
-  .partial()
-  .meta({ id: "RouteUpdate" });
+export const RouteUpdate = RouteCreate.partial().meta({ id: "RouteUpdate" });
 
 export type PathType = z.infer<typeof PathType>;
 export type RouteConfig = z.infer<typeof RouteConfig>;

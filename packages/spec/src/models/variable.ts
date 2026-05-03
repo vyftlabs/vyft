@@ -31,11 +31,11 @@ export const VariableCreate = Variable.pick({
   resourceId: true,
   sourceVariableId: true,
 })
-  .extend({
-    value: Variable.shape.value.optional(),
-    sensitive: Variable.shape.sensitive.optional(),
-    resourceId: Variable.shape.resourceId.optional(),
-    sourceVariableId: Variable.shape.sourceVariableId.optional(),
+  .partial({
+    value: true,
+    sensitive: true,
+    resourceId: true,
+    sourceVariableId: true,
   })
   .meta({ id: "VariableCreate" });
 
