@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - demo
+  - e2e
   - examples/*
   - packages/*
   - "!**/templates/**"

@@ -1,0 +1,20 @@
+{
+  "name": "@vyft/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:setup": "node src/global-setup.ts",
+    "test:down": "node src/global-teardown.ts"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "^1.4.0",
+    "@playwright/test": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.2",
+    "typescript": "~6.0.2"
+  }
+}

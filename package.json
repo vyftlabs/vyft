@@ -14,7 +14,13 @@
     "overrides": {
       "minimatch@>=5.0.0 <5.1.8": "^5.1.8",
       "devalue@<5.6.4": "^5.6.4"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "msw",
+      "nx",
+      "sharp"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
