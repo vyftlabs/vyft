@@ -1,3 +1,8 @@
+---
+name: commit
+description: Organize all current uncommitted changes into atomic, logically grouped conventional commits. Use when the user asks to split work into commits, clean up local history, or create local commits without pushing.
+---
+
 # Atomic Commit
 
 Organize all current uncommitted changes into atomic, logically grouped commits using conventional commits.

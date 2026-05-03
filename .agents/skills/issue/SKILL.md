@@ -1,3 +1,10 @@
+---
+name: issue
+description: Draft and create a GitHub issue from the user's description. Use when the user wants to write, refine, or create a Vyft issue with the right title, label, issue type, milestone, and project assignment.
+---
+
+# GitHub Issue
+
 Draft a GitHub issue based on the user's description: $ARGUMENTS
 
 1. Infer the issue **type** (one of: `bug`, `feature`, `task`) and the appropriate **label** from the description. Don't ask.
