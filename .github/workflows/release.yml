@@ -9,8 +9,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   ci:
@@ -33,7 +32,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm nx run-many -t lint build test --parallel=3
+      - run: pnpm nx run-many -t lint -t build -t test --parallel=3
 
   release:
     needs: ci
@@ -41,29 +40,43 @@ jobs:
     environment: release
     timeout-minutes: 20
     permissions:
-      contents: write
-      id-token: write
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: package.json
-          package-manager-cache: false
-          registry-url: https://registry.npmjs.org
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm nx run-many -t build --parallel=3
-
-      - name: Version and publish
-        run: |
-          pnpm nx release version ${GITHUB_REF_NAME#v}
-          pnpm nx release publish --yes
+      - name: Log in to GHCR
+        run: echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
         env:
-          NPM_CONFIG_PROVENANCE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/backend"
+          version="${GITHUB_REF_NAME#v}"
+          sha_tag="sha-${GITHUB_SHA::12}"
+
+          tags=(
+            "-t" "${image}:${version}"
+            "-t" "${image}:${GITHUB_REF_NAME}"
+            "-t" "${image}:${sha_tag}"
+          )
+
+          if [[ "${version}" != *-* ]]; then
+            tags+=("-t" "${image}:latest")
+          fi
+
+          docker build "${tags[@]}" -f apps/backend/Dockerfile apps/backend
+
+          docker push "${image}:${version}"
+          docker push "${image}:${GITHUB_REF_NAME}"
+          docker push "${image}:${sha_tag}"
+
+          if [[ "${version}" != *-* ]]; then
+            docker push "${image}:latest"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

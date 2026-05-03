@@ -1,14 +1,19 @@
 package server
 
-import "os"
+import (
+	"os"
+	"time"
+)
 
 type Config struct {
-	Addr string
+	Addr            string
+	ShutdownTimeout time.Duration
 }
 
 func LoadConfig() Config {
 	return Config{
-		Addr: env("ADDR", ":8080"),
+		Addr:            env("ADDR", ":8080"),
+		ShutdownTimeout: 10 * time.Second,
 	}
 }
 

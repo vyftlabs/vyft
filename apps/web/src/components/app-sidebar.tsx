@@ -3,7 +3,6 @@ import {
   ContainerIcon,
   KeyRoundIcon,
   LifeBuoyIcon,
-  PlugIcon,
   SendIcon,
   SettingsIcon,
   WorkflowIcon,
@@ -112,15 +111,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <ContainerIcon />
                   <span>Registries</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Integrations"
-                  render={<Link to="/integrations" />}
-                >
-                  <PlugIcon />
-                  <span>Integrations</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

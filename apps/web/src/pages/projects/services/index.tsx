@@ -8,18 +8,26 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import "@xyflow/react/dist/style.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import dagre from "dagre";
 import { PlusIcon, WandSparklesIcon } from "lucide-react";
 import { AnimatePresence } from "motion/react";
-import { AddResourceDialog } from "@/components/add-resource-dialog";
-import { ServiceDrawer } from "@/components/services/drawer/service-drawer";
 import type { ServiceNodeData } from "@/components/services/node";
 import { ServiceNode } from "@/components/services/node";
 import * as api from "@/lib/api";
+
+const ServiceDrawer = lazy(() =>
+  import("@/components/services/drawer/service-drawer").then((m) => ({
+    default: m.ServiceDrawer,
+  })),
+);
+const AddResourceDialog = lazy(() =>
+  import("@/components/add-resource-dialog").then((m) => ({
+    default: m.AddResourceDialog,
+  })),
+);
 
 const nodeTypes = { service: ServiceNode };
 
@@ -28,7 +36,8 @@ const NODE_HEIGHT = 60;
 
 type NodePosition = { x: number; y: number };
 
-function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
+async function autoLayout(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+  const { default: dagre } = await import("dagre");
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: "LR", nodesep: 60, ranksep: 120 });
@@ -150,8 +159,8 @@ function ServicesCanvas() {
 
   const { fitView } = useReactFlow();
 
-  const onAutoLayout = useCallback(() => {
-    const laid = autoLayout(nodes, edges);
+  const onAutoLayout = useCallback(async () => {
+    const laid = await autoLayout(nodes, edges);
     const nextPositions: Record<string, NodePosition> = {};
     for (const node of laid) {
       nextPositions[node.id] = node.position;
@@ -244,35 +253,43 @@ function ServicesCanvas() {
       )}
 
       <AnimatePresence>
-        <ServiceDrawer
-          key={`${drawerKey}-${selectedId ?? "create"}`}
-          resourceId={selectedId}
-          creating={creatingService}
-          project={project ?? ""}
-          projectId={projectId}
-          onClose={() => {
-            setSelectedId(null);
-            setCreatingService(false);
-          }}
-          onCreated={() => {
-            setCreatingService(false);
-            setSelectedId(null);
-          }}
-        />
+        {(selectedId || creatingService) && (
+          <Suspense fallback={null}>
+            <ServiceDrawer
+              key={`${drawerKey}-${selectedId ?? "create"}`}
+              resourceId={selectedId}
+              creating={creatingService}
+              project={project ?? ""}
+              projectId={projectId}
+              onClose={() => {
+                setSelectedId(null);
+                setCreatingService(false);
+              }}
+              onCreated={() => {
+                setCreatingService(false);
+                setSelectedId(null);
+              }}
+            />
+          </Suspense>
+        )}
       </AnimatePresence>
 
-      <AddResourceDialog
-        open={resourceDialogOpen}
-        onOpenChange={isEmpty ? undefined : setAddDialogOpen}
-        dismissible={!isEmpty}
-        container={container}
-        onSelect={() => {
-          setAddDialogOpen(false);
-          setSelectedId(null);
-          setCreatingService(true);
-          setDrawerKey((k) => k + 1);
-        }}
-      />
+      {resourceDialogOpen && (
+        <Suspense fallback={null}>
+          <AddResourceDialog
+            open={resourceDialogOpen}
+            onOpenChange={isEmpty ? undefined : setAddDialogOpen}
+            dismissible={!isEmpty}
+            container={container}
+            onSelect={() => {
+              setAddDialogOpen(false);
+              setSelectedId(null);
+              setCreatingService(true);
+              setDrawerKey((k) => k + 1);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

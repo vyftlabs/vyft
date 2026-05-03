@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "@vyft/backend",
   "projectType": "application",
+  "implicitDependencies": ["web"],
   "sourceRoot": "apps/backend",
   "targets": {
     "dev": {
@@ -13,9 +14,21 @@
     },
     "build": {
       "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": "web",
+          "target": "build"
+        }
+      ],
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "command": "go build -o ./dist/backend ./cmd/backend",
+        "parallel": false,
+        "commands": [
+          "rm -rf ./internal/server/static/dist",
+          "mkdir -p ./internal/server/static/dist",
+          "cp -R ../../apps/web/dist/. ./internal/server/static/dist/",
+          "go build -o ./dist/backend ./cmd/backend"
+        ],
         "cwd": "apps/backend"
       }
     },

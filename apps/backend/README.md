@@ -1,6 +1,6 @@
 # Backend
 
-Simple Go hello world service.
+Go backend that embeds the web build output and serves it statically.
 
 ## Local
 
@@ -25,7 +25,7 @@ air -c .air.toml
 ## Docker
 
 ```bash
-docker build -t vyft-backend .
+docker build -f apps/backend/Dockerfile -t vyft-backend .
 docker run --rm -p 8080:8080 vyft-backend
 ```
 
