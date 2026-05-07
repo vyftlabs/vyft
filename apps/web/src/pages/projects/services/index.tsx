@@ -290,7 +290,7 @@ function ServicesCanvas() {
         {(selectedId || creatingService) && (
           <Suspense fallback={null}>
             <ServiceDrawer
-              key={`${drawerKey}-${selectedId ?? "create"}`}
+              key={drawerKey}
               resourceId={selectedId}
               creating={creatingService}
               createPosition={createPosition ?? undefined}
@@ -301,9 +301,9 @@ function ServicesCanvas() {
                 setCreatingService(false);
                 setCreatePosition(null);
               }}
-              onCreated={() => {
+              onCreated={(id) => {
+                setSelectedId(id);
                 setCreatingService(false);
-                setSelectedId(null);
                 setCreatePosition(null);
               }}
             />

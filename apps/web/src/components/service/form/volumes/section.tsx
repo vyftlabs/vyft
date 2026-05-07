@@ -9,7 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ServiceFormValues } from "../types";
+import { formatBytes } from "@/lib/units";
+import type { ServiceFormValues } from "../schema";
 
 export function VolumesFormSection({
   control,
@@ -44,7 +45,7 @@ export function VolumesFormSection({
                   {field.mountPath}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {field.size}
+                  {formatBytes(field.size)}
                 </TableCell>
                 <TableCell>
                   <Button

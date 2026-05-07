@@ -197,7 +197,6 @@ function LogsPreview({ logs }: { logs: LogLine[] }) {
   );
 }
 
-
 // --- Drawer shell ---
 
 const drawerTransition = {
@@ -369,4 +368,3 @@ function ServiceDrawerTabs({
     </Tabs>
   );
 }
-

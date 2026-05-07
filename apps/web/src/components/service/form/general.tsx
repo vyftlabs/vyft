@@ -1,14 +1,14 @@
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type { GeneralFormValues } from "./types";
+import type { ServiceFormValues } from "./schema";
 
 export function GeneralForm({
   control,
   showName = true,
   showPort = true,
 }: {
-  control: Control<GeneralFormValues>;
+  control: Control<ServiceFormValues>;
   showName?: boolean;
   showPort?: boolean;
 }) {
@@ -18,7 +18,6 @@ export function GeneralForm({
         <Controller
           name="name"
           control={control}
-          rules={{ required: "Name is required" }}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid || undefined}>
               <FieldLabel htmlFor={field.name}>Name</FieldLabel>
@@ -39,7 +38,6 @@ export function GeneralForm({
         <Controller
           name="image"
           control={control}
-          rules={{ required: "Image is required" }}
           render={({ field, fieldState }) => (
             <Field
               data-invalid={fieldState.invalid || undefined}
@@ -62,7 +60,6 @@ export function GeneralForm({
           <Controller
             name="port"
             control={control}
-            rules={{ required: "Port is required" }}
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid || undefined}
@@ -70,9 +67,13 @@ export function GeneralForm({
               >
                 <FieldLabel htmlFor={field.name}>Port</FieldLabel>
                 <Input
-                  {...field}
                   id={field.name}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
                   type="number"
+                  value={Number.isFinite(field.value) ? field.value : ""}
+                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
                   placeholder="8080"
                   className="!w-[12ch] font-mono"
                   data-testid="service-port-input"

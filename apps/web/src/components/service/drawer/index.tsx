@@ -1,5 +1,7 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Resource, ResourceCreate, ResourceUpdate } from "@vyft/spec";
+import type { Resource, VolumeCreate } from "@vyft/spec";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
@@ -7,24 +9,20 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
-
-type ResourceData = Resource;
-
-import { PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { AddVariableDialog } from "@/components/variable/add";
 import {
+  fromResource,
   GeneralForm,
-  type GeneralFormValues,
   HealthForm,
-  type HealthFormValues,
   RoutesForm,
   ScalingForm,
-  type ScalingFormValues,
+  ServiceFormSchema,
   type ServiceFormValues,
+  toResourceCreate,
+  toResourceUpdate,
   Variables,
   VariablesSection,
-  type VolumeFormEntry,
+  VolumesFormSection,
 } from "@/components/service/form";
 import { Button } from "@/components/ui/button";
 import { DangerZone } from "@/components/ui/danger-zone";
@@ -47,12 +45,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
-import { formatBytes, formatCpu, parseBytes, parseCpu } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
 import type { TimelineEntry } from "./timeline";
+
+type ResourceData = Resource;
 
 function OverviewTab({
   resourceId,
@@ -161,70 +161,21 @@ function VolumesFormSectionWrapper({
 }: {
   control: Control<ServiceFormValues>;
 }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "volumes",
-  });
+  const { append } = useFieldArray({ control, name: "volumes" });
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="space-y-3">
-      {fields.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Mount path</TableHead>
-              <TableHead className="w-16">Size</TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {fields.map((field, index) => (
-              <TableRow key={field.id} className="group">
-                <TableCell className="font-mono text-xs">
-                  {field.name}
-                </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {field.mountPath}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {field.size}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2Icon className="size-3.5" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={() => setDialogOpen(true)}
-      >
-        <PlusIcon />
-        Add volume
-      </Button>
-
-      <AddVolumeDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onAdd={(vol) => append(vol)}
-      />
-    </div>
+    <VolumesFormSection
+      control={control}
+      onAdd={() => setDialogOpen(true)}
+      addDialog={
+        <AddVolumeDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onAdd={(vol) => append(vol)}
+        />
+      }
+    />
   );
 }
 
@@ -235,13 +186,19 @@ function RoutesFormWrapper({
 }) {
   const { fields, replace } = useFieldArray({ control, name: "routes" });
   const port = useWatch({ control, name: "port" });
-  const defaultPort = parseInt(port, 10) || 8080;
 
   return (
     <RoutesForm
-      routes={fields.map((f) => ({ ...f, pathType: f.pathType ?? "prefix" }))}
+      routes={fields.map((f) => ({
+        domain: f.domain,
+        path: f.path,
+        pathType: f.pathType,
+        port: f.port,
+        tls: f.tls,
+        config: f.config,
+      }))}
       onChange={(routes) => replace(routes)}
-      defaultPort={defaultPort}
+      defaultPort={Number.isFinite(port) ? port : 8080}
     />
   );
 }
@@ -272,7 +229,6 @@ function SettingsTab({
   onClose?: () => void;
 }) {
   const isCreating = !resource;
-  const app = resource?.service?.app;
 
   const {
     control,
@@ -280,70 +236,12 @@ function SettingsTab({
     reset,
     formState: { isDirty },
   } = useForm<ServiceFormValues>({
-    defaultValues: {
-      name: resource?.name ?? "",
-      image: app?.source?.image ?? "",
-      port: String(app?.port ?? 8080),
-      command: app?.command ?? "",
-      replicas: String(app?.replicas ?? 1),
-      cpuRequest: app?.compute ? formatCpu(app.compute.cpuRequest) : "100m",
-      cpuLimit: app?.compute ? formatCpu(app.compute.cpuLimit) : "500m",
-      memoryRequest: app?.compute
-        ? formatBytes(app.compute.memoryRequest)
-        : "128Mi",
-      memoryLimit: app?.compute
-        ? formatBytes(app.compute.memoryLimit)
-        : "512Mi",
-      healthCheckType: app?.healthCheck?.type ?? "none",
-      healthCheckPath:
-        app?.healthCheck?.type === "http"
-          ? (app.healthCheck.path ?? "/health")
-          : "/health",
-      healthCheckPort:
-        app?.healthCheck?.type === "http" || app?.healthCheck?.type === "tcp"
-          ? String(app.healthCheck.port ?? "")
-          : "",
-      healthCheckCommand:
-        app?.healthCheck?.type === "exec"
-          ? (app.healthCheck.command ?? "")
-          : "",
-      variables: [],
-      volumes: [],
-      routes: [],
-    },
+    resolver: zodResolver(ServiceFormSchema),
+    defaultValues: fromResource(resource),
   });
 
   useEffect(() => {
-    if (resource) {
-      const a = resource.service?.app;
-      reset({
-        name: resource.name,
-        image: a?.source?.image ?? "",
-        port: String(a?.port ?? 8080),
-        command: a?.command ?? "",
-        replicas: String(a?.replicas ?? 1),
-        cpuRequest: a?.compute ? formatCpu(a.compute.cpuRequest) : "100m",
-        cpuLimit: a?.compute ? formatCpu(a.compute.cpuLimit) : "500m",
-        memoryRequest: a?.compute
-          ? formatBytes(a.compute.memoryRequest)
-          : "128Mi",
-        memoryLimit: a?.compute ? formatBytes(a.compute.memoryLimit) : "512Mi",
-        healthCheckType: a?.healthCheck?.type ?? "none",
-        healthCheckPath:
-          a?.healthCheck?.type === "http"
-            ? (a.healthCheck.path ?? "/health")
-            : "/health",
-        healthCheckPort:
-          a?.healthCheck?.type === "http" || a?.healthCheck?.type === "tcp"
-            ? String(a.healthCheck.port ?? "")
-            : "",
-        healthCheckCommand:
-          a?.healthCheck?.type === "exec" ? (a.healthCheck.command ?? "") : "",
-        variables: [],
-        volumes: [],
-        routes: [],
-      });
-    }
+    if (resource) reset(fromResource(resource));
   }, [resource, reset]);
 
   const updateResource = useMutation({
@@ -356,88 +254,39 @@ function SettingsTab({
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const onSubmit = useCallback((data: ServiceFormValues) => {
-    const source = { type: "image" as const, image: data.image.trim() };
-
-    const healthCheck =
-      data.healthCheckType === "none"
-        ? { type: "none" as const }
-        : data.healthCheckType === "http"
-          ? {
-              type: "http" as const,
-              path: data.healthCheckPath || "/health",
-              port: data.healthCheckPort
-                ? parseInt(data.healthCheckPort, 10)
-                : undefined,
-            }
-          : data.healthCheckType === "tcp"
-            ? { type: "tcp" as const, port: parseInt(data.healthCheckPort, 10) }
-            : { type: "exec" as const, command: data.healthCheckCommand };
-
-    const compute = {
-      cpuRequest: parseCpu(data.cpuRequest),
-      cpuLimit: parseCpu(data.cpuLimit),
-      memoryRequest: parseBytes(data.memoryRequest),
-      memoryLimit: parseBytes(data.memoryLimit),
-    };
-
-    if (isCreating && createProps) {
-      const body: ResourceCreate = {
-        type: "service",
-        name: data.name.trim(),
-        positionX: createProps.position?.x ?? 0,
-        positionY: createProps.position?.y ?? 0,
-        source,
-        port: data.port ? parseInt(data.port, 10) : undefined,
-        command: data.command.trim() || undefined,
-        replicas: parseInt(data.replicas, 10),
-        compute,
-        healthCheck,
-        variables: data.variables
-          .filter((v) => v.key.trim())
-          .map((v) => ({
-            key: v.key.trim(),
-            value: v.value || undefined,
-            sensitive: v.secret ?? false,
-            sourceVariableId: v.sourceVariableId,
-          })),
-        volumes: data.volumes
-          .filter((v) => v.name.trim() && v.mountPath.trim())
-          .map((v) => ({
-            name: v.name.trim(),
-            size: parseBytes(v.size),
-            mountPath: v.mountPath.trim(),
-          })),
-        routes: data.routes
-          .filter((r) => r.domain.trim())
-          .map((r) => ({
-            domain: r.domain.trim(),
-            path: r.path || "/",
-            pathType: r.pathType as "prefix" | "exact",
-            port: r.port || parseInt(data.port, 10) || 8080,
-            tls: r.tls,
-          })),
-      };
-      createResource.mutate(
-        { projectId, body },
-        {
-          onSuccess: (created) => {
-            createProps.onCreated(created.id);
+  const onSubmit = useCallback(
+    (data: ServiceFormValues) => {
+      if (isCreating && createProps) {
+        const body = toResourceCreate(data, createProps.position);
+        createResource.mutate(
+          { projectId, body },
+          {
+            onSuccess: (created) => {
+              createProps.onCreated(created.id);
+            },
           },
-        },
-      );
-    } else if (resource) {
-      const body: ResourceUpdate = {
-        source,
-        port: data.port ? parseInt(data.port, 10) : null,
-        command: data.command.trim() || null,
-        replicas: parseInt(data.replicas, 10),
-        compute,
-        healthCheck,
-      };
-      updateResource.mutate({ projectId, id: resource.id, body });
-    }
-  }, [createProps, createResource, isCreating, projectId, resource, updateResource]);
+        );
+      } else if (resource) {
+        const body = toResourceUpdate(data);
+        updateResource.mutate(
+          { projectId, id: resource.id, body },
+          {
+            // Reset dirty state so subsequent edits re-arm autosave
+            onSuccess: () => reset(data, { keepValues: true }),
+          },
+        );
+      }
+    },
+    [
+      createProps,
+      createResource,
+      isCreating,
+      projectId,
+      reset,
+      resource,
+      updateResource,
+    ],
+  );
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -452,12 +301,16 @@ function SettingsTab({
     submitRef.current = submit;
   }, [submit]);
 
+  // Debounce autosave on every form value change while dirty
+  const watchedValues = useWatch({ control });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: watchedValues drives debounced re-runs
   useEffect(() => {
     if (isCreating || !resource || !isDirty) return;
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => submitRef.current(), 800);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [isCreating, isDirty, resource]);
+  }, [isCreating, isDirty, resource, watchedValues]);
 
   // Flush pending auto-save on unmount
   useEffect(() => {
@@ -469,11 +322,15 @@ function SettingsTab({
     };
   }, []);
 
-  const visibleSections = useMemo(() => settingsSections.filter((s) => {
-    if (s.id === "variables") return isCreating;
-    if (s.id === "danger") return !!resource;
-    return true;
-  }), [isCreating, resource]);
+  const visibleSections = useMemo(
+    () =>
+      settingsSections.filter((s) => {
+        if (s.id === "variables") return isCreating;
+        if (s.id === "danger") return !!resource;
+        return true;
+      }),
+    [isCreating, resource],
+  );
 
   const [activeSection, setActiveSection] = useState(
     visibleSections[0]?.id ?? "",
@@ -540,10 +397,7 @@ function SettingsTab({
                     : "Changes trigger a new deployment"
                 }
               />
-              <GeneralForm
-                control={control as unknown as Control<GeneralFormValues>}
-                showName={isCreating}
-              />
+              <GeneralForm control={control} showName={isCreating} />
             </div>
 
             {isCreating && (
@@ -576,9 +430,7 @@ function SettingsTab({
                 title="Resources"
                 description="Service is restarted when limits are exceeded"
               />
-              <ScalingForm
-                control={control as unknown as Control<ScalingFormValues>}
-              />
+              <ScalingForm control={control} />
             </div>
 
             <div id="health" className="space-y-5 scroll-mt-6">
@@ -586,9 +438,7 @@ function SettingsTab({
                 title="Health check"
                 description="Determines when to restart unhealthy containers"
               />
-              <HealthForm
-                control={control as unknown as Control<HealthFormValues>}
-              />
+              <HealthForm control={control} />
             </div>
 
             <div id="routes" className="space-y-5 scroll-mt-6">
@@ -735,15 +585,7 @@ function VolumesSection({
         onOpenChange={setDialogOpen}
         onAdd={(vol) =>
           addVolume.mutate(
-            {
-              projectId,
-              serviceId,
-              body: {
-                name: vol.name,
-                size: parseBytes(vol.size),
-                mountPath: vol.mountPath,
-              },
-            },
+            { projectId, serviceId, body: vol },
             {
               onSuccess: invalidate,
               onError: (err: Error) => toast.error(err.message),
@@ -755,6 +597,26 @@ function VolumesSection({
   );
 }
 
+const VOL_GIB_STEPS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300,
+  400, 500, 750, 1000,
+];
+const GIB = 1024 * 1024 * 1024;
+const DEFAULT_VOL_BYTES = 1 * GIB;
+
+function closestVolumeIndex(bytes: number): number {
+  const gib = bytes / GIB;
+  let best = 0;
+  for (let i = 0; i < VOL_GIB_STEPS.length; i++) {
+    if (
+      Math.abs((VOL_GIB_STEPS[i] ?? 0) - gib) <
+      Math.abs((VOL_GIB_STEPS[best] ?? 0) - gib)
+    )
+      best = i;
+  }
+  return best;
+}
+
 function AddVolumeDialog({
   open,
   onOpenChange,
@@ -762,15 +624,15 @@ function AddVolumeDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (vol: VolumeFormEntry) => void;
+  onAdd: (vol: VolumeCreate) => void;
 }) {
   const [name, setName] = useState("");
-  const [size, setSize] = useState("1Gi");
+  const [size, setSize] = useState<number>(DEFAULT_VOL_BYTES);
   const [mountPath, setMountPath] = useState("");
 
   const cleanup = () => {
     setName("");
-    setSize("1Gi");
+    setSize(DEFAULT_VOL_BYTES);
     setMountPath("");
     onOpenChange(false);
   };
@@ -780,6 +642,9 @@ function AddVolumeDialog({
     onAdd({ name: name.trim(), size, mountPath: mountPath.trim() });
     cleanup();
   };
+
+  const currentIdx = closestVolumeIndex(size);
+  const currentGib = VOL_GIB_STEPS[currentIdx] ?? 1;
 
   return (
     <Dialog
@@ -811,43 +676,28 @@ function AddVolumeDialog({
               />
             </Field>
 
-            {(() => {
-              const volSteps = [
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100,
-                150, 200, 300, 400, 500, 750, 1000,
-              ];
-              const sizeNum = parseInt(size, 10) || 1;
-              const closest = volSteps.reduce(
-                (a, b) =>
-                  Math.abs(b - sizeNum) < Math.abs(a - sizeNum) ? b : a,
-                volSteps[0] ?? 1,
-              );
-              const currentIdx = volSteps.indexOf(closest);
-              const currentVal = volSteps[currentIdx] ?? 1;
-              return (
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <FieldLabel htmlFor="vol-size">Size</FieldLabel>
-                    <span className="text-sm text-muted-foreground font-mono">
-                      {currentVal >= 1000
-                        ? `${currentVal / 1000}Ti`
-                        : `${currentVal}Gi`}
-                    </span>
-                  </div>
-                  <Slider
-                    id="vol-size"
-                    value={[currentIdx]}
-                    onValueChange={([i]) => {
-                      const v = i !== undefined ? volSteps[i] : undefined;
-                      if (v) setSize(`${v}Gi`);
-                    }}
-                    min={0}
-                    max={volSteps.length - 1}
-                    step={1}
-                  />
-                </div>
-              );
-            })()}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <FieldLabel htmlFor="vol-size">Size</FieldLabel>
+                <span className="text-sm text-muted-foreground font-mono">
+                  {currentGib >= 1000
+                    ? `${currentGib / 1000}Ti`
+                    : `${currentGib}Gi`}
+                </span>
+              </div>
+              <Slider
+                id="vol-size"
+                value={[currentIdx]}
+                onValueChange={([i]) => {
+                  if (i === undefined) return;
+                  const gib = VOL_GIB_STEPS[i];
+                  if (gib !== undefined) setSize(gib * GIB);
+                }}
+                min={0}
+                max={VOL_GIB_STEPS.length - 1}
+                step={1}
+              />
+            </div>
 
             <Field>
               <FieldLabel htmlFor="vol-mount">Mount path</FieldLabel>

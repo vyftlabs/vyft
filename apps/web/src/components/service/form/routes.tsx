@@ -1,3 +1,4 @@
+import type { RouteConfig, RouteCreate } from "@vyft/spec";
 import { LockIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,13 +23,15 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export interface RouteEntry {
+export type RouteEntry = RouteCreate;
+
+interface RouteDialogState {
   domain: string;
   path: string;
-  pathType: string;
+  pathType: "prefix" | "exact";
   port: number;
   tls: boolean;
-  redirectScheme?: string;
+  redirectScheme?: "http" | "https";
   redirectStatusCode?: number;
   rewritePath?: string;
   stripPrefix?: string;
@@ -41,13 +44,51 @@ export interface RouteEntry {
   corsMaxAge?: number;
 }
 
-const defaultRoute: RouteEntry = {
+const initialDialogState = (defaultPort: number): RouteDialogState => ({
   domain: "",
   path: "/",
   pathType: "prefix",
-  port: 0,
+  port: defaultPort,
   tls: true,
-};
+});
+
+const splitCsv = (s: string): string[] =>
+  s
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+function buildConfig(state: RouteDialogState): RouteConfig | undefined {
+  const config: RouteConfig = {};
+  if (state.redirectScheme) {
+    config.redirect = {
+      scheme: state.redirectScheme,
+      statusCode: state.redirectStatusCode ?? 301,
+    };
+  }
+  if (state.rewritePath || state.stripPrefix) {
+    config.rewrite = {
+      path: state.rewritePath || undefined,
+      stripPrefix: state.stripPrefix || undefined,
+    };
+  }
+  if (state.rateLimit) config.rateLimit = state.rateLimit;
+  if (state.timeout) config.timeout = state.timeout;
+  if (state.retries != null) config.retries = state.retries;
+  if (state.corsOrigins) {
+    const origins = splitCsv(state.corsOrigins);
+    const methods = splitCsv(state.corsMethods ?? "GET,POST");
+    if (origins.length > 0 && methods.length > 0) {
+      config.cors = {
+        origins,
+        methods,
+        headers: state.corsHeaders ? splitCsv(state.corsHeaders) : undefined,
+        maxAge: state.corsMaxAge,
+      };
+    }
+  }
+  return Object.keys(config).length > 0 ? config : undefined;
+}
 
 export function RoutesForm({
   routes,
@@ -61,20 +102,34 @@ export function RoutesForm({
   onAddClick?: () => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<RouteEntry>({
-    ...defaultRoute,
-    port: defaultPort ?? 8080,
-  });
+  const [form, setForm] = useState<RouteDialogState>(
+    initialDialogState(defaultPort ?? 8080),
+  );
 
-  const update = (updates: Partial<RouteEntry>) =>
-    setForm((f) => ({ ...f, ...updates }));
+  const update = (patch: Partial<RouteDialogState>) =>
+    setForm((f) => ({ ...f, ...patch }));
 
   const handleAdd = () => {
     if (!form.domain.trim()) return;
-    onChange([...routes, { ...form, domain: form.domain.trim() }]);
-    setForm({ ...defaultRoute, port: defaultPort ?? 8080 });
+    const route: RouteCreate = {
+      domain: form.domain.trim(),
+      path: form.path || "/",
+      pathType: form.pathType,
+      port: form.port,
+      tls: form.tls,
+      config: buildConfig(form),
+    };
+    onChange([...routes, route]);
+    setForm(initialDialogState(defaultPort ?? 8080));
     setDialogOpen(false);
   };
+
+  const numericChange =
+    (key: "rateLimit" | "timeout" | "retries" | "corsMaxAge") =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const n = e.target.valueAsNumber;
+      update({ [key]: Number.isFinite(n) ? n : undefined });
+    };
 
   return (
     <div className="space-y-3">
@@ -183,7 +238,7 @@ export function RoutesForm({
                     <Select
                       value={form.pathType}
                       onValueChange={(v) =>
-                        update({ pathType: v ?? undefined })
+                        update({ pathType: v as "prefix" | "exact" })
                       }
                     >
                       <SelectTrigger className="w-24">
@@ -201,10 +256,11 @@ export function RoutesForm({
                   <FieldLabel>Port</FieldLabel>
                   <Input
                     type="number"
-                    value={form.port}
-                    onChange={(e) =>
-                      update({ port: parseInt(e.target.value, 10) || 0 })
-                    }
+                    value={Number.isFinite(form.port) ? form.port : ""}
+                    onChange={(e) => {
+                      const n = e.target.valueAsNumber;
+                      update({ port: Number.isFinite(n) ? n : 0 });
+                    }}
                     placeholder="8080"
                     className="font-mono"
                   />
@@ -287,11 +343,7 @@ export function RoutesForm({
                   <Input
                     type="number"
                     value={form.rateLimit ?? ""}
-                    onChange={(e) =>
-                      update({
-                        rateLimit: parseInt(e.target.value, 10) || undefined,
-                      })
-                    }
+                    onChange={numericChange("rateLimit")}
                     placeholder="100"
                   />
                   <FieldDescription>
@@ -343,11 +395,7 @@ export function RoutesForm({
                   <Input
                     type="number"
                     value={form.corsMaxAge ?? ""}
-                    onChange={(e) =>
-                      update({
-                        corsMaxAge: parseInt(e.target.value, 10) || undefined,
-                      })
-                    }
+                    onChange={numericChange("corsMaxAge")}
                     placeholder="86400"
                   />
                   <FieldDescription>
@@ -365,11 +413,7 @@ export function RoutesForm({
                   <Input
                     type="number"
                     value={form.timeout ?? ""}
-                    onChange={(e) =>
-                      update({
-                        timeout: parseInt(e.target.value, 10) || undefined,
-                      })
-                    }
+                    onChange={numericChange("timeout")}
                     placeholder="30"
                   />
                   <FieldDescription>
@@ -382,11 +426,7 @@ export function RoutesForm({
                   <Input
                     type="number"
                     value={form.retries ?? ""}
-                    onChange={(e) =>
-                      update({
-                        retries: parseInt(e.target.value, 10) || undefined,
-                      })
-                    }
+                    onChange={numericChange("retries")}
                     placeholder="3"
                   />
                   <FieldDescription>

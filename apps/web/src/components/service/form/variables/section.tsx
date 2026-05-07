@@ -4,7 +4,7 @@ import { type Control, useFieldArray } from "react-hook-form";
 import { AddVariableDialog } from "@/components/variable/add";
 import type { SuggestionGroup } from "@/components/variable/form";
 import * as api from "@/lib/api";
-import type { ServiceFormValues } from "../types";
+import type { ServiceFormValues } from "../schema";
 import { Variables } from ".";
 
 export function VariablesSection({
@@ -77,7 +77,7 @@ export function VariablesSection({
           append({
             key: v.key,
             value: v.value,
-            secret: v.secret,
+            secret: v.secret ?? false,
             sourceVariableId: v.sourceVariableId,
           })
         }

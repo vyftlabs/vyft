@@ -1,10 +1,6 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
-import type {
-  LatencyChartData,
-  SparklineData,
-  Threshold,
-} from "./shell";
+import type { LatencyChartData, SparklineData, Threshold } from "./shell";
 
 type Severity = "critical" | "warning" | null;
 
