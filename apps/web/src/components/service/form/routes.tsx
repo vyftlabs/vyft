@@ -140,6 +140,8 @@ export function RoutesForm({
               <TableRow
                 key={`${route.domain}-${route.path}-${route.port}`}
                 className="group"
+                data-testid="service.form.routes.row"
+                data-domain={route.domain}
               >
                 <TableCell className="font-mono text-xs">
                   <span className="flex items-center gap-1.5">
@@ -160,6 +162,7 @@ export function RoutesForm({
                     type="button"
                     size="icon-sm"
                     variant="ghost"
+                    data-testid="service.form.routes.row.delete"
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     onClick={() =>
                       onChange(routes.filter((_, j) => j !== routeIndex))
@@ -179,6 +182,7 @@ export function RoutesForm({
         variant="outline"
         size="sm"
         className="w-full"
+        data-testid="service.form.routes.add"
         onClick={() => (onAddClick ? onAddClick() : setDialogOpen(true))}
       >
         <PlusIcon />
@@ -220,6 +224,7 @@ export function RoutesForm({
                     onChange={(e) => update({ domain: e.target.value })}
                     placeholder="example.com"
                     autoFocus
+                    data-testid="service.form.routes.dialog.domain"
                   />
                 </Field>
 
@@ -231,6 +236,7 @@ export function RoutesForm({
                       onChange={(e) => update({ path: e.target.value })}
                       placeholder="/"
                       className="font-mono"
+                      data-testid="service.form.routes.dialog.path"
                     />
                   </Field>
                   <Field className="!w-auto shrink-0">
@@ -263,6 +269,7 @@ export function RoutesForm({
                     }}
                     placeholder="8080"
                     className="font-mono"
+                    data-testid="service.form.routes.dialog.port"
                   />
                 </Field>
 
@@ -442,6 +449,7 @@ export function RoutesForm({
                 className="w-full"
                 disabled={!form.domain.trim()}
                 onClick={handleAdd}
+                data-testid="service.form.routes.dialog.submit"
               >
                 Add route
               </Button>

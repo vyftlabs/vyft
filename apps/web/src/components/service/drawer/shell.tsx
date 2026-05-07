@@ -221,6 +221,7 @@ export function ServiceDrawerShell({
       />
 
       <motion.div
+        data-testid="service.drawer"
         className="absolute z-50 flex flex-col bg-background shadow-lg overflow-hidden"
         initial={
           skipEntryAnimation
@@ -293,7 +294,12 @@ export function ServiceDrawerShell({
                   name
                 )}
               </div>
-              <Button variant="ghost" size="icon-sm" onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onClose}
+                data-testid="service.drawer.close"
+              >
                 <XIcon className="size-4" />
               </Button>
             </div>
@@ -338,7 +344,11 @@ function ServiceDrawerTabs({
           className="px-6 border-b !w-full !justify-start [&>*]:!flex-none [&>*]:mb-[-1px]"
         >
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id}>
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              data-testid={`service.drawer.tab.${tab.id}`}
+            >
               {tab.label}
             </TabsTrigger>
           ))}

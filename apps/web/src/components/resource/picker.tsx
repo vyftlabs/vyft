@@ -40,7 +40,7 @@ export function ResourcePickerCommand({
         <CommandGroup heading="Sources">
           <CommandItem
             onSelect={() => onSelect("service", { type: "image" })}
-            data-testid="service-source-image-option"
+            data-testid="service.picker.image"
           >
             <ContainerIcon className="text-muted-foreground" />
             Container Image
@@ -54,11 +54,7 @@ export function ResourcePickerCommand({
                 .map((def) => {
                   const Icon = def.icon;
                   return (
-                    <CommandItem
-                      key={def.type}
-                      disabled
-                      className="opacity-50"
-                    >
+                    <CommandItem key={def.type} disabled className="opacity-50">
                       <Icon className="text-muted-foreground" />
                       <span className="flex-1">{def.name}</span>
                       <span className="text-[10px] text-muted-foreground">

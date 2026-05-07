@@ -128,6 +128,7 @@ export function ScalingForm({
                     min="1"
                     value={Number.isFinite(field.value) ? field.value : ""}
                     onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                    data-testid="service.form.replicas"
                     className="text-center font-mono [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <InputGroupAddon align="inline-end">

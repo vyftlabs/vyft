@@ -53,7 +53,12 @@ function List() {
           const isSecret =
             !isReference && (v.secret || v.value.startsWith("secret://"));
           return (
-            <TableRow key={v.key} className="group">
+            <TableRow
+              key={v.key}
+              className="group"
+              data-testid="service.form.variables.row"
+              data-key={v.key}
+            >
               <TableCell className="font-mono text-xs w-1/2">{v.key}</TableCell>
               <TableCell className="text-xs w-1/2">
                 {isReference ? (
@@ -78,6 +83,7 @@ function List() {
                   type="button"
                   size="icon-sm"
                   variant="ghost"
+                  data-testid="service.form.variables.row.delete"
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive ml-auto"
                   onClick={() => onDelete(v.key)}
                 >
@@ -99,6 +105,7 @@ function AddButton({ onClick }: { onClick: () => void }) {
       variant="outline"
       size="sm"
       className="w-full"
+      data-testid="service.form.variables.add"
       onClick={onClick}
     >
       <PlusIcon />

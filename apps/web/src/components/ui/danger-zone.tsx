@@ -22,6 +22,7 @@ export interface DangerZoneProps {
   confirmTitle?: string;
   confirmDescription?: string;
   confirmInput?: string;
+  testIdPrefix?: string;
 }
 
 export function DangerZone({
@@ -33,6 +34,7 @@ export function DangerZone({
   confirmTitle,
   confirmDescription,
   confirmInput,
+  testIdPrefix,
 }: DangerZoneProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -67,6 +69,7 @@ export function DangerZone({
           className="shrink-0"
           disabled={disabled}
           onClick={() => setOpen(true)}
+          data-testid={testIdPrefix ? `${testIdPrefix}.action` : undefined}
         >
           {action}
         </Button>
@@ -111,6 +114,7 @@ export function DangerZone({
             <AlertDialogAction
               variant="destructive"
               disabled={isConfirmDisabled}
+              data-testid={testIdPrefix ? `${testIdPrefix}.confirm` : undefined}
               onClick={(e) => {
                 e.preventDefault();
                 handleAction();

@@ -207,6 +207,8 @@ export function ServiceNodeCard({
               ? "ring-1 ring-emerald-400/20 shadow-sm hover:shadow-md"
               : "ring-1 ring-foreground/[0.08] dark:ring-white/[0.1] shadow-sm hover:shadow-md",
         )}
+        data-testid="service.node"
+        data-name={label}
         onClick={onClick}
         onMouseEnter={onHover}
         onFocus={onHover}

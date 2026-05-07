@@ -475,6 +475,7 @@ function SettingsTab({
                 <button
                   type="button"
                   onClick={() => scrollTo(s.id)}
+                  data-testid={`service.drawer.section.${s.id}`}
                   className={cn(
                     "block w-full text-left text-xs py-1 transition-colors",
                     activeSection === s.id
@@ -535,7 +536,12 @@ function VolumesSection({
           </TableHeader>
           <TableBody>
             {volumeList.map((vol: (typeof volumeList)[number]) => (
-              <TableRow key={vol.id} className="group">
+              <TableRow
+                key={vol.id}
+                className="group"
+                data-testid="service.form.volumes.row"
+                data-name={vol.name}
+              >
                 <TableCell className="font-mono text-xs">{vol.name}</TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">
                   {vol.mountPath}
@@ -548,6 +554,7 @@ function VolumesSection({
                     type="button"
                     size="icon-sm"
                     variant="ghost"
+                    data-testid="service.form.volumes.row.delete"
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     disabled={deleteVolume.isPending}
                     onClick={() =>
@@ -574,6 +581,7 @@ function VolumesSection({
         variant="outline"
         size="sm"
         className="w-full"
+        data-testid="service.form.volumes.add"
         onClick={() => setDialogOpen(true)}
       >
         <PlusIcon />
@@ -673,6 +681,7 @@ function AddVolumeDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="data"
                 autoFocus
+                data-testid="service.form.volumes.dialog.name"
               />
             </Field>
 
@@ -707,6 +716,7 @@ function AddVolumeDialog({
                 onChange={(e) => setMountPath(e.target.value)}
                 placeholder="/data"
                 className="font-mono"
+                data-testid="service.form.volumes.dialog.mount"
               />
             </Field>
           </div>
@@ -715,6 +725,7 @@ function AddVolumeDialog({
               type="submit"
               className="w-full"
               disabled={!name.trim() || !mountPath.trim()}
+              data-testid="service.form.volumes.dialog.submit"
             >
               Add
             </Button>
@@ -822,6 +833,7 @@ function DangerSection({
       title="Delete service"
       description="Permanently remove this service and all its resources. This action cannot be undone."
       action="Delete service"
+      testIdPrefix="service.danger.delete"
       onAction={() =>
         deleteResource.mutate(
           { projectId, id: resourceId },
@@ -1080,7 +1092,7 @@ export function ServiceDrawer({
               size="sm"
               type="submit"
               form="create-service-form"
-              data-testid="service-create-submit"
+              data-testid="service.drawer.create-submit"
             >
               Create
             </Button>

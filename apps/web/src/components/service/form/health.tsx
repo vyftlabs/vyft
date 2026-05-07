@@ -55,14 +55,34 @@ function HealthEditor({
           value={value.type}
           onValueChange={(v) => onChange(defaultsForType(v as HealthCheckType))}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger
+            className="w-full"
+            data-testid="service.form.health.type"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            <SelectItem value="http">HTTP</SelectItem>
-            <SelectItem value="tcp">TCP</SelectItem>
-            <SelectItem value="exec">Command</SelectItem>
+            <SelectItem
+              value="none"
+              data-testid="service.form.health.type.none"
+            >
+              None
+            </SelectItem>
+            <SelectItem
+              value="http"
+              data-testid="service.form.health.type.http"
+            >
+              HTTP
+            </SelectItem>
+            <SelectItem value="tcp" data-testid="service.form.health.type.tcp">
+              TCP
+            </SelectItem>
+            <SelectItem
+              value="exec"
+              data-testid="service.form.health.type.exec"
+            >
+              Command
+            </SelectItem>
           </SelectContent>
         </Select>
       </Field>
@@ -77,6 +97,7 @@ function HealthEditor({
               onChange={(e) => updateHttp({ path: e.target.value })}
               placeholder="/health"
               className="font-mono"
+              data-testid="service.form.health.path"
             />
           </Field>
           <Field>
@@ -90,6 +111,7 @@ function HealthEditor({
                 updateHttp({ port: Number.isFinite(n) ? n : undefined });
               }}
               placeholder="8080"
+              data-testid="service.form.health.port"
             />
           </Field>
         </div>
@@ -104,6 +126,7 @@ function HealthEditor({
             value={Number.isFinite(value.port) ? value.port : ""}
             onChange={(e) => updateTcp(portValueAsNumber(e))}
             placeholder="8080"
+            data-testid="service.form.health.port"
           />
         </Field>
       )}
@@ -117,6 +140,7 @@ function HealthEditor({
             onChange={(e) => updateExec(e.target.value)}
             placeholder="curl -f http://localhost:8080/health"
             className="font-mono"
+            data-testid="service.form.health.command"
           />
         </Field>
       )}

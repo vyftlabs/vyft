@@ -1,8 +1,5 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  ResourcePickerCommand,
-  type ResourceSelectHandler,
-} from "./picker";
+import { ResourcePickerCommand, type ResourceSelectHandler } from "./picker";
 
 export type { ServiceSource } from "./picker";
 

@@ -234,7 +234,11 @@ function ServicesCanvas() {
   );
 
   return (
-    <div ref={setContainer} className="relative h-full w-full">
+    <div
+      ref={setContainer}
+      className="relative h-full w-full"
+      data-testid="service.canvas"
+    >
       {(!resourcesReady || resourceDialogOpen) && (
         <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[0.5px]" />
       )}
@@ -281,6 +285,7 @@ function ServicesCanvas() {
             className="size-8 rounded-md border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={onAutoLayout}
             title="Auto layout"
+            data-testid="service.canvas.layout"
           >
             <WandSparklesIcon className="size-3.5" />
           </button>
@@ -288,7 +293,7 @@ function ServicesCanvas() {
             type="button"
             className="h-8 px-3 rounded-md border bg-background flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={() => setAddDialogOpen(true)}
-            data-testid="service-add-button"
+            data-testid="service.canvas.add"
           >
             <PlusIcon className="size-3.5" />
             Add resource

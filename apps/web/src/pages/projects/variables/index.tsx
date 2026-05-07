@@ -3,10 +3,10 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
-import { AddVariableDialog } from "@/components/variable/add";
 import { Variables } from "@/components/service/form/variables";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
 
 export default function SharedVariables() {
@@ -113,4 +113,3 @@ export default function SharedVariables() {
     </div>
   );
 }
-

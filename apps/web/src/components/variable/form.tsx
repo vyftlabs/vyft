@@ -178,6 +178,7 @@ export function VariableForm({
                 placeholder="DATABASE_URL"
                 className="font-mono"
                 autoFocus
+                data-testid="service.form.variables.dialog.key"
                 onChange={(e) => field.onChange(e.target.value.toUpperCase())}
               />
               <FieldError errors={[fieldState.error]} />
@@ -223,6 +224,7 @@ export function VariableForm({
                     placeholder={isSecret ? "••••••••" : "value"}
                     className="font-mono pr-14"
                     autoComplete="off"
+                    data-testid="service.form.variables.dialog.value"
                     onFocus={() => {
                       setFocused(true);
                       setHighlightIndex(0);
@@ -352,6 +354,7 @@ export function VariableForm({
                 <Switch
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  data-testid="service.form.variables.dialog.secret"
                 />
               </div>
             )}
@@ -359,7 +362,12 @@ export function VariableForm({
         )}
       </div>
       <div className="mt-4">
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isPending}
+          data-testid="service.form.variables.dialog.submit"
+        >
           {isPending && <Spinner />}
           Add variable
         </Button>

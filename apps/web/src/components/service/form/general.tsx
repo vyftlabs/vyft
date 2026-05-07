@@ -26,7 +26,7 @@ export function GeneralForm({
                 id={field.name}
                 placeholder="api"
                 autoFocus
-                data-testid="service-name-input"
+                data-testid="service.form.name"
               />
               <FieldError errors={[fieldState.error]} />
             </Field>
@@ -49,7 +49,7 @@ export function GeneralForm({
                 id={field.name}
                 placeholder="ghcr.io/org/app:latest"
                 className="font-mono"
-                data-testid="service-image-input"
+                data-testid="service.form.image"
               />
               <FieldError errors={[fieldState.error]} />
             </Field>
@@ -76,7 +76,7 @@ export function GeneralForm({
                   onChange={(e) => field.onChange(e.target.valueAsNumber)}
                   placeholder="8080"
                   className="!w-[12ch] font-mono"
-                  data-testid="service-port-input"
+                  data-testid="service.form.port"
                 />
                 <FieldError errors={[fieldState.error]} />
               </Field>
@@ -96,6 +96,7 @@ export function GeneralForm({
               id={field.name}
               placeholder="npm start"
               className="font-mono"
+              data-testid="service.form.command"
             />
           </Field>
         )}

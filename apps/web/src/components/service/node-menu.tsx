@@ -41,11 +41,15 @@ export function NodeContextMenu({
       style={{ left, top }}
       className="fixed z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
     >
-      <MenuItem onClick={onOpen}>
+      <MenuItem onClick={onOpen} testId="service.node-menu.open">
         <SettingsIcon className="size-3.5" />
         Open settings
       </MenuItem>
-      <MenuItem onClick={onDelete} variant="danger">
+      <MenuItem
+        onClick={onDelete}
+        variant="danger"
+        testId="service.node-menu.delete"
+      >
         <Trash2Icon className="size-3.5" />
         Delete
       </MenuItem>
@@ -57,15 +61,18 @@ function MenuItem({
   children,
   onClick,
   variant,
+  testId,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   variant?: "danger";
+  testId?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className={cn(
         "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent",
         variant === "danger" && "text-destructive hover:bg-destructive/10",

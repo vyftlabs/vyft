@@ -37,7 +37,12 @@ export function VolumesFormSection({
           </TableHeader>
           <TableBody>
             {fields.map((field, index) => (
-              <TableRow key={field.id} className="group">
+              <TableRow
+                key={field.id}
+                className="group"
+                data-testid="service.form.volumes.row"
+                data-name={field.name}
+              >
                 <TableCell className="font-mono text-xs">
                   {field.name}
                 </TableCell>
@@ -52,6 +57,7 @@ export function VolumesFormSection({
                     type="button"
                     size="icon-sm"
                     variant="ghost"
+                    data-testid="service.form.volumes.row.delete"
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     onClick={() => remove(index)}
                   >
@@ -69,6 +75,7 @@ export function VolumesFormSection({
         variant="outline"
         size="sm"
         className="w-full"
+        data-testid="service.form.volumes.add"
         onClick={onAdd}
       >
         <PlusIcon />
