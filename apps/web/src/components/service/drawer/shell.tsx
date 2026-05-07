@@ -1,18 +1,12 @@
 import { XIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { LatencySparkline, Sparkline } from "./sparklines";
 import { EventTimeline, type TimelineEntry } from "./timeline";
-
-const Sparkline = lazy(() =>
-  import("./sparklines").then((m) => ({ default: m.Sparkline })),
-);
-const LatencySparkline = lazy(() =>
-  import("./sparklines").then((m) => ({ default: m.LatencySparkline })),
-);
 
 export interface DrawerTab {
   id: string;
@@ -82,28 +76,23 @@ export function Overview({
       {(sparklines.length > 0 || latency) && (
         <div className="space-y-2 shrink-0">
           <p className="text-xs font-medium">Metrics</p>
-          <Suspense fallback={null}>
-            {((sparklines[0]?.length ?? 0) > 0 || latency) && (
-              <div className="grid grid-cols-3 gap-2">
-                {sparklines[0]?.map((s) => (
-                  <Sparkline key={s.title} {...s} />
-                ))}
-                {latency && <LatencySparkline {...latency} />}
-              </div>
-            )}
-            {sparklines[1] && (
-              <div
-                className={cn(
-                  "grid gap-2",
-                  `grid-cols-${sparklines[1].length}`,
-                )}
-              >
-                {sparklines[1].map((s) => (
-                  <Sparkline key={s.title} {...s} />
-                ))}
-              </div>
-            )}
-          </Suspense>
+          {((sparklines[0]?.length ?? 0) > 0 || latency) && (
+            <div className="grid grid-cols-3 gap-2">
+              {sparklines[0]?.map((s) => (
+                <Sparkline key={s.title} {...s} />
+              ))}
+              {latency && <LatencySparkline {...latency} />}
+            </div>
+          )}
+          {sparklines[1] && (
+            <div
+              className={cn("grid gap-2", `grid-cols-${sparklines[1].length}`)}
+            >
+              {sparklines[1].map((s) => (
+                <Sparkline key={s.title} {...s} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -161,8 +161,18 @@ function ServicesCanvas() {
           label: r.name,
           image,
           status: { state: "running" },
-          onHover: () =>
-            queryClient.prefetchQuery(api.resources.byId(projectId, r.id)),
+          onHover: () => {
+            queryClient.prefetchQuery(api.resources.byId(projectId, r.id));
+            queryClient.prefetchQuery(
+              api.observability.events(projectId, r.id),
+            );
+            queryClient.prefetchQuery(
+              api.observability.logs(projectId, r.id, 50),
+            );
+            queryClient.prefetchQuery(
+              api.observability.metrics(projectId, r.id),
+            );
+          },
         } satisfies ServiceNodeData,
       };
     });
