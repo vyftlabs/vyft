@@ -4,17 +4,17 @@ import {
   collectionErrors,
   itemErrors,
   ProjectAndIdScope,
-  ServiceScope,
+  ResourceScope,
 } from "../models/common.ts";
 import { Route, RouteCreate, RouteUpdate } from "../models/route.ts";
 
 export const routePaths: ZodOpenApiPathsObject = {
-  "/projects/{projectId}/services/{serviceId}/routes": {
+  "/projects/{projectId}/resources/{resourceId}/routes": {
     get: {
       operationId: "listRoutes",
-      summary: "List routes for service",
+      summary: "List routes for resource",
       tags: ["Routes"],
-      requestParams: { path: ServiceScope },
+      requestParams: { path: ResourceScope },
       responses: {
         200: {
           description: "Routes",
@@ -27,7 +27,7 @@ export const routePaths: ZodOpenApiPathsObject = {
       operationId: "createRoute",
       summary: "Create route",
       tags: ["Routes"],
-      requestParams: { path: ServiceScope },
+      requestParams: { path: ResourceScope },
       requestBody: { content: { "application/json": { schema: RouteCreate } } },
       responses: {
         201: {

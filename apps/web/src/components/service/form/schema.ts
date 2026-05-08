@@ -1,13 +1,12 @@
 import {
   Command,
-  Compute,
-  HealthCheck,
-  KubeName,
+  DiskCreate,
+  Instances,
   PathType,
   Port,
-  Replicas,
+  ResourceName,
+  Resources,
   RouteCreate,
-  VolumeCreate,
 } from "@vyft/spec";
 import { z } from "zod";
 
@@ -19,22 +18,33 @@ export const VariableFormEntry = z.object({
 });
 export type VariableFormEntry = z.infer<typeof VariableFormEntry>;
 
-// Override fields whose spec defaults would otherwise make z.input ≠ z.output.
 const RouteFormEntry = RouteCreate.extend({
   pathType: PathType,
   tls: z.boolean(),
 });
 
+// Form-bound HealthCheck: same shape as spec but no defaults so z.input ≡ z.output (RHF requirement).
+const HealthCheckFormEntry = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("none") }),
+  z.object({
+    type: z.literal("http"),
+    path: z.string().min(1),
+    port: Port.optional(),
+  }),
+  z.object({ type: z.literal("tcp"), port: Port }),
+  z.object({ type: z.literal("command"), command: z.string() }),
+]);
+
 export const ServiceFormSchema = z.object({
-  name: KubeName,
+  name: ResourceName,
   image: z.string().min(1, "Image is required"),
   port: Port,
-  command: Command,
-  replicas: Replicas,
-  compute: Compute,
-  healthCheck: HealthCheck,
+  startCommand: Command,
+  instances: Instances,
+  resources: Resources,
+  healthCheck: HealthCheckFormEntry,
   variables: z.array(VariableFormEntry),
-  volumes: z.array(VolumeCreate),
+  disks: z.array(DiskCreate),
   routes: z.array(RouteFormEntry),
 });
 

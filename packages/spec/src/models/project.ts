@@ -1,5 +1,5 @@
-import { BaseFields } from "./common.ts";
 import { z } from "zod";
+import { BaseFields } from "./common.ts";
 
 export const Project = BaseFields.extend({
   name: z.string().min(1).max(100),

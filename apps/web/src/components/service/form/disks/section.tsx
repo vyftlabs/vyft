@@ -9,10 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatBytes } from "@/lib/units";
+import { formatMb } from "@/lib/units";
 import type { ServiceFormValues } from "../schema";
 
-export function VolumesFormSection({
+export function DisksFormSection({
   control,
   onAdd,
   addDialog,
@@ -21,7 +21,7 @@ export function VolumesFormSection({
   onAdd: () => void;
   addDialog?: React.ReactNode;
 }) {
-  const { fields, remove } = useFieldArray({ control, name: "volumes" });
+  const { fields, remove } = useFieldArray({ control, name: "disks" });
 
   return (
     <div className="space-y-3">
@@ -30,7 +30,7 @@ export function VolumesFormSection({
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Mount path</TableHead>
+              <TableHead>Path</TableHead>
               <TableHead className="w-16">Size</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -40,24 +40,24 @@ export function VolumesFormSection({
               <TableRow
                 key={field.id}
                 className="group"
-                data-testid="service.form.volumes.row"
+                data-testid="service.form.disks.row"
                 data-name={field.name}
               >
                 <TableCell className="font-mono text-xs">
                   {field.name}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">
-                  {field.mountPath}
+                  {field.path}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {formatBytes(field.size)}
+                  {formatMb(field.size)}
                 </TableCell>
                 <TableCell>
                   <Button
                     type="button"
                     size="icon-sm"
                     variant="ghost"
-                    data-testid="service.form.volumes.row.delete"
+                    data-testid="service.form.disks.row.delete"
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     onClick={() => remove(index)}
                   >
@@ -75,11 +75,11 @@ export function VolumesFormSection({
         variant="outline"
         size="sm"
         className="w-full"
-        data-testid="service.form.volumes.add"
+        data-testid="service.form.disks.add"
         onClick={onAdd}
       >
         <PlusIcon />
-        Add volume
+        Add disk
       </Button>
 
       {addDialog}

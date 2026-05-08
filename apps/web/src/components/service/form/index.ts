@@ -1,3 +1,4 @@
+export { DisksFormSection } from "./disks/section";
 export { GeneralForm } from "./general";
 export { HealthForm } from "./health";
 export {
@@ -15,4 +16,3 @@ export {
 } from "./schema";
 export { type VariableEntry, Variables } from "./variables";
 export { VariablesSection } from "./variables/section";
-export { VolumesFormSection } from "./volumes/section";

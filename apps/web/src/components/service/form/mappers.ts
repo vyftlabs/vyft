@@ -1,25 +1,21 @@
 import type { Resource, ResourceCreate, ResourceUpdate } from "@vyft/spec";
+import { getAppSpec } from "@/lib/resource";
 import type { ServiceFormValues } from "./schema";
 
-const DEFAULT_COMPUTE = {
-  cpuRequest: 100,
-  cpuLimit: 500,
-  memoryRequest: 128 * 1024 * 1024,
-  memoryLimit: 512 * 1024 * 1024,
-};
+const DEFAULT_RESOURCES = { cpu: 0.5, memory: 512 };
 
 export function fromResource(resource?: Resource): ServiceFormValues {
-  const app = resource?.service?.app;
+  const spec = resource ? getAppSpec(resource) : null;
   return {
     name: resource?.name ?? "",
-    image: app?.source?.image ?? "",
-    port: app?.port ?? 8080,
-    command: app?.command ?? "",
-    replicas: app?.replicas ?? 1,
-    compute: app?.compute ?? DEFAULT_COMPUTE,
-    healthCheck: app?.healthCheck ?? { type: "none" },
+    image: spec?.source.image ?? "",
+    port: spec?.port ?? 8080,
+    startCommand: spec?.startCommand ?? "",
+    instances: spec?.instances ?? 1,
+    resources: spec?.resources ?? DEFAULT_RESOURCES,
+    healthCheck: spec?.healthCheck ?? { type: "none" },
     variables: [],
-    volumes: [],
+    disks: [],
     routes: [],
   };
 }
@@ -34,16 +30,23 @@ export function toResourceCreate(
   position?: ResourceCreatePosition,
 ): ResourceCreate {
   return {
-    type: "service",
     name: values.name.trim(),
     positionX: position?.x ?? 0,
     positionY: position?.y ?? 0,
-    source: { type: "image", image: values.image.trim() },
-    port: values.port,
-    command: values.command.trim() || undefined,
-    replicas: values.replicas,
-    compute: values.compute,
-    healthCheck: values.healthCheck,
+    category: "service",
+    service: {
+      kind: "app",
+      spec: {
+        source: { type: "image", image: values.image.trim() },
+        port: values.port,
+        startCommand: values.startCommand.trim() || undefined,
+        instances: values.instances,
+        resources: values.resources,
+        healthCheck: values.healthCheck,
+        disks: values.disks,
+        routes: values.routes,
+      },
+    },
     variables: values.variables
       .filter((v) => v.key.trim())
       .map((v) => ({
@@ -52,19 +55,23 @@ export function toResourceCreate(
         sensitive: v.secret,
         sourceVariableId: v.sourceVariableId,
       })),
-    volumes: values.volumes,
-    routes: values.routes,
   };
 }
 
 export function toResourceUpdate(values: ServiceFormValues): ResourceUpdate {
   return {
     name: values.name.trim(),
-    source: { type: "image", image: values.image.trim() },
-    port: values.port,
-    command: values.command.trim() || null,
-    replicas: values.replicas,
-    compute: values.compute,
-    healthCheck: values.healthCheck,
+    category: "service",
+    service: {
+      kind: "app",
+      spec: {
+        source: { type: "image", image: values.image.trim() },
+        port: values.port,
+        startCommand: values.startCommand.trim() || undefined,
+        instances: values.instances,
+        resources: values.resources,
+        healthCheck: values.healthCheck,
+      },
+    },
   };
 }

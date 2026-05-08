@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Resource, VolumeCreate } from "@vyft/spec";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import type { DiskCreate, Resource } from "@vyft/spec";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
@@ -11,6 +10,7 @@ import {
 } from "react-hook-form";
 import { toast } from "sonner";
 import {
+  DisksFormSection,
   fromResource,
   GeneralForm,
   HealthForm,
@@ -22,7 +22,6 @@ import {
   toResourceUpdate,
   Variables,
   VariablesSection,
-  VolumesFormSection,
 } from "@/components/service/form";
 import { Button } from "@/components/ui/button";
 import { DangerZone } from "@/components/ui/danger-zone";
@@ -37,16 +36,9 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
+import { getAppSpec } from "@/lib/resource";
 import { cn } from "@/lib/utils";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
@@ -156,23 +148,23 @@ function SectionHeader({
   );
 }
 
-function VolumesFormSectionWrapper({
+function DisksFormSectionWrapper({
   control,
 }: {
   control: Control<ServiceFormValues>;
 }) {
-  const { append } = useFieldArray({ control, name: "volumes" });
+  const { append } = useFieldArray({ control, name: "disks" });
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <VolumesFormSection
+    <DisksFormSection
       control={control}
       onAdd={() => setDialogOpen(true)}
       addDialog={
-        <AddVolumeDialog
+        <AddDiskDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onAdd={(vol) => append(vol)}
+          onAdd={(disk) => append(disk)}
         />
       }
     />
@@ -206,7 +198,7 @@ function RoutesFormWrapper({
 const settingsSections = [
   { id: "source", label: "Source" },
   { id: "variables", label: "Variables" },
-  { id: "volumes", label: "Volumes" },
+  { id: "disks", label: "Disks" },
   { id: "resources", label: "Resources" },
   { id: "health", label: "Health check" },
   { id: "routes", label: "Routes" },
@@ -410,19 +402,12 @@ function SettingsTab({
               </div>
             )}
 
-            <div id="volumes" className="space-y-5 scroll-mt-6">
+            <div id="disks" className="space-y-5 scroll-mt-6">
               <SectionHeader
-                title="Volumes"
+                title="Disks"
                 description="Data persists across restarts and deployments"
               />
-              {resource?.service ? (
-                <VolumesSection
-                  serviceId={resource.service.id}
-                  projectId={projectId}
-                />
-              ) : (
-                <VolumesFormSectionWrapper control={control} />
-              )}
+              <DisksFormSectionWrapper control={control} />
             </div>
 
             <div id="resources" className="space-y-5 scroll-mt-6">
@@ -448,11 +433,8 @@ function SettingsTab({
               />
               {isCreating ? (
                 <RoutesFormWrapper control={control} />
-              ) : resource?.service ? (
-                <RoutesSection
-                  serviceId={resource.service.id}
-                  projectId={projectId}
-                />
+              ) : resource ? (
+                <RoutesSection resourceId={resource.id} projectId={projectId} />
               ) : null}
             </div>
           </form>
@@ -494,165 +476,53 @@ function SettingsTab({
   );
 }
 
-function VolumesSection({
-  serviceId,
-  projectId,
-}: {
-  serviceId: string;
-  projectId: string;
-}) {
-  const { data: volumeList = [] } = useQuery({
-    ...api.volumes.list(projectId, serviceId),
-    enabled: !!serviceId,
-  });
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({
-      queryKey: api.volumes.list(projectId, serviceId).queryKey,
-    });
-    queryClient.invalidateQueries({ queryKey: ["resources"] });
-    queryClient.invalidateQueries({
-      queryKey: api.deployments.checksum(projectId).queryKey,
-    });
-  };
-
-  const addVolume = useMutation(api.volumes.create);
-
-  const deleteVolume = useMutation(api.volumes.remove);
-
-  return (
-    <div className="space-y-3">
-      {volumeList.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Mount path</TableHead>
-              <TableHead className="w-16">Size</TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {volumeList.map((vol: (typeof volumeList)[number]) => (
-              <TableRow
-                key={vol.id}
-                className="group"
-                data-testid="service.form.volumes.row"
-                data-name={vol.name}
-              >
-                <TableCell className="font-mono text-xs">{vol.name}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {vol.mountPath}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {vol.size}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    data-testid="service.form.volumes.row.delete"
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                    disabled={deleteVolume.isPending}
-                    onClick={() =>
-                      deleteVolume.mutate(
-                        { projectId, id: vol.id },
-                        {
-                          onSuccess: invalidate,
-                          onError: (err: Error) => toast.error(err.message),
-                        },
-                      )
-                    }
-                  >
-                    <Trash2Icon className="size-3.5" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full"
-        data-testid="service.form.volumes.add"
-        onClick={() => setDialogOpen(true)}
-      >
-        <PlusIcon />
-        Add volume
-      </Button>
-
-      <AddVolumeDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onAdd={(vol) =>
-          addVolume.mutate(
-            { projectId, serviceId, body: vol },
-            {
-              onSuccess: invalidate,
-              onError: (err: Error) => toast.error(err.message),
-            },
-          )
-        }
-      />
-    </div>
-  );
-}
-
-const VOL_GIB_STEPS = [
+const DISK_GIB_STEPS = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300,
   400, 500, 750, 1000,
 ];
-const GIB = 1024 * 1024 * 1024;
-const DEFAULT_VOL_BYTES = 1 * GIB;
+const DEFAULT_DISK_MB = 1024;
 
-function closestVolumeIndex(bytes: number): number {
-  const gib = bytes / GIB;
+function closestDiskIndex(mb: number): number {
+  const gib = mb / 1024;
   let best = 0;
-  for (let i = 0; i < VOL_GIB_STEPS.length; i++) {
+  for (let i = 0; i < DISK_GIB_STEPS.length; i++) {
     if (
-      Math.abs((VOL_GIB_STEPS[i] ?? 0) - gib) <
-      Math.abs((VOL_GIB_STEPS[best] ?? 0) - gib)
+      Math.abs((DISK_GIB_STEPS[i] ?? 0) - gib) <
+      Math.abs((DISK_GIB_STEPS[best] ?? 0) - gib)
     )
       best = i;
   }
   return best;
 }
 
-function AddVolumeDialog({
+function AddDiskDialog({
   open,
   onOpenChange,
   onAdd,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (vol: VolumeCreate) => void;
+  onAdd: (disk: DiskCreate) => void;
 }) {
   const [name, setName] = useState("");
-  const [size, setSize] = useState<number>(DEFAULT_VOL_BYTES);
-  const [mountPath, setMountPath] = useState("");
+  const [size, setSize] = useState<number>(DEFAULT_DISK_MB);
+  const [path, setPath] = useState("");
 
   const cleanup = () => {
     setName("");
-    setSize(DEFAULT_VOL_BYTES);
-    setMountPath("");
+    setSize(DEFAULT_DISK_MB);
+    setPath("");
     onOpenChange(false);
   };
 
   const handleAdd = () => {
-    if (!name.trim() || !mountPath.trim()) return;
-    onAdd({ name: name.trim(), size, mountPath: mountPath.trim() });
+    if (!name.trim() || !path.trim()) return;
+    onAdd({ name: name.trim(), size, path: path.trim() });
     cleanup();
   };
 
-  const currentIdx = closestVolumeIndex(size);
-  const currentGib = VOL_GIB_STEPS[currentIdx] ?? 1;
+  const currentIdx = closestDiskIndex(size);
+  const currentGib = DISK_GIB_STEPS[currentIdx] ?? 1;
 
   return (
     <Dialog
@@ -670,24 +540,24 @@ function AddVolumeDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Add volume</DialogTitle>
+            <DialogTitle>Add disk</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Field>
-              <FieldLabel htmlFor="vol-name">Name</FieldLabel>
+              <FieldLabel htmlFor="disk-name">Name</FieldLabel>
               <Input
-                id="vol-name"
+                id="disk-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="data"
                 autoFocus
-                data-testid="service.form.volumes.dialog.name"
+                data-testid="service.form.disks.dialog.name"
               />
             </Field>
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <FieldLabel htmlFor="vol-size">Size</FieldLabel>
+                <FieldLabel htmlFor="disk-size">Size</FieldLabel>
                 <span className="text-sm text-muted-foreground font-mono">
                   {currentGib >= 1000
                     ? `${currentGib / 1000}Ti`
@@ -695,28 +565,28 @@ function AddVolumeDialog({
                 </span>
               </div>
               <Slider
-                id="vol-size"
+                id="disk-size"
                 value={[currentIdx]}
                 onValueChange={([i]) => {
                   if (i === undefined) return;
-                  const gib = VOL_GIB_STEPS[i];
-                  if (gib !== undefined) setSize(gib * GIB);
+                  const gib = DISK_GIB_STEPS[i];
+                  if (gib !== undefined) setSize(gib * 1024);
                 }}
                 min={0}
-                max={VOL_GIB_STEPS.length - 1}
+                max={DISK_GIB_STEPS.length - 1}
                 step={1}
               />
             </div>
 
             <Field>
-              <FieldLabel htmlFor="vol-mount">Mount path</FieldLabel>
+              <FieldLabel htmlFor="disk-path">Path</FieldLabel>
               <Input
-                id="vol-mount"
-                value={mountPath}
-                onChange={(e) => setMountPath(e.target.value)}
+                id="disk-path"
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
                 placeholder="/data"
                 className="font-mono"
-                data-testid="service.form.volumes.dialog.mount"
+                data-testid="service.form.disks.dialog.path"
               />
             </Field>
           </div>
@@ -724,8 +594,8 @@ function AddVolumeDialog({
             <Button
               type="submit"
               className="w-full"
-              disabled={!name.trim() || !mountPath.trim()}
-              data-testid="service.form.volumes.dialog.submit"
+              disabled={!name.trim() || !path.trim()}
+              data-testid="service.form.disks.dialog.submit"
             >
               Add
             </Button>
@@ -737,21 +607,21 @@ function AddVolumeDialog({
 }
 
 function RoutesSection({
-  serviceId,
+  resourceId,
   projectId,
 }: {
-  serviceId: string;
+  resourceId: string;
   projectId: string;
 }) {
   const { data: routeList = [] } = useQuery({
-    ...api.routes.list(projectId, serviceId),
-    enabled: !!serviceId,
+    ...api.routes.list(projectId, resourceId),
+    enabled: !!resourceId,
   });
   const queryClient = useQueryClient();
 
   const invalidate = () => {
     queryClient.invalidateQueries({
-      queryKey: api.routes.list(projectId, serviceId).queryKey,
+      queryKey: api.routes.list(projectId, resourceId).queryKey,
     });
     queryClient.invalidateQueries({ queryKey: ["resources"] });
     queryClient.invalidateQueries({
@@ -779,7 +649,7 @@ function RoutesSection({
             createRoute.mutate(
               {
                 projectId,
-                serviceId,
+                resourceId,
                 body: {
                   domain: added.domain,
                   path: added.path,
@@ -1077,7 +947,7 @@ export function ServiceDrawer({
 
   if (!isOpen) return null;
 
-  const image = resource?.service?.app?.source?.image;
+  const image = resource ? getAppSpec(resource)?.source.image : undefined;
 
   return (
     <ServiceDrawerShell

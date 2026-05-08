@@ -1,5 +1,6 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import type {
+  AppSpec,
   Resource,
   ResourceCreate,
   ResourcePosition,
@@ -8,6 +9,7 @@ import type {
 import { delay } from "../mock/latency";
 import { now, store, uuid } from "../mock/store";
 import { queryClient as qc } from "../reactquery";
+import { getAppSpec } from "../resource";
 import { conflict, notFound } from "./errors";
 
 const ROOT = ["resources"] as const;
@@ -15,68 +17,46 @@ const ROOT = ["resources"] as const;
 // ─── Service fns ─────────────────────────────────────────────────────────
 
 function buildResource(input: ResourceCreate, projectId: string): Resource {
-  const resourceId = uuid();
-  const serviceId = uuid();
-  const appId = uuid();
+  const id = uuid();
   const ts = now();
 
+  if (input.category !== "service" || input.service.kind !== "app") {
+    throw new Error("Unsupported resource kind");
+  }
+
+  const create = input.service.spec;
+  const spec: AppSpec = {
+    source: create.source,
+    port: create.port ?? null,
+    startCommand: create.startCommand ?? null,
+    instances: create.instances ?? 1,
+    resources: create.resources,
+    healthCheck: create.healthCheck ?? { type: "none" },
+    disks: (create.disks ?? []).map((d) => ({ ...d, id: uuid() })),
+    routes: (create.routes ?? []).map((r) => ({
+      id: uuid(),
+      resourceId: id,
+      domain: r.domain,
+      path: r.path,
+      pathType: r.pathType ?? "prefix",
+      port: r.port,
+      tls: r.tls ?? true,
+      config: r.config ?? {},
+      createdAt: ts,
+      updatedAt: ts,
+    })),
+  };
+
   return {
-    id: resourceId,
+    id,
     name: input.name,
-    type: input.type,
     projectId,
     positionX: input.positionX ?? 0,
     positionY: input.positionY ?? 0,
     createdAt: ts,
     updatedAt: ts,
-    service: {
-      id: serviceId,
-      resourceId,
-      type: "app",
-      app: {
-        id: appId,
-        serviceId,
-        source: input.source,
-        port: input.port ?? null,
-        command: input.command ?? null,
-        replicas: input.replicas ?? 1,
-        compute: input.compute ?? {
-          cpuRequest: 100,
-          cpuLimit: 500,
-          memoryRequest: 128 * 1024 * 1024,
-          memoryLimit: 512 * 1024 * 1024,
-        },
-        healthCheck: input.healthCheck ?? { type: "none" },
-        createdAt: ts,
-        updatedAt: ts,
-      },
-      createdAt: ts,
-      updatedAt: ts,
-      routes: (input.routes ?? []).map((r) => ({
-        id: uuid(),
-        serviceId,
-        domain: r.domain,
-        path: r.path,
-        pathType: r.pathType ?? "prefix",
-        port: r.port,
-        tls: r.tls ?? true,
-        config: {},
-        createdAt: ts,
-        updatedAt: ts,
-      })),
-      volumeMounts: (input.volumes ?? []).map((v) => ({
-        id: uuid(),
-        mountPath: v.mountPath,
-        volume: {
-          id: uuid(),
-          name: v.name,
-          size: v.size,
-          mountPath: v.mountPath,
-          createdAt: ts,
-          updatedAt: ts,
-        },
-      })),
-    },
+    category: "service",
+    service: { kind: "app", spec },
     variables: [],
   };
 }
@@ -140,27 +120,35 @@ async function updateResource(
   const r = list[idx];
   if (r === undefined) throw notFound("Resource not found");
   const ts = now();
+
+  const prevSpec = getAppSpec(r);
+  if (!prevSpec || r.category !== "service" || r.service.kind !== "app") {
+    throw new Error("Unsupported resource kind for update");
+  }
+
+  const patch =
+    body.category === "service" && body.service?.kind === "app"
+      ? body.service.spec
+      : undefined;
+
+  const nextSpec: AppSpec = {
+    ...prevSpec,
+    ...(patch?.source !== undefined && { source: patch.source }),
+    ...(patch?.port !== undefined && { port: patch.port ?? null }),
+    ...(patch?.startCommand !== undefined && {
+      startCommand: patch.startCommand ?? null,
+    }),
+    ...(patch?.instances !== undefined && { instances: patch.instances }),
+    ...(patch?.resources !== undefined && { resources: patch.resources }),
+    ...(patch?.healthCheck !== undefined && { healthCheck: patch.healthCheck }),
+  };
+
   const updated: Resource = {
     ...r,
     name: body.name ?? r.name,
     updatedAt: ts,
-    service: r.service && {
-      ...r.service,
-      app: r.service.app && {
-        ...r.service.app,
-        source: body.source ?? r.service.app.source,
-        port:
-          body.port !== undefined ? (body.port ?? null) : r.service.app.port,
-        command:
-          body.command !== undefined
-            ? (body.command ?? null)
-            : r.service.app.command,
-        replicas: body.replicas ?? r.service.app.replicas,
-        compute: body.compute ?? r.service.app.compute,
-        healthCheck: body.healthCheck ?? r.service.app.healthCheck,
-        updatedAt: ts,
-      },
-    },
+    category: "service",
+    service: { kind: "app", spec: nextSpec },
   };
 
   const next = [...list];

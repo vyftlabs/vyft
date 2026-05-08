@@ -6,11 +6,15 @@ export const BaseFields = z.object({
   updatedAt: z.iso.datetime(),
 });
 
-export const KubeName = z
+export const ResourceName = z
   .string()
   .min(1)
   .max(100)
-  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
+
+export const Instances = z.number().int().min(0).max(100);
+export const Port = z.number().int().min(1).max(65535);
+export const Command = z.string().max(2000);
 
 export const ErrorCode = z
   .enum([
@@ -52,10 +56,6 @@ export const ProjectScope = z.object({ projectId: z.uuid() });
 export const ProjectAndIdScope = z.object({
   projectId: z.uuid(),
   id: z.uuid(),
-});
-export const ServiceScope = z.object({
-  projectId: z.uuid(),
-  serviceId: z.uuid(),
 });
 export const ResourceScope = z.object({
   projectId: z.uuid(),

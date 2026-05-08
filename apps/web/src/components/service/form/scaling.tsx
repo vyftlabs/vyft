@@ -11,29 +11,27 @@ import { Slider } from "@/components/ui/slider";
 import type { ServiceFormValues } from "./schema";
 
 const cpuSteps = [
-  50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 750, 1000, 1250, 1500, 1750,
-  2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000,
+  0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5,
+  3, 3.5, 4, 5, 6, 7, 8,
 ];
 
-const MIB = 1024 * 1024;
 const memSteps = [
   64, 128, 192, 256, 320, 384, 448, 512, 640, 768, 896, 1024, 1280, 1536, 1792,
   2048, 2560, 3072, 3584, 4096, 5120, 6144, 7168, 8192, 10240, 12288, 14336,
   16384,
-].map((mib) => mib * MIB);
+];
 
-function formatCpuDisplay(millicores: number): string {
-  if (millicores >= 1000) {
-    const cores = millicores / 1000;
-    return `${cores} core${cores > 1 ? "s" : ""}`;
+function formatCpuDisplay(cores: number): string {
+  if (cores >= 1) {
+    return `${Number.isInteger(cores) ? cores : cores.toFixed(2)} core${cores > 1 ? "s" : ""}`;
   }
-  return `${millicores}m`;
+  return `${Math.round(cores * 1000)}m`;
 }
 
-function formatMemDisplay(bytes: number): string {
-  const gib = bytes / (1024 * MIB);
+function formatMemDisplay(mb: number): string {
+  const gib = mb / 1024;
   if (gib >= 1) return `${Number.isInteger(gib) ? gib : gib.toFixed(1)}Gi`;
-  return `${bytes / MIB}Mi`;
+  return `${mb}Mi`;
 }
 
 function closestIndex(steps: number[], value: number): number {
@@ -47,41 +45,34 @@ function closestIndex(steps: number[], value: number): number {
   return best;
 }
 
-function ResourceRange({
+function ResourceStep({
   label,
-  minValue,
-  maxValue,
-  onMinChange,
-  onMaxChange,
+  value,
+  onChange,
   steps,
   formatDisplay,
 }: {
   label: string;
-  minValue: number;
-  maxValue: number;
-  onMinChange: (v: number) => void;
-  onMaxChange: (v: number) => void;
+  value: number;
+  onChange: (v: number) => void;
   steps: number[];
   formatDisplay: (v: number) => string;
 }) {
-  const minIdx = closestIndex(steps, minValue);
-  const maxIdx = closestIndex(steps, maxValue);
+  const idx = closestIndex(steps, value);
 
   return (
     <div className="grid gap-2">
       <div className="flex items-center justify-between">
         <FieldLabel>{label}</FieldLabel>
         <span className="text-sm text-muted-foreground font-mono">
-          {formatDisplay(minValue)} – {formatDisplay(maxValue)}
+          {formatDisplay(value)}
         </span>
       </div>
       <Slider
-        value={[minIdx, maxIdx]}
-        onValueChange={([lo, hi]) => {
-          if (lo !== undefined && steps[lo] !== undefined)
-            onMinChange(steps[lo]);
-          if (hi !== undefined && steps[hi] !== undefined)
-            onMaxChange(steps[hi]);
+        value={[idx]}
+        onValueChange={([next]) => {
+          if (next !== undefined && steps[next] !== undefined)
+            onChange(steps[next]);
         }}
         min={0}
         max={steps.length - 1}
@@ -93,22 +84,22 @@ function ResourceRange({
 
 export function ScalingForm({
   control,
-  showReplicas = true,
+  showInstances = true,
 }: {
   control: Control<ServiceFormValues>;
-  showReplicas?: boolean;
+  showInstances?: boolean;
 }) {
   return (
     <div className="space-y-3">
-      {showReplicas && (
+      {showInstances && (
         <Controller
-          name="replicas"
+          name="instances"
           control={control}
           render={({ field, fieldState }) => {
             const value = Number.isFinite(field.value) ? field.value : 1;
             return (
               <Field data-invalid={fieldState.invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>Replicas</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Instances</FieldLabel>
                 <InputGroup>
                   <InputGroupAddon align="inline-start">
                     <InputGroupButton
@@ -128,7 +119,7 @@ export function ScalingForm({
                     min="1"
                     value={Number.isFinite(field.value) ? field.value : ""}
                     onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                    data-testid="service.form.replicas"
+                    data-testid="service.form.instances"
                     className="text-center font-mono [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <InputGroupAddon align="inline-end">
@@ -149,45 +140,29 @@ export function ScalingForm({
 
       <div className="grid grid-cols-2 gap-6">
         <Controller
-          name="compute.cpuRequest"
+          name="resources.cpu"
           control={control}
-          render={({ field: reqField }) => (
-            <Controller
-              name="compute.cpuLimit"
-              control={control}
-              render={({ field: limField }) => (
-                <ResourceRange
-                  label="CPU"
-                  minValue={reqField.value}
-                  maxValue={limField.value}
-                  onMinChange={reqField.onChange}
-                  onMaxChange={limField.onChange}
-                  steps={cpuSteps}
-                  formatDisplay={formatCpuDisplay}
-                />
-              )}
+          render={({ field }) => (
+            <ResourceStep
+              label="CPU"
+              value={field.value}
+              onChange={field.onChange}
+              steps={cpuSteps}
+              formatDisplay={formatCpuDisplay}
             />
           )}
         />
 
         <Controller
-          name="compute.memoryRequest"
+          name="resources.memory"
           control={control}
-          render={({ field: reqField }) => (
-            <Controller
-              name="compute.memoryLimit"
-              control={control}
-              render={({ field: limField }) => (
-                <ResourceRange
-                  label="Memory"
-                  minValue={reqField.value}
-                  maxValue={limField.value}
-                  onMinChange={reqField.onChange}
-                  onMaxChange={limField.onChange}
-                  steps={memSteps}
-                  formatDisplay={formatMemDisplay}
-                />
-              )}
+          render={({ field }) => (
+            <ResourceStep
+              label="Memory"
+              value={field.value}
+              onChange={field.onChange}
+              steps={memSteps}
+              formatDisplay={formatMemDisplay}
             />
           )}
         />

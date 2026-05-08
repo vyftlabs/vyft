@@ -17,6 +17,7 @@ import { AnimatePresence } from "motion/react";
 import type { ServiceNodeData } from "@/components/service/node";
 import { ServiceNode } from "@/components/service/node";
 import * as api from "@/lib/api";
+import { getAppSpec } from "@/lib/resource";
 
 const ServiceDrawer = lazy(() =>
   import("@/components/service/drawer").then((m) => ({
@@ -152,7 +153,7 @@ function ServicesCanvas() {
 
   const baseNodes = useMemo(() => {
     return resources.map((r) => {
-      const image = r.service?.app?.source?.image;
+      const image = getAppSpec(r)?.source.image;
       return {
         id: r.id,
         position: { x: r.positionX, y: r.positionY },

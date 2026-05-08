@@ -12,6 +12,7 @@ import type {
 import { delay } from "../mock/latency";
 import { now, store, uuid } from "../mock/store";
 import { queryClient as qc } from "../reactquery";
+import { getAppSpec } from "../resource";
 import { badRequest, conflict, notFound } from "./errors";
 
 const ROOT = ["variables"] as const;
@@ -128,30 +129,31 @@ async function listSuggestions(
         key: v.key,
         secret: v.sensitive,
         resourceName: r?.name,
-        resourceImage: r?.service?.app?.source.image,
+        resourceImage: r ? getAppSpec(r)?.source.image : undefined,
       };
     });
 
   const builtin: SuggestionBuiltin[] = [];
   for (const r of allResources) {
     if (r.id === opts.excludeResourceId) continue;
-    const hasPort = r.service?.app?.port != null;
+    const spec = getAppSpec(r);
+    const image = spec?.source.image;
     builtin.push({
       id: `\${${r.name}.HOST}`,
       key: "HOST",
       token: `\${${r.name}.HOST}`,
       secret: false,
       resourceName: r.name,
-      resourceImage: r.service?.app?.source.image,
+      resourceImage: image,
     });
-    if (hasPort) {
+    if (spec?.port != null) {
       builtin.push({
         id: `\${${r.name}.PORT}`,
         key: "PORT",
         token: `\${${r.name}.PORT}`,
         secret: false,
         resourceName: r.name,
-        resourceImage: r.service?.app?.source.image,
+        resourceImage: image,
       });
     }
   }

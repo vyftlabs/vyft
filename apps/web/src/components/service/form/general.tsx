@@ -86,7 +86,7 @@ export function GeneralForm({
       </div>
 
       <Controller
-        name="command"
+        name="startCommand"
         control={control}
         render={({ field }) => (
           <Field>
@@ -96,7 +96,7 @@ export function GeneralForm({
               id={field.name}
               placeholder="npm start"
               className="font-mono"
-              data-testid="service.form.command"
+              data-testid="service.form.startCommand"
             />
           </Field>
         )}

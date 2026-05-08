@@ -6,7 +6,6 @@ import { registryPaths } from "./paths/registries.ts";
 import { resourcePaths } from "./paths/resources.ts";
 import { routePaths } from "./paths/routes.ts";
 import { variablePaths } from "./paths/variables.ts";
-import { volumePaths } from "./paths/volumes.ts";
 
 export const document = createDocument({
   openapi: "3.1.0",
@@ -22,7 +21,6 @@ export const document = createDocument({
     { name: "Resources" },
     { name: "Variables" },
     { name: "Routes" },
-    { name: "Volumes" },
     { name: "Registries" },
     { name: "Deployments" },
     { name: "Observability" },
@@ -32,7 +30,6 @@ export const document = createDocument({
     ...resourcePaths,
     ...variablePaths,
     ...routePaths,
-    ...volumePaths,
     ...registryPaths,
     ...deploymentPaths,
     ...observabilityPaths,

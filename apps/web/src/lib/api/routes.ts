@@ -3,20 +3,25 @@ import type { Resource, Route, RouteCreate, RouteUpdate } from "@vyft/spec";
 import { delay } from "../mock/latency";
 import { now, store, uuid } from "../mock/store";
 import { queryClient as qc } from "../reactquery";
+import { getAppSpec } from "../resource";
 import { notFound } from "./errors";
 
 const ROOT = ["routes"] as const;
 
 // ─── Service fns ─────────────────────────────────────────────────────────
 
-function findResourceByService(serviceId: string): Resource | undefined {
-  return store.read("resources").find((r) => r.service?.id === serviceId);
-}
-
 function findResourceContainingRoute(routeId: string): Resource | undefined {
   return store
     .read("resources")
-    .find((r) => r.service?.routes?.some((rt) => rt.id === routeId));
+    .find((r) => getAppSpec(r)?.routes?.some((rt) => rt.id === routeId));
+}
+
+function withRoutes(r: Resource, routes: Route[]): Resource {
+  if (r.category !== "service" || r.service.kind !== "app") return r;
+  return {
+    ...r,
+    service: { ...r.service, spec: { ...r.service.spec, routes } },
+  };
 }
 
 function writeResource(resource: Resource): void {
@@ -30,26 +35,31 @@ function writeResource(resource: Resource): void {
 
 async function listRoutes(
   projectId: string,
-  serviceId: string,
+  resourceId: string,
 ): Promise<Route[]> {
   await delay();
-  const r = findResourceByService(serviceId);
-  if (!r || r.projectId !== projectId) return [];
-  return r.service?.routes ?? [];
+  const r = store
+    .read("resources")
+    .find((r) => r.id === resourceId && r.projectId === projectId);
+  if (!r) return [];
+  return getAppSpec(r)?.routes ?? [];
 }
 
 async function createRoute(
   projectId: string,
-  serviceId: string,
+  resourceId: string,
   body: RouteCreate,
 ): Promise<Route> {
   await delay();
-  const r = findResourceByService(serviceId);
-  if (!r || r.projectId !== projectId || !r.service)
-    throw notFound("Service not found");
+  const r = store
+    .read("resources")
+    .find((r) => r.id === resourceId && r.projectId === projectId);
+  if (!r) throw notFound("Resource not found");
+  const spec = getAppSpec(r);
+  if (!spec) throw notFound("Resource does not support routes");
   const route: Route = {
     id: uuid(),
-    serviceId,
+    resourceId,
     domain: body.domain,
     path: body.path,
     pathType: body.pathType ?? "prefix",
@@ -59,10 +69,7 @@ async function createRoute(
     createdAt: now(),
     updatedAt: now(),
   };
-  writeResource({
-    ...r,
-    service: { ...r.service, routes: [...(r.service.routes ?? []), route] },
-  });
+  writeResource(withRoutes(r, [...(spec.routes ?? []), route]));
   return route;
 }
 
@@ -73,9 +80,10 @@ async function updateRoute(
 ): Promise<Route> {
   await delay();
   const r = findResourceContainingRoute(id);
-  if (!r || r.projectId !== projectId || !r.service)
-    throw notFound("Route not found");
-  const list = r.service.routes ?? [];
+  if (!r || r.projectId !== projectId) throw notFound("Route not found");
+  const spec = getAppSpec(r);
+  if (!spec) throw notFound("Route not found");
+  const list = spec.routes ?? [];
   const idx = list.findIndex((rt) => rt.id === id);
   if (idx === -1) throw notFound("Route not found");
   const prev = list[idx];
@@ -83,25 +91,26 @@ async function updateRoute(
   const updated: Route = { ...prev, ...body, updatedAt: now() };
   const next = [...list];
   next[idx] = updated;
-  writeResource({ ...r, service: { ...r.service, routes: next } });
+  writeResource(withRoutes(r, next));
   return updated;
 }
 
 async function deleteRoute(projectId: string, id: string): Promise<void> {
   await delay();
   const r = findResourceContainingRoute(id);
-  if (!r || r.projectId !== projectId || !r.service)
-    throw notFound("Route not found");
-  const next = (r.service.routes ?? []).filter((rt) => rt.id !== id);
-  writeResource({ ...r, service: { ...r.service, routes: next } });
+  if (!r || r.projectId !== projectId) throw notFound("Route not found");
+  const spec = getAppSpec(r);
+  if (!spec) throw notFound("Route not found");
+  const next = (spec.routes ?? []).filter((rt) => rt.id !== id);
+  writeResource(withRoutes(r, next));
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────
 
-export const list = (projectId: string, serviceId: string) =>
+export const list = (projectId: string, resourceId: string) =>
   queryOptions({
-    queryKey: [...ROOT, projectId, serviceId],
-    queryFn: () => listRoutes(projectId, serviceId),
+    queryKey: [...ROOT, projectId, resourceId],
+    queryFn: () => listRoutes(projectId, resourceId),
   });
 
 // ─── Mutations ───────────────────────────────────────────────────────────
@@ -109,13 +118,13 @@ export const list = (projectId: string, serviceId: string) =>
 export const create = mutationOptions({
   mutationFn: ({
     projectId,
-    serviceId,
+    resourceId,
     body,
   }: {
     projectId: string;
-    serviceId: string;
+    resourceId: string;
     body: RouteCreate;
-  }) => createRoute(projectId, serviceId, body),
+  }) => createRoute(projectId, resourceId, body),
   onSuccess: () => {
     qc.invalidateQueries({ queryKey: ROOT });
     qc.invalidateQueries({ queryKey: ["resources"] });

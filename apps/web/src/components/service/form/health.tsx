@@ -1,4 +1,4 @@
-import type { HealthCheck } from "@vyft/spec";
+import { HealthCheck } from "@vyft/spec";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -12,19 +12,6 @@ import {
 import type { ServiceFormValues } from "./schema";
 
 type HealthCheckType = HealthCheck["type"];
-
-function defaultsForType(type: HealthCheckType): HealthCheck {
-  switch (type) {
-    case "none":
-      return { type: "none" };
-    case "http":
-      return { type: "http", path: "/health" };
-    case "tcp":
-      return { type: "tcp", port: 8080 };
-    case "exec":
-      return { type: "exec", command: "" };
-  }
-}
 
 function HealthEditor({
   value,
@@ -40,8 +27,8 @@ function HealthEditor({
   const updateTcp = (port: number) => {
     onChange({ type: "tcp", port });
   };
-  const updateExec = (command: string) => {
-    onChange({ type: "exec", command });
+  const updateCommand = (command: string) => {
+    onChange({ type: "command", command });
   };
 
   const portValueAsNumber = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -53,7 +40,9 @@ function HealthEditor({
         <FieldLabel>Type</FieldLabel>
         <Select
           value={value.type}
-          onValueChange={(v) => onChange(defaultsForType(v as HealthCheckType))}
+          onValueChange={(v) =>
+            onChange(HealthCheck.parse({ type: v as HealthCheckType }))
+          }
         >
           <SelectTrigger
             className="w-full"
@@ -78,8 +67,8 @@ function HealthEditor({
               TCP
             </SelectItem>
             <SelectItem
-              value="exec"
-              data-testid="service.form.health.type.exec"
+              value="command"
+              data-testid="service.form.health.type.command"
             >
               Command
             </SelectItem>
@@ -131,13 +120,13 @@ function HealthEditor({
         </Field>
       )}
 
-      {value.type === "exec" && (
+      {value.type === "command" && (
         <Field>
-          <FieldLabel htmlFor="health-exec-command">Command</FieldLabel>
+          <FieldLabel htmlFor="health-command">Command</FieldLabel>
           <Input
-            id="health-exec-command"
+            id="health-command"
             value={value.command}
-            onChange={(e) => updateExec(e.target.value)}
+            onChange={(e) => updateCommand(e.target.value)}
             placeholder="curl -f http://localhost:8080/health"
             className="font-mono"
             data-testid="service.form.health.command"

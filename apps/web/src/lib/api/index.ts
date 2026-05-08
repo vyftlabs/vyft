@@ -6,4 +6,3 @@ export * as registries from "./registries";
 export * as resources from "./resources";
 export * as routes from "./routes";
 export * as variables from "./variables";
-export * as volumes from "./volumes";
