@@ -93,7 +93,7 @@ async function createResource(
       id: uuid(),
       key: v.key,
       value: v.sourceVariableId ? null : (v.value ?? null),
-      sensitive: v.sensitive ?? false,
+      secret: v.secret ?? false,
       scope: "resource" as const,
       projectId,
       resourceId: resource.id,

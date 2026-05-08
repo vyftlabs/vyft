@@ -28,7 +28,7 @@ export type {
 // ─── Service fns ─────────────────────────────────────────────────────────
 
 function withRedaction(v: Variable): Variable {
-  if (!v.sensitive) return v;
+  if (!v.secret) return v;
   return { ...v, value: null };
 }
 
@@ -113,7 +113,7 @@ async function listSuggestions(
 
   const shared: SuggestionShared[] = allVars
     .filter((v) => v.scope === "shared")
-    .map((v) => ({ id: v.id, key: v.key, secret: v.sensitive }));
+    .map((v) => ({ id: v.id, key: v.key, secret: v.secret }));
 
   const service: SuggestionService[] = allVars
     .filter(
@@ -127,7 +127,7 @@ async function listSuggestions(
       return {
         id: v.id,
         key: v.key,
-        secret: v.sensitive,
+        secret: v.secret,
         resourceName: r?.name,
         resourceImage: r ? getAppSpec(r)?.source.image : undefined,
       };
@@ -200,7 +200,7 @@ async function createVariable(
     id: uuid(),
     key: body.key,
     value: body.sourceVariableId ? null : (body.value ?? null),
-    sensitive: body.sensitive ?? false,
+    secret: body.secret ?? false,
     scope,
     projectId,
     resourceId: body.resourceId ?? null,
@@ -244,7 +244,7 @@ async function updateVariable(
     ...v,
     key: body.key ?? v.key,
     value: body.value !== undefined ? (body.value ?? null) : v.value,
-    sensitive: body.sensitive ?? v.sensitive,
+    secret: body.secret ?? v.secret,
     sourceVariableId:
       body.sourceVariableId !== undefined
         ? (body.sourceVariableId ?? null)

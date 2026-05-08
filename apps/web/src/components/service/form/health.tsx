@@ -1,4 +1,8 @@
-import { HealthCheck } from "@vyft/spec";
+import {
+  type HealthCheck,
+  healthCheckDefaults,
+  type ServiceAppCreate,
+} from "@vyft/spec";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -9,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ServiceFormValues } from "./schema";
 
 type HealthCheckType = HealthCheck["type"];
 
@@ -41,7 +44,7 @@ function HealthEditor({
         <Select
           value={value.type}
           onValueChange={(v) =>
-            onChange(HealthCheck.parse({ type: v as HealthCheckType }))
+            onChange(healthCheckDefaults[v as HealthCheckType])
           }
         >
           <SelectTrigger
@@ -140,11 +143,11 @@ function HealthEditor({
 export function HealthForm({
   control,
 }: {
-  control: Control<ServiceFormValues>;
+  control: Control<ServiceAppCreate>;
 }) {
   return (
     <Controller
-      name="healthCheck"
+      name="service.spec.healthCheck"
       control={control}
       render={({ field, fieldState }) => (
         <div className="space-y-2">

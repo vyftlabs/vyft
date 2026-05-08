@@ -1,17 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ServiceAppCreate } from "@vyft/spec";
 import { useState } from "react";
 import { type Control, useFieldArray } from "react-hook-form";
 import { AddVariableDialog } from "@/components/variable/add";
 import type { SuggestionGroup } from "@/components/variable/form";
 import * as api from "@/lib/api";
-import type { ServiceFormValues } from "../schema";
 import { Variables } from ".";
 
 export function VariablesSection({
   control,
   projectId,
 }: {
-  control: Control<ServiceFormValues>;
+  control: Control<ServiceAppCreate>;
   projectId: string;
 }) {
   const { fields, append, remove } = useFieldArray({

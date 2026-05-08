@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import { ProjectCreate } from "@vyft/spec";
 import { LoaderIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { z } from "zod/v3";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,14 +20,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import * as api from "@/lib/api";
 
-const schema = z.object({
-  name: z.string().min(1, "Project name is required"),
-  slug: z
-    .string()
-    .min(1, "Slug is required")
-    .regex(/^[a-z0-9-]+$/, "Lowercase alphanumeric with dashes"),
-});
-
+const schema = ProjectCreate.omit({ description: true });
 type FormValues = z.infer<typeof schema>;
 
 function nameToSlug(name: string) {

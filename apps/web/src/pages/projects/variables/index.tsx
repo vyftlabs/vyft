@@ -38,7 +38,7 @@ export default function SharedVariables() {
   const mapped = variables.map((v) => ({
     key: v.key,
     value: v.value ?? "",
-    secret: v.sensitive,
+    secret: v.secret,
   }));
 
   return (
@@ -97,7 +97,7 @@ export default function SharedVariables() {
               body: {
                 key: data.key,
                 value: data.value,
-                sensitive: data.secret ?? false,
+                secret: data.secret ?? false,
               },
             },
             {

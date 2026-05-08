@@ -1,14 +1,14 @@
+import type { ServiceAppCreate } from "@vyft/spec";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type { ServiceFormValues } from "./schema";
 
 export function GeneralForm({
   control,
   showName = true,
   showPort = true,
 }: {
-  control: Control<ServiceFormValues>;
+  control: Control<ServiceAppCreate>;
   showName?: boolean;
   showPort?: boolean;
 }) {
@@ -36,7 +36,7 @@ export function GeneralForm({
 
       <div className={showPort ? "flex items-end gap-3 mb-4" : ""}>
         <Controller
-          name="image"
+          name="service.spec.source.image"
           control={control}
           render={({ field, fieldState }) => (
             <Field
@@ -58,7 +58,7 @@ export function GeneralForm({
 
         {showPort && (
           <Controller
-            name="port"
+            name="service.spec.port"
             control={control}
             render={({ field, fieldState }) => (
               <Field
@@ -72,8 +72,15 @@ export function GeneralForm({
                   ref={field.ref}
                   onBlur={field.onBlur}
                   type="number"
-                  value={Number.isFinite(field.value) ? field.value : ""}
-                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                  value={
+                    field.value != null && Number.isFinite(field.value)
+                      ? field.value
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const n = e.target.valueAsNumber;
+                    field.onChange(Number.isFinite(n) ? n : undefined);
+                  }}
                   placeholder="8080"
                   className="!w-[12ch] font-mono"
                   data-testid="service.form.port"
@@ -86,14 +93,18 @@ export function GeneralForm({
       </div>
 
       <Controller
-        name="startCommand"
+        name="service.spec.startCommand"
         control={control}
         render={({ field }) => (
           <Field>
             <FieldLabel htmlFor={field.name}>Command</FieldLabel>
             <Input
-              {...field}
               id={field.name}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              value={field.value ?? ""}
+              onChange={(e) => field.onChange(e.target.value || undefined)}
               placeholder="npm start"
               className="font-mono"
               data-testid="service.form.startCommand"

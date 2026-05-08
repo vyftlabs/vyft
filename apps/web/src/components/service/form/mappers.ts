@@ -1,76 +1,52 @@
-import type { Resource, ResourceCreate, ResourceUpdate } from "@vyft/spec";
+import type { Resource, ResourceUpdate, ServiceAppCreate } from "@vyft/spec";
 import { getAppSpec } from "@/lib/resource";
-import type { ServiceFormValues } from "./schema";
 
-const DEFAULT_RESOURCES = { cpu: 0.5, memory: 512 };
-
-export function fromResource(resource?: Resource): ServiceFormValues {
+export function fromResource(resource?: Resource): ServiceAppCreate {
   const spec = resource ? getAppSpec(resource) : null;
   return {
     name: resource?.name ?? "",
-    image: spec?.source.image ?? "",
-    port: spec?.port ?? 8080,
-    startCommand: spec?.startCommand ?? "",
-    instances: spec?.instances ?? 1,
-    resources: spec?.resources ?? DEFAULT_RESOURCES,
-    healthCheck: spec?.healthCheck ?? { type: "none" },
-    variables: [],
-    disks: [],
-    routes: [],
-  };
-}
-
-export interface ResourceCreatePosition {
-  x: number;
-  y: number;
-}
-
-export function toResourceCreate(
-  values: ServiceFormValues,
-  position?: ResourceCreatePosition,
-): ResourceCreate {
-  return {
-    name: values.name.trim(),
-    positionX: position?.x ?? 0,
-    positionY: position?.y ?? 0,
+    positionX: resource?.positionX ?? 0,
+    positionY: resource?.positionY ?? 0,
     category: "service",
     service: {
       kind: "app",
       spec: {
-        source: { type: "image", image: values.image.trim() },
-        port: values.port,
-        startCommand: values.startCommand.trim() || undefined,
-        instances: values.instances,
-        resources: values.resources,
-        healthCheck: values.healthCheck,
-        disks: values.disks,
-        routes: values.routes,
+        source: spec?.source ?? { type: "image", image: "" },
+        port: spec?.port ?? undefined,
+        startCommand: spec?.startCommand ?? undefined,
+        instances: spec?.instances ?? 1,
+        resources: spec?.resources ?? { cpu: 0.5, memory: 512 },
+        healthCheck: spec?.healthCheck ?? { type: "none" },
+        disks: spec?.disks?.map(({ id: _id, ...d }) => d) ?? [],
+        routes:
+          spec?.routes?.map(
+            ({
+              id: _id,
+              resourceId: _rid,
+              createdAt: _c,
+              updatedAt: _u,
+              ...r
+            }) => r,
+          ) ?? [],
       },
     },
-    variables: values.variables
-      .filter((v) => v.key.trim())
-      .map((v) => ({
-        key: v.key.trim(),
-        value: v.value || undefined,
-        sensitive: v.secret,
-        sourceVariableId: v.sourceVariableId,
-      })),
+    variables: [],
   };
 }
 
-export function toResourceUpdate(values: ServiceFormValues): ResourceUpdate {
+export function toResourceUpdate(values: ServiceAppCreate): ResourceUpdate {
   return {
     name: values.name.trim(),
     category: "service",
     service: {
       kind: "app",
       spec: {
-        source: { type: "image", image: values.image.trim() },
-        port: values.port,
-        startCommand: values.startCommand.trim() || undefined,
-        instances: values.instances,
-        resources: values.resources,
-        healthCheck: values.healthCheck,
+        source: values.service.spec.source,
+        port: values.service.spec.port,
+        startCommand: values.service.spec.startCommand,
+        instances: values.service.spec.instances,
+        resources: values.service.spec.resources,
+        healthCheck: values.service.spec.healthCheck,
       },
     },
   };

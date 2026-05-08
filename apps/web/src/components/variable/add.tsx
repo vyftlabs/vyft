@@ -82,7 +82,7 @@ export function AddVariableDialog({
                   body: {
                     key: data.key,
                     value: linked ? undefined : data.value,
-                    sensitive: linked ? false : (data.secret ?? false),
+                    secret: linked ? false : (data.secret ?? false),
                     resourceId,
                     sourceVariableId: linked?.id,
                   },

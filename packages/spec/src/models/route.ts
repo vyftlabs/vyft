@@ -40,9 +40,9 @@ export const Route = BaseFields.extend({
   resourceId: z.uuid(),
   domain: z.string().min(1).max(255),
   path: z.string().min(1).max(500).regex(/^\//),
-  pathType: PathType.default("prefix"),
+  pathType: PathType,
   port: Port,
-  tls: z.boolean().default(true),
+  tls: z.boolean(),
   config: RouteConfig.optional(),
 }).meta({ id: "Route" });
 
@@ -54,6 +54,11 @@ export const RouteCreate = Route.pick({
   tls: true,
   config: true,
 }).meta({ id: "RouteCreate" });
+
+export const routeDefaults = {
+  pathType: "prefix",
+  tls: true,
+} as const;
 
 export const RouteUpdate = RouteCreate.partial().meta({ id: "RouteUpdate" });
 

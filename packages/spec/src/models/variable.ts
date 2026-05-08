@@ -8,7 +8,7 @@ export const VariableScope = z
 export const Variable = BaseFields.extend({
   key: z.string().min(1).max(255),
   value: z.string().nullable(),
-  sensitive: z.boolean().default(false),
+  secret: z.boolean().default(false),
   scope: VariableScope,
   projectId: z.uuid(),
   resourceId: z.uuid().nullable(),
@@ -27,13 +27,13 @@ export const Variable = BaseFields.extend({
 export const VariableCreate = Variable.pick({
   key: true,
   value: true,
-  sensitive: true,
+  secret: true,
   resourceId: true,
   sourceVariableId: true,
 })
   .partial({
     value: true,
-    sensitive: true,
+    secret: true,
     resourceId: true,
     sourceVariableId: true,
   })
@@ -42,7 +42,7 @@ export const VariableCreate = Variable.pick({
 export const VariableUpdate = Variable.pick({
   key: true,
   value: true,
-  sensitive: true,
+  secret: true,
   sourceVariableId: true,
 })
   .partial()

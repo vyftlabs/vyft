@@ -31,13 +31,20 @@ export const HealthCheck = z
     z.object({ type: z.literal("none") }),
     z.object({
       type: z.literal("http"),
-      path: z.string().min(1).default("/health"),
+      path: z.string().min(1),
       port: Port.optional(),
     }),
-    z.object({ type: z.literal("tcp"), port: Port.default(8080) }),
-    z.object({ type: z.literal("command"), command: z.string().default("") }),
+    z.object({ type: z.literal("tcp"), port: Port }),
+    z.object({ type: z.literal("command"), command: z.string() }),
   ])
   .meta({ id: "HealthCheck" });
+
+export const healthCheckDefaults = {
+  none: { type: "none" },
+  http: { type: "http", path: "/health" },
+  tcp: { type: "tcp", port: 8080 },
+  command: { type: "command", command: "" },
+} as const satisfies Record<HealthCheck["type"], HealthCheck>;
 
 export const Disk = z
   .object({
@@ -131,6 +138,16 @@ export const ResourceCreate = ResourceCreateBase.and(
   ]),
 ).meta({ id: "ResourceCreate" });
 
+// Narrowed app-only variant. Used by form layer (RHF) and any client that builds
+// a service+app create directly. Adding worker/store/template = add sibling exports.
+export const ServiceAppCreate = ResourceCreateBase.extend({
+  category: z.literal("service"),
+  service: z.object({
+    kind: z.literal("app"),
+    spec: AppSpecCreate,
+  }),
+}).meta({ id: "ServiceAppCreate" });
+
 const ResourceUpdateBase = z.object({
   name: ResourceName.optional(),
 });
@@ -166,5 +183,6 @@ export type ServiceVariantCreate = z.infer<typeof ServiceVariantCreate>;
 export type ServiceVariantUpdate = z.infer<typeof ServiceVariantUpdate>;
 export type Resource = z.infer<typeof Resource>;
 export type ResourceCreate = z.infer<typeof ResourceCreate>;
+export type ServiceAppCreate = z.infer<typeof ServiceAppCreate>;
 export type ResourceUpdate = z.infer<typeof ResourceUpdate>;
 export type ResourcePosition = z.infer<typeof ResourcePosition>;

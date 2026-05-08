@@ -1,6 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DiskCreate, Resource } from "@vyft/spec";
+import {
+  type DiskCreate,
+  type Resource,
+  ServiceAppCreate,
+} from "@vyft/spec";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
@@ -16,9 +20,6 @@ import {
   HealthForm,
   RoutesForm,
   ScalingForm,
-  ServiceFormSchema,
-  type ServiceFormValues,
-  toResourceCreate,
   toResourceUpdate,
   Variables,
   VariablesSection,
@@ -151,9 +152,9 @@ function SectionHeader({
 function DisksFormSectionWrapper({
   control,
 }: {
-  control: Control<ServiceFormValues>;
+  control: Control<ServiceAppCreate>;
 }) {
-  const { append } = useFieldArray({ control, name: "disks" });
+  const { append } = useFieldArray({ control, name: "service.spec.disks" });
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -174,10 +175,13 @@ function DisksFormSectionWrapper({
 function RoutesFormWrapper({
   control,
 }: {
-  control: Control<ServiceFormValues>;
+  control: Control<ServiceAppCreate>;
 }) {
-  const { fields, replace } = useFieldArray({ control, name: "routes" });
-  const port = useWatch({ control, name: "port" });
+  const { fields, replace } = useFieldArray({
+    control,
+    name: "service.spec.routes",
+  });
+  const port = useWatch({ control, name: "service.spec.port" });
 
   return (
     <RoutesForm
@@ -227,8 +231,8 @@ function SettingsTab({
     handleSubmit,
     reset,
     formState: { isDirty },
-  } = useForm<ServiceFormValues>({
-    resolver: zodResolver(ServiceFormSchema),
+  } = useForm<ServiceAppCreate>({
+    resolver: zodResolver(ServiceAppCreate),
     defaultValues: fromResource(resource),
   });
 
@@ -247,9 +251,14 @@ function SettingsTab({
   });
 
   const onSubmit = useCallback(
-    (data: ServiceFormValues) => {
+    (data: ServiceAppCreate) => {
       if (isCreating && createProps) {
-        const body = toResourceCreate(data, createProps.position);
+        const body: ServiceAppCreate = {
+          ...data,
+          name: data.name.trim(),
+          positionX: createProps.position?.x ?? 0,
+          positionY: createProps.position?.y ?? 0,
+        };
         createResource.mutate(
           { projectId, body },
           {
@@ -800,7 +809,7 @@ function VariablesTab({
           return {
             key: v.key,
             value: v.value ?? "",
-            secret: v.sensitive,
+            secret: v.secret,
             sourceVariableId: v.sourceVariableId ?? undefined,
             sourceKey: source?.key,
             sourceResourceName: source?.resource?.name,
