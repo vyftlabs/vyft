@@ -78,9 +78,9 @@ export const AppSpecCreate = z
     source: Source,
     port: Port.optional(),
     startCommand: Command.optional(),
-    instances: Instances.default(1),
+    instances: Instances,
     resources: Resources,
-    healthCheck: HealthCheck.default({ type: "none" }),
+    healthCheck: HealthCheck,
     disks: z.array(DiskCreate).optional(),
     routes: z.array(RouteCreate).optional(),
   })
@@ -124,8 +124,8 @@ export const Resource = ResourceBase.and(
 
 const ResourceCreateBase = z.object({
   name: ResourceName,
-  positionX: z.number().default(0),
-  positionY: z.number().default(0),
+  positionX: z.number(),
+  positionY: z.number(),
   variables: z.array(VariableCreate.omit({ resourceId: true })).optional(),
 });
 

@@ -7,8 +7,8 @@ import (
 )
 
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /projects/{projectId}/services/{serviceId}/routes", handleList)
-	mux.HandleFunc("POST /projects/{projectId}/services/{serviceId}/routes", handleCreate)
+	mux.HandleFunc("GET /projects/{projectId}/resources/{resourceId}/routes", handleList)
+	mux.HandleFunc("POST /projects/{projectId}/resources/{resourceId}/routes", handleCreate)
 	mux.HandleFunc("PATCH /projects/{projectId}/routes/{id}", handleUpdate)
 	mux.HandleFunc("DELETE /projects/{projectId}/routes/{id}", handleDelete)
 }

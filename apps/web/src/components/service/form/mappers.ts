@@ -1,4 +1,10 @@
-import type { Resource, ResourceUpdate, ServiceAppCreate } from "@vyft/spec";
+import {
+  DiskCreate,
+  type Resource,
+  type ResourceUpdate,
+  RouteCreate,
+  type ServiceAppCreate,
+} from "@vyft/spec";
 import { getAppSpec } from "@/lib/resource";
 
 export function fromResource(resource?: Resource): ServiceAppCreate {
@@ -17,17 +23,8 @@ export function fromResource(resource?: Resource): ServiceAppCreate {
         instances: spec?.instances ?? 1,
         resources: spec?.resources ?? { cpu: 0.5, memory: 512 },
         healthCheck: spec?.healthCheck ?? { type: "none" },
-        disks: spec?.disks?.map(({ id: _id, ...d }) => d) ?? [],
-        routes:
-          spec?.routes?.map(
-            ({
-              id: _id,
-              resourceId: _rid,
-              createdAt: _c,
-              updatedAt: _u,
-              ...r
-            }) => r,
-          ) ?? [],
+        disks: spec?.disks?.map((d) => DiskCreate.parse(d)) ?? [],
+        routes: spec?.routes?.map((r) => RouteCreate.parse(r)) ?? [],
       },
     },
     variables: [],

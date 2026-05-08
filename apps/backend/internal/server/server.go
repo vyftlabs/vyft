@@ -14,7 +14,6 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/resources"
 	"github.com/vyftlabs/vyft/apps/backend/internal/routes"
 	"github.com/vyftlabs/vyft/apps/backend/internal/variables"
-	"github.com/vyftlabs/vyft/apps/backend/internal/volumes"
 )
 
 func Run(ctx context.Context) error {
@@ -61,7 +60,6 @@ func New(config Config) *http.Server {
 	resources.Register(api)
 	variables.Register(api)
 	routes.Register(api)
-	volumes.Register(api)
 	registries.Register(api)
 	deployments.Register(api)
 	observability.Register(api)

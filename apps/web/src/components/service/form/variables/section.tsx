@@ -58,8 +58,8 @@ export function VariablesSection({
     <Variables
       variables={fields.map((f) => ({
         key: f.key,
-        value: f.value,
-        secret: f.secret,
+        value: f.value ?? "",
+        secret: f.secret ?? false,
       }))}
       onDelete={(key) => {
         const index = fields.findIndex((f) => f.key === key);
