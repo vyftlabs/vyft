@@ -141,6 +141,12 @@ async function updateResource(
     ...(patch?.instances !== undefined && { instances: patch.instances }),
     ...(patch?.resources !== undefined && { resources: patch.resources }),
     ...(patch?.healthCheck !== undefined && { healthCheck: patch.healthCheck }),
+    ...(patch?.disks !== undefined && {
+      disks: patch.disks.map((d) => {
+        const existing = prevSpec.disks?.find((p) => p.path === d.path);
+        return existing ? { ...d, id: existing.id } : { ...d, id: uuid() };
+      }),
+    }),
   };
 
   const updated: Resource = {

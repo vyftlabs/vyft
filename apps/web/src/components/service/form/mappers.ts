@@ -44,6 +44,7 @@ export function toResourceUpdate(values: ServiceAppCreate): ResourceUpdate {
         instances: values.service.spec.instances,
         resources: values.service.spec.resources,
         healthCheck: values.service.spec.healthCheck,
+        disks: values.service.spec.disks,
       },
     },
   };
