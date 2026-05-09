@@ -1,1 +1,0 @@
-This directory is populated with apps/web/dist during backend builds.

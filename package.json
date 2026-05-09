@@ -10,7 +10,10 @@
     "build": "nx run-many -t build --outputStyle stream",
     "test": "nx run-many -t test --outputStyle stream",
     "test:e2e": "nx run @vyft/e2e:e2e --outputStyle stream",
-    "lint": "nx run-many -t lint --outputStyle stream"
+    "lint": "nx run-many -t lint --outputStyle stream",
+    "db:generate": "nx run @vyft/backend:db:generate --outputStyle stream",
+    "spec:build": "pnpm --filter @vyft/spec build",
+    "spec:gen": "pnpm spec:build && pnpm --filter web gen:api && nx run @vyft/backend:api:generate --outputStyle stream"
   },
   "pnpm": {
     "overrides": {

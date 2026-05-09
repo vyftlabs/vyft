@@ -21,19 +21,23 @@ export default function SharedVariables() {
   const projectId = projectData?.id;
 
   const {
-    data: variables = [],
+    data: allVariables = [],
     refetch,
     isLoading: variablesLoading,
   } = useQuery({
-    ...api.variables.list(projectId ?? ""),
+    ...api.variables.project.list(projectId ?? ""),
     enabled: !!projectId,
   });
 
+  // This page shows shared (project-level) variables only. Resource-owned
+  // vars live in the service drawer.
+  const variables = allVariables.filter((v) => v.resourceId == null);
+
   const isLoading = !projectId || variablesLoading;
 
-  const createVariable = useMutation(api.variables.create);
+  const createVariable = useMutation(api.variables.project.create);
 
-  const deleteVariable = useMutation(api.variables.remove);
+  const deleteVariable = useMutation(api.variables.project.remove);
 
   const mapped = variables.map((v) => ({
     key: v.key,

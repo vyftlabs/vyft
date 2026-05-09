@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteCreate } from "@vyft/spec";
+import type { NestedRouteCreate, RouteConfig } from "@vyft/spec";
 import { LockIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export type RouteEntry = RouteCreate;
+export type RouteEntry = NestedRouteCreate;
 
 interface RouteDialogState {
   domain: string;
@@ -111,7 +111,7 @@ export function RoutesForm({
 
   const handleAdd = () => {
     if (!form.domain.trim()) return;
-    const route: RouteCreate = {
+    const route: NestedRouteCreate = {
       domain: form.domain.trim(),
       path: form.path || "/",
       pathType: form.pathType,

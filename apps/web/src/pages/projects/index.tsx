@@ -4,22 +4,24 @@ import { useState } from "react";
 import { ProjectCard } from "@/components/project/card";
 import { CreateProjectDialog } from "@/components/project/create";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 
 export default function Projects() {
   const { data: projectList, isLoading } = useQuery(api.projects.list());
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (isLoading) return null;
+  const hasItems = !!projectList && projectList.length > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Projects</h1>
-        {projectList && projectList.length > 0 && (
+        {(isLoading || hasItems) && (
           <Button
             size="sm"
             onClick={() => setDialogOpen(true)}
+            disabled={isLoading}
             data-testid="project-create-button"
           >
             <PlusIcon />
@@ -28,7 +30,13 @@ export default function Projects() {
         )}
       </div>
 
-      {projectList && projectList.length > 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
+          ))}
+        </div>
+      ) : hasItems ? (
         <div className="grid grid-cols-2 gap-4">
           {projectList.map((project) => (
             <ProjectCard

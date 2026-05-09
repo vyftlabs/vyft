@@ -4,17 +4,17 @@ import {
   collectionErrors,
   itemErrors,
   ProjectAndIdScope,
-  ResourceScope,
+  ProjectScope,
 } from "../models/common.ts";
 import { Route, RouteCreate, RouteUpdate } from "../models/route.ts";
 
 export const routePaths: ZodOpenApiPathsObject = {
-  "/projects/{projectId}/resources/{resourceId}/routes": {
+  "/projects/{projectId}/routes": {
     get: {
       operationId: "listRoutes",
-      summary: "List routes for resource",
+      summary: "List routes in project",
       tags: ["Routes"],
-      requestParams: { path: ResourceScope },
+      requestParams: { path: ProjectScope },
       responses: {
         200: {
           description: "Routes",
@@ -27,7 +27,7 @@ export const routePaths: ZodOpenApiPathsObject = {
       operationId: "createRoute",
       summary: "Create route",
       tags: ["Routes"],
-      requestParams: { path: ResourceScope },
+      requestParams: { path: ProjectScope },
       requestBody: { content: { "application/json": { schema: RouteCreate } } },
       responses: {
         201: {
@@ -39,6 +39,19 @@ export const routePaths: ZodOpenApiPathsObject = {
     },
   },
   "/projects/{projectId}/routes/{id}": {
+    get: {
+      operationId: "getRoute",
+      summary: "Get route",
+      tags: ["Routes"],
+      requestParams: { path: ProjectAndIdScope },
+      responses: {
+        200: {
+          description: "Route",
+          content: { "application/json": { schema: Route } },
+        },
+        ...itemErrors,
+      },
+    },
     patch: {
       operationId: "updateRoute",
       summary: "Update route",

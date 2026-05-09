@@ -10,15 +10,14 @@ import {
 import {
   type SuggestionGroup,
   VariableForm,
-  type VariableSuggestion,
+  type VariableFormValues,
 } from "@/components/variable/form";
 import * as api from "@/lib/api";
 
 export function AddVariableDialog({
   projectId,
   resourceId,
-  suggestions = [],
-  suggestionGroups,
+  suggestionGroups = [],
   open,
   onOpenChange,
   onAddLocal,
@@ -26,7 +25,6 @@ export function AddVariableDialog({
   project?: string;
   projectId?: string;
   resourceId?: string;
-  suggestions?: VariableSuggestion[];
   suggestionGroups?: SuggestionGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,11 +37,62 @@ export function AddVariableDialog({
 }) {
   const isResourceScope = !!resourceId;
 
-  const allSuggestions = suggestionGroups
-    ? suggestionGroups.flatMap((g) => g.items)
-    : suggestions;
+  const createShared = useMutation(api.variables.project.create);
+  const createOwned = useMutation(api.variables.resource.create);
+  const createVar = isResourceScope ? createOwned : createShared;
 
-  const createVar = useMutation(api.variables.create);
+  const handleSubmit = (
+    data: VariableFormValues & { sourceVariableId?: string },
+  ) => {
+    if (onAddLocal) {
+      onAddLocal({
+        key: data.key,
+        value: data.value,
+        secret: data.secret,
+        sourceVariableId: data.sourceVariableId,
+      });
+      onOpenChange(false);
+      return;
+    }
+    if (!projectId) return;
+
+    if (isResourceScope) {
+      const body = data.sourceVariableId
+        ? {
+            kind: "imported" as const,
+            key: data.key,
+            sourceVariableId: data.sourceVariableId,
+          }
+        : {
+            kind: "owned" as const,
+            key: data.key,
+            value: data.value,
+            secret: data.secret,
+          };
+      createOwned.mutate(
+        { projectId, resourceId: resourceId!, body },
+        {
+          onSuccess: () => onOpenChange(false),
+          onError: (err: Error) => toast.error(err.message),
+        },
+      );
+    } else {
+      createShared.mutate(
+        {
+          projectId,
+          body: {
+            key: data.key,
+            value: data.value,
+            secret: data.secret,
+          },
+        },
+        {
+          onSuccess: () => onOpenChange(false),
+          onError: (err: Error) => toast.error(err.message),
+        },
+      );
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,48 +101,14 @@ export function AddVariableDialog({
           <DialogTitle>Add variable</DialogTitle>
           <DialogDescription>
             {isResourceScope
-              ? "Add an environment variable to this service."
+              ? "Add an environment variable. Pick from existing to reference another service."
               : "Add a shared environment variable."}
           </DialogDescription>
         </DialogHeader>
         <VariableForm
-          suggestions={suggestions}
-          suggestionGroups={suggestionGroups}
+          suggestionGroups={isResourceScope ? suggestionGroups : []}
           isPending={createVar.isPending}
-          onSubmit={(data) => {
-            const linked = data.linkedKey
-              ? allSuggestions.find((s) => s.key === data.linkedKey)
-              : undefined;
-
-            if (onAddLocal) {
-              onAddLocal({
-                key: data.key,
-                value: linked ? "" : data.value,
-                secret: data.secret,
-                sourceVariableId: linked?.id,
-              });
-              onOpenChange(false);
-              return;
-            }
-            if (projectId) {
-              createVar.mutate(
-                {
-                  projectId,
-                  body: {
-                    key: data.key,
-                    value: linked ? undefined : data.value,
-                    secret: linked ? false : (data.secret ?? false),
-                    resourceId,
-                    sourceVariableId: linked?.id,
-                  },
-                },
-                {
-                  onSuccess: () => onOpenChange(false),
-                  onError: (err: Error) => toast.error(err.message),
-                },
-              );
-            }
-          }}
+          onSubmit={handleSubmit}
         />
       </DialogContent>
     </Dialog>

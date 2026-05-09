@@ -1,20 +1,19 @@
 import {
   DiskCreate,
+  NestedRouteCreate,
   type Resource,
+  type ResourceAppCreate,
   type ResourceUpdate,
-  RouteCreate,
-  type ServiceAppCreate,
 } from "@vyft/spec";
 import { getAppSpec } from "@/lib/resource";
 
-export function fromResource(resource?: Resource): ServiceAppCreate {
+export function fromResource(resource?: Resource): ResourceAppCreate {
   const spec = resource ? getAppSpec(resource) : null;
   return {
     name: resource?.name ?? "",
     positionX: resource?.positionX ?? 0,
     positionY: resource?.positionY ?? 0,
-    category: "service",
-    service: {
+    config: {
       kind: "app",
       spec: {
         source: spec?.source ?? { type: "image", image: "" },
@@ -24,27 +23,26 @@ export function fromResource(resource?: Resource): ServiceAppCreate {
         resources: spec?.resources ?? { cpu: 0.5, memory: 512 },
         healthCheck: spec?.healthCheck ?? { type: "none" },
         disks: spec?.disks?.map((d) => DiskCreate.parse(d)) ?? [],
-        routes: spec?.routes?.map((r) => RouteCreate.parse(r)) ?? [],
+        routes: spec?.routes?.map((r) => NestedRouteCreate.parse(r)) ?? [],
       },
     },
     variables: [],
   };
 }
 
-export function toResourceUpdate(values: ServiceAppCreate): ResourceUpdate {
+export function toResourceUpdate(values: ResourceAppCreate): ResourceUpdate {
   return {
     name: values.name.trim(),
-    category: "service",
-    service: {
+    config: {
       kind: "app",
       spec: {
-        source: values.service.spec.source,
-        port: values.service.spec.port,
-        startCommand: values.service.spec.startCommand,
-        instances: values.service.spec.instances,
-        resources: values.service.spec.resources,
-        healthCheck: values.service.spec.healthCheck,
-        disks: values.service.spec.disks,
+        source: values.config.spec.source,
+        port: values.config.spec.port,
+        startCommand: values.config.spec.startCommand,
+        instances: values.config.spec.instances,
+        resources: values.config.spec.resources,
+        healthCheck: values.config.spec.healthCheck,
+        disks: values.config.spec.disks,
       },
     },
   };

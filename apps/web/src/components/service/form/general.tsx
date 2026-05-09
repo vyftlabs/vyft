@@ -1,4 +1,4 @@
-import type { ServiceAppCreate } from "@vyft/spec";
+import type { ResourceAppCreate } from "@vyft/spec";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ export function GeneralForm({
   showName = true,
   showPort = true,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
   showName?: boolean;
   showPort?: boolean;
 }) {
@@ -36,7 +36,7 @@ export function GeneralForm({
 
       <div className={showPort ? "flex items-end gap-3 mb-4" : ""}>
         <Controller
-          name="service.spec.source.image"
+          name="config.spec.source.image"
           control={control}
           render={({ field, fieldState }) => (
             <Field
@@ -58,7 +58,7 @@ export function GeneralForm({
 
         {showPort && (
           <Controller
-            name="service.spec.port"
+            name="config.spec.port"
             control={control}
             render={({ field, fieldState }) => (
               <Field
@@ -93,7 +93,7 @@ export function GeneralForm({
       </div>
 
       <Controller
-        name="service.spec.startCommand"
+        name="config.spec.startCommand"
         control={control}
         render={({ field }) => (
           <Field>

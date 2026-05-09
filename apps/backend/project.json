@@ -8,7 +8,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "air -c .air.toml",
+        "command": "go tool air -c .air.toml",
         "cwd": "apps/backend"
       }
     },
@@ -36,6 +36,29 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "go test ./...",
+        "cwd": "apps/backend"
+      }
+    },
+    "db:generate": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "{projectRoot}/sqlc.yaml",
+        "{projectRoot}/internal/db/queries/**/*.sql",
+        "{projectRoot}/internal/db/migrations/**/*.sql"
+      ],
+      "options": {
+        "command": "sqlc generate",
+        "cwd": "apps/backend"
+      }
+    },
+    "api:generate": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "{projectRoot}/oapi-codegen.yaml",
+        "{workspaceRoot}/packages/spec/dist/openapi.yaml"
+      ],
+      "options": {
+        "command": "go tool oapi-codegen -config oapi-codegen.yaml ../../packages/spec/dist/openapi.yaml && go fmt ./internal/openapi/...",
         "cwd": "apps/backend"
       }
     }

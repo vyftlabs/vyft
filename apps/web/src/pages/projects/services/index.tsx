@@ -3,15 +3,27 @@ import {
   BackgroundVariant,
   type Edge,
   type Node,
-  type NodeChange,
   ReactFlow,
   ReactFlowProvider,
+  useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useParams } from "react-router";
 import "@xyflow/react/dist/style.css";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { PlusIcon, WandSparklesIcon } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import type { ServiceNodeData } from "@/components/service/node";
@@ -44,8 +56,6 @@ const nodeTypes = { service: ServiceNode };
 
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 60;
-
-type NodePosition = { x: number; y: number };
 
 async function autoLayout(nodes: Node[], edges: Edge[]): Promise<Node[]> {
   const { default: dagre } = await import("dagre");
@@ -119,46 +129,65 @@ function ServicesCanvas() {
   const isEmpty = resourcesReady && resources.length === 0;
   const resourceDialogOpen = isEmpty || addDialogOpen;
 
-  const { data: references = [] } = useQuery({
-    ...api.variables.references(projectId),
-    enabled: !!projectId,
+  // Derive cross-resource variable references client-side: for each resource,
+  // list its env (owned + imported) and pick imported entries whose source
+  // belongs to a different resource. One parallel fetch per resource.
+  const envQueries = useQueries({
+    queries: resources.map((r) => ({
+      ...api.variables.resource.list(projectId, r.id),
+      enabled: !!projectId,
+    })),
   });
 
   const edges: Edge[] = useMemo(() => {
     const seen = new Set<string>();
-    return references
-      .filter((ref) => {
-        const key = `${ref.sourceResourceId}-${ref.targetResourceId}`;
-        if (seen.has(key)) return false;
+    const out: Edge[] = [];
+    envQueries.forEach((q, i) => {
+      const targetResourceId = resources[i]?.id;
+      if (!targetResourceId) return;
+      for (const v of q.data ?? []) {
+        if (v.kind !== "imported") continue;
+        const sourceResourceId = v.source?.resource?.id;
+        if (!sourceResourceId || sourceResourceId === targetResourceId) continue;
+        const key = `${sourceResourceId}-${targetResourceId}`;
+        if (seen.has(key)) continue;
         seen.add(key);
-        return true;
-      })
-      .map((ref) => ({
-        id: `${ref.sourceResourceId}-${ref.targetResourceId}`,
-        source: ref.targetResourceId,
-        target: ref.sourceResourceId,
-        type: "smoothstep",
-        markerEnd: {
-          type: "arrowclosed" as const,
-          width: 14,
-          height: 14,
-          color: "var(--color-muted-foreground)",
-        },
-        style: { stroke: "var(--color-muted-foreground)", strokeWidth: 1.5 },
-      }));
-  }, [references]);
+        out.push({
+          id: key,
+          source: targetResourceId,
+          target: sourceResourceId,
+          type: "smoothstep",
+          markerEnd: {
+            type: "arrowclosed" as const,
+            width: 14,
+            height: 14,
+            color: "var(--color-muted-foreground)",
+          },
+          style: {
+            stroke: "var(--color-muted-foreground)",
+            strokeWidth: 1.5,
+          },
+        });
+      }
+    });
+    return out;
+  }, [envQueries, resources]);
 
-  const updatePosition = useMutation(api.resources.updatePosition);
+  const updateResource = useMutation(api.resources.update);
   const removeResource = useMutation(api.resources.remove);
 
-  const baseNodes = useMemo(() => {
-    return resources.map((r) => {
-      const image = getAppSpec(r)?.source.image;
-      return {
-        id: r.id,
-        position: { x: r.positionX, y: r.positionY },
-        type: "service",
-        data: {
+  // ReactFlow owns node state internally via useNodesState — drags work
+  // through applyNodeChanges (built into the returned onNodesChange) so
+  // measured dimensions and selection survive re-renders. We sync from
+  // server data via useEffect, preserving in-flight drag positions.
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+
+  useEffect(() => {
+    setNodes((current) => {
+      const byId = new Map(current.map((n) => [n.id, n] as const));
+      return resources.map((r) => {
+        const image = getAppSpec(r)?.source.image;
+        const data: ServiceNodeData = {
           label: r.name,
           image,
           status: { state: "running" },
@@ -174,64 +203,51 @@ function ServicesCanvas() {
               api.observability.metrics(projectId, r.id),
             );
           },
-        } satisfies ServiceNodeData,
-      };
+        };
+        const existing = byId.get(r.id);
+        return {
+          id: r.id,
+          // Keep the live drag position if user moved the node since last sync.
+          position: existing?.position ?? { x: r.positionX, y: r.positionY },
+          type: "service",
+          data,
+        };
+      });
     });
-  }, [resources, projectId, queryClient]);
-
-  const [nodePositions, setNodePositions] = useState<
-    Record<string, NodePosition>
-  >({});
-
-  const nodes = useMemo(
-    () =>
-      baseNodes.map((node) => ({
-        ...node,
-        position: nodePositions[node.id] ?? node.position,
-      })),
-    [baseNodes, nodePositions],
-  );
+  }, [resources, projectId, queryClient, setNodes]);
 
   const { fitView, screenToFlowPosition } = useReactFlow();
 
   const onAutoLayout = useCallback(async () => {
     const laid = await autoLayout(nodes, edges);
-    const nextPositions: Record<string, NodePosition> = {};
+    setNodes(laid);
     for (const node of laid) {
-      nextPositions[node.id] = node.position;
-      updatePosition.mutate({
+      updateResource.mutate({
         projectId,
         id: node.id,
-        body: { positionX: node.position.x, positionY: node.position.y },
+        body: {
+          positionX: node.position.x,
+          positionY: node.position.y,
+        },
       });
     }
-    setNodePositions(nextPositions);
     requestAnimationFrame(() =>
       fitView({ padding: 0.3, maxZoom: 1, duration: 300 }),
     );
-  }, [nodes, edges, updatePosition, fitView, projectId]);
-
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodePositions((current) => {
-      let next = current;
-      for (const change of changes) {
-        if (change.type !== "position" || !change.position) continue;
-        if (next === current) next = { ...current };
-        next[change.id] = change.position;
-      }
-      return next;
-    });
-  }, []);
+  }, [nodes, edges, setNodes, updateResource, fitView, projectId]);
 
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      updatePosition.mutate({
+      updateResource.mutate({
         projectId,
         id: node.id,
-        body: { positionX: node.position.x, positionY: node.position.y },
+        body: {
+          positionX: node.position.x,
+          positionY: node.position.y,
+        },
       });
     },
-    [updatePosition, projectId],
+    [updateResource, projectId],
   );
 
   return (

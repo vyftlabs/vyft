@@ -17,7 +17,7 @@ export interface ServiceStatus {
   message?: string;
 }
 
-export interface ServiceNodeData {
+export interface ServiceNodeData extends Record<string, unknown> {
   label: string;
   image?: string;
   status: ServiceStatus;

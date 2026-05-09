@@ -3,22 +3,39 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/vyftlabs/vyft/apps/backend/internal/deployments"
-	"github.com/vyftlabs/vyft/apps/backend/internal/observability"
-	"github.com/vyftlabs/vyft/apps/backend/internal/projects"
-	"github.com/vyftlabs/vyft/apps/backend/internal/registries"
-	"github.com/vyftlabs/vyft/apps/backend/internal/resources"
-	"github.com/vyftlabs/vyft/apps/backend/internal/routes"
-	"github.com/vyftlabs/vyft/apps/backend/internal/variables"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	vdb "github.com/vyftlabs/vyft/apps/backend/internal/db"
+	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/httpx"
+	"github.com/vyftlabs/vyft/apps/backend/internal/web"
 )
 
 func Run(ctx context.Context) error {
 	config := LoadConfig()
-	server := New(config)
+
+	pool, err := pgxpool.New(ctx, config.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("connect db: %w", err)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		return fmt.Errorf("ping db: %w", err)
+	}
+
+	slog.Info("running migrations")
+	if err := vdb.Migrate(ctx, pool); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+
+	server := New(config, pool)
 
 	slog.Info("backend listening", "addr", config.Addr, "basic_auth", config.BasicAuthPass != "")
 	errCh := make(chan error, 1)
@@ -51,21 +68,19 @@ func Run(ctx context.Context) error {
 	}
 }
 
-func New(config Config) *http.Server {
+func New(config Config, pool *pgxpool.Pool) *http.Server {
+	database := vdb.New(pool)
+
+	api := NewAPI(database)
+	strict := openapi.NewStrictHandler(api, nil)
+	apiHandler := openapi.HandlerWithOptions(strict, openapi.StdHTTPServerOptions{
+		ErrorHandlerFunc: writeError,
+	})
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealthz)
-
-	api := http.NewServeMux()
-	projects.Register(api)
-	resources.Register(api)
-	variables.Register(api)
-	routes.Register(api)
-	registries.Register(api)
-	deployments.Register(api)
-	observability.Register(api)
-	mux.Handle("/api/", http.StripPrefix("/api", api))
-
-	mux.Handle("/", newStaticHandler())
+	mux.Handle("/api/", http.StripPrefix("/api", apiHandler))
+	mux.Handle("/", web.NewStaticHandler())
 
 	handler := basicAuth(config.BasicAuthUser, config.BasicAuthPass, mux)
 
@@ -74,4 +89,22 @@ func New(config Config) *http.Server {
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+}
+
+// writeError maps service/handler errors to the wire envelope. Anything that
+// isn't already an *apierr.APIError becomes a 500 with the cause logged.
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	var ae *apierr.APIError
+	if !errors.As(err, &ae) {
+		ae = apierr.Internal(err)
+	}
+	if ae.Status >= 500 {
+		cause := errors.Unwrap(ae)
+		if cause == nil {
+			cause = ae
+		}
+		slog.ErrorContext(r.Context(), "handler error",
+			"status", ae.Status, "code", ae.Code, "error", cause)
+	}
+	httpx.WriteJSON(w, ae.Status, ae)
 }

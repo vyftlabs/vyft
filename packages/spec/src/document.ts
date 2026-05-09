@@ -8,7 +8,7 @@ import { routePaths } from "./paths/routes.ts";
 import { variablePaths } from "./paths/variables.ts";
 
 export const document = createDocument({
-  openapi: "3.1.0",
+  openapi: "3.0.3",
   info: {
     title: "Vyft API",
     version: "0.1.0",

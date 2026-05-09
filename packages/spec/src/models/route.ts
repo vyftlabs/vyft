@@ -47,6 +47,7 @@ export const Route = BaseFields.extend({
 }).meta({ id: "Route" });
 
 export const RouteCreate = Route.pick({
+  resourceId: true,
   domain: true,
   path: true,
   port: true,
@@ -55,15 +56,24 @@ export const RouteCreate = Route.pick({
   config: true,
 }).meta({ id: "RouteCreate" });
 
+// Routes embedded in a resource creation request — resourceId is implicit
+// (taken from the resource being created).
+export const NestedRouteCreate = RouteCreate.omit({ resourceId: true }).meta({
+  id: "NestedRouteCreate",
+});
+
 export const routeDefaults = {
   pathType: "prefix",
   tls: true,
 } as const;
 
-export const RouteUpdate = RouteCreate.partial().meta({ id: "RouteUpdate" });
+export const RouteUpdate = RouteCreate.omit({ resourceId: true })
+  .partial()
+  .meta({ id: "RouteUpdate" });
 
 export type PathType = z.infer<typeof PathType>;
 export type RouteConfig = z.infer<typeof RouteConfig>;
 export type Route = z.infer<typeof Route>;
 export type RouteCreate = z.infer<typeof RouteCreate>;
+export type NestedRouteCreate = z.infer<typeof NestedRouteCreate>;
 export type RouteUpdate = z.infer<typeof RouteUpdate>;

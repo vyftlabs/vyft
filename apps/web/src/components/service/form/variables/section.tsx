@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ServiceAppCreate } from "@vyft/spec";
+import type { ResourceAppCreate } from "@vyft/spec";
 import { useState } from "react";
 import { type Control, useFieldArray } from "react-hook-form";
 import { AddVariableDialog } from "@/components/variable/add";
@@ -11,7 +11,7 @@ export function VariablesSection({
   control,
   projectId,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
   projectId: string;
 }) {
   const { fields, append, remove } = useFieldArray({
@@ -20,47 +20,57 @@ export function VariablesSection({
   });
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data } = useQuery({
-    ...api.variables.suggestions(projectId),
+  // Suggestions = every project variable (shared + owned by other resources).
+  // Resource-being-created has no id yet so nothing to exclude.
+  const { data: allVars = [] } = useQuery({
+    ...api.variables.project.list(projectId),
+    enabled: !!projectId,
+  });
+  const { data: resources = [] } = useQuery({
+    ...api.resources.list(projectId),
     enabled: !!projectId,
   });
 
+  const resourceById = new Map(resources.map((r) => [r.id, r] as const));
+  const sharedItems = allVars
+    .filter((v) => v.resourceId == null)
+    .map((v) => ({ id: v.id, key: v.key, secret: v.secret }));
+  const ownedByResource = new Map<
+    string,
+    { name: string; image?: string; items: SuggestionGroup["items"] }
+  >();
+  for (const v of allVars) {
+    if (v.resourceId == null) continue;
+    const r = resourceById.get(v.resourceId);
+    if (!r) continue;
+    const entry = ownedByResource.get(v.resourceId) ?? {
+      name: r.name,
+      image:
+        r.config.kind === "app" ? r.config.spec.source.image : undefined,
+      items: [],
+    };
+    entry.items.push({
+      id: v.id,
+      key: v.key,
+      secret: v.secret,
+      resourceName: r.name,
+    });
+    ownedByResource.set(v.resourceId, entry);
+  }
+
   const groups: SuggestionGroup[] = [];
-
-  if (data?.shared?.length) {
-    groups.push({ label: "Shared", items: data.shared });
-  }
-
-  // Merge built-ins and user-defined service vars under each owning service.
-  type Item = SuggestionGroup["items"][number];
-  const byService = new Map<string, { items: Item[]; image?: string }>();
-  const ensure = (name: string, image?: string) => {
-    let entry = byService.get(name);
-    if (!entry) {
-      entry = { items: [], image };
-      byService.set(name, entry);
-    } else if (!entry.image && image) {
-      entry.image = image;
-    }
-    return entry;
-  };
-  for (const b of data?.builtin ?? []) {
-    ensure(b.resourceName ?? "Unknown", b.resourceImage).items.push(b);
-  }
-  for (const v of data?.service ?? []) {
-    ensure(v.resourceName ?? "Unknown", v.resourceImage).items.push(v);
-  }
-  for (const [name, { items, image }] of byService) {
-    groups.push({ label: name, image, items });
+  if (sharedItems.length) groups.push({ label: "Shared", items: sharedItems });
+  for (const [, entry] of ownedByResource) {
+    groups.push({ label: entry.name, image: entry.image, items: entry.items });
   }
 
   return (
     <Variables
-      variables={fields.map((f) => ({
-        key: f.key,
-        value: f.value ?? "",
-        secret: f.secret ?? false,
-      }))}
+      variables={fields.map((f) =>
+        f.kind === "owned"
+          ? { key: f.key, value: f.value ?? "", secret: f.secret ?? false }
+          : { key: f.key, value: "", secret: false },
+      )}
       onDelete={(key) => {
         const index = fields.findIndex((f) => f.key === key);
         if (index !== -1) remove(index);
@@ -74,12 +84,20 @@ export function VariablesSection({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onAddLocal={(v) =>
-          append({
-            key: v.key,
-            value: v.value,
-            secret: v.secret ?? false,
-            sourceVariableId: v.sourceVariableId,
-          })
+          append(
+            v.sourceVariableId
+              ? {
+                  kind: "imported",
+                  key: v.key,
+                  sourceVariableId: v.sourceVariableId,
+                }
+              : {
+                  kind: "owned",
+                  key: v.key,
+                  value: v.value,
+                  secret: v.secret ?? false,
+                },
+          )
         }
       />
     </Variables>

@@ -1,97 +1,131 @@
 import { z } from "zod";
 import { BaseFields } from "./common.ts";
 
-export const VariableScope = z
-  .enum(["shared", "resource"])
-  .meta({ id: "VariableScope" });
+// =============================================================================
+// Project variables (one row per definition)
+//
+// Live at /projects/{pid}/variables. Always have a literal value (or
+// encrypted bytes for secrets). Identified by `id`.
+//
+// `resourceId` discriminates ownership:
+//   null      — shared (project-level), available to any resource via import.
+//   <uuid>    — owned by that resource. Other resources can import it.
+// =============================================================================
+
+export const ResourceRef = z
+  .object({ id: z.uuid(), name: z.string() })
+  .meta({ id: "ResourceRef" });
 
 export const Variable = BaseFields.extend({
-  key: z.string().min(1).max(255),
-  value: z.string().nullable(),
-  secret: z.boolean().default(false),
-  scope: VariableScope,
   projectId: z.uuid(),
   resourceId: z.uuid().nullable(),
-  sourceVariableId: z.uuid().nullable(),
-  source: z
-    .object({
-      id: z.uuid(),
-      key: z.string(),
-      resource: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-    })
-    .nullable()
-    .optional(),
-  usedBy: z.array(z.object({ id: z.uuid(), name: z.string() })).optional(),
+  key: z.string().min(1).max(255),
+  value: z.string().nullable(),
+  secret: z.boolean(),
+  // Resources currently importing this variable (populated on list/get).
+  usedBy: z.array(ResourceRef).optional(),
 }).meta({ id: "Variable" });
 
-export const VariableCreate = Variable.pick({
-  key: true,
-  value: true,
-  secret: true,
-  resourceId: true,
-  sourceVariableId: true,
-})
-  .partial({
-    value: true,
-    secret: true,
-    resourceId: true,
-    sourceVariableId: true,
+export const VariableCreate = z
+  .object({
+    key: z.string().min(1).max(255),
+    value: z.string().nullable(),
+    secret: z.boolean().optional(),
   })
   .meta({ id: "VariableCreate" });
 
-export const VariableUpdate = Variable.pick({
-  key: true,
-  value: true,
-  secret: true,
-  sourceVariableId: true,
-})
-  .partial()
-  .meta({ id: "VariableUpdate" });
+export const VariableUpdate = VariableCreate.partial().meta({
+  id: "VariableUpdate",
+});
 
-export const VariableReference = z
-  .object({
-    sourceResourceId: z.uuid(),
-    targetResourceId: z.uuid(),
-  })
-  .meta({ id: "VariableReference" });
+// =============================================================================
+// Resource variables (resource-scoped: owned + imported, unified)
+//
+// Live at /projects/{pid}/resources/{rid}/variables. Identified by `key` —
+// keys are unique per resource and that is what env-var consumers care about.
+//
+// Discriminator: `kind`.
+//   owned    — value lives on this row (or encrypted bytes if secret).
+//   imported — points at another variable (shared or another resource's owned)
+//              via sourceVariableId. value is the source's value at apply time.
+// =============================================================================
 
-export const SuggestionShared = z
+// Owned has a uuid id (variables table PK). Imported has no surrogate id —
+// identity is the composite (resourceId, key) and that's what URLs use.
+const ResourceVariableBase = z.object({
+  projectId: z.uuid(),
+  resourceId: z.uuid(),
+  key: z.string().min(1).max(255),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export const OwnedResourceVariable = ResourceVariableBase.extend({
+  kind: z.literal("owned"),
+  id: z.uuid(),
+  value: z.string().nullable(),
+  secret: z.boolean(),
+}).meta({ id: "OwnedResourceVariable" });
+
+export const ImportSource = z
   .object({
     id: z.uuid(),
     key: z.string(),
     secret: z.boolean(),
+    resource: ResourceRef.nullable(),
   })
-  .meta({ id: "SuggestionShared" });
+  .meta({ id: "ImportSource" });
 
-export const SuggestionService = SuggestionShared.extend({
-  resourceName: z.string().optional(),
-  resourceImage: z.string().optional(),
-}).meta({ id: "SuggestionService" });
+export const ImportedResourceVariable = ResourceVariableBase.extend({
+  kind: z.literal("imported"),
+  sourceVariableId: z.uuid(),
+  // Populated source metadata (read-only convenience for UI).
+  source: ImportSource.optional(),
+}).meta({ id: "ImportedResourceVariable" });
 
-export const SuggestionBuiltin = SuggestionShared.extend({
-  id: z.string(),
-  token: z.string(),
-  resourceName: z.string(),
-  resourceImage: z.string().optional(),
-}).meta({
-  id: "SuggestionBuiltin",
-  description: "`id` is a synthetic identifier, not a UUID.",
-});
+export const ResourceVariable = z
+  .discriminatedUnion("kind", [OwnedResourceVariable, ImportedResourceVariable])
+  .meta({ id: "ResourceVariable" });
 
-export const VariableSuggestions = z
-  .object({
-    shared: z.array(SuggestionShared),
-    service: z.array(SuggestionService),
-    builtin: z.array(SuggestionBuiltin),
-  })
-  .meta({ id: "VariableSuggestions" });
+export const ResourceVariableCreate = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("owned"),
+      key: z.string().min(1).max(255),
+      value: z.string().nullable(),
+      secret: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal("imported"),
+      key: z.string().min(1).max(255),
+      sourceVariableId: z.uuid(),
+    }),
+  ])
+  .meta({ id: "ResourceVariableCreate" });
 
-export type VariableScope = z.infer<typeof VariableScope>;
+export const ResourceVariableUpdate = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("owned"),
+      key: z.string().min(1).max(255).optional(),
+      value: z.string().nullable().optional(),
+      secret: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal("imported"),
+      key: z.string().min(1).max(255).optional(),
+      sourceVariableId: z.uuid().optional(),
+    }),
+  ])
+  .meta({ id: "ResourceVariableUpdate" });
+
+export type ResourceRef = z.infer<typeof ResourceRef>;
+export type ImportSource = z.infer<typeof ImportSource>;
 export type Variable = z.infer<typeof Variable>;
 export type VariableCreate = z.infer<typeof VariableCreate>;
 export type VariableUpdate = z.infer<typeof VariableUpdate>;
-export type VariableReference = z.infer<typeof VariableReference>;
-export type SuggestionShared = z.infer<typeof SuggestionShared>;
-export type SuggestionService = z.infer<typeof SuggestionService>;
-export type SuggestionBuiltin = z.infer<typeof SuggestionBuiltin>;
-export type VariableSuggestions = z.infer<typeof VariableSuggestions>;
+export type OwnedResourceVariable = z.infer<typeof OwnedResourceVariable>;
+export type ImportedResourceVariable = z.infer<typeof ImportedResourceVariable>;
+export type ResourceVariable = z.infer<typeof ResourceVariable>;
+export type ResourceVariableCreate = z.infer<typeof ResourceVariableCreate>;
+export type ResourceVariableUpdate = z.infer<typeof ResourceVariableUpdate>;

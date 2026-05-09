@@ -9,7 +9,6 @@ import {
 import {
   Resource,
   ResourceCreate,
-  ResourcePosition,
   ResourceUpdate,
 } from "../models/resource.ts";
 
@@ -82,24 +81,6 @@ export const resourcePaths: ZodOpenApiPathsObject = {
       requestParams: { path: ProjectAndIdScope },
       responses: {
         204: { description: "Deleted" },
-        ...itemErrors,
-      },
-    },
-  },
-  "/projects/{projectId}/resources/{id}/position": {
-    patch: {
-      operationId: "updateResourcePosition",
-      summary: "Update resource position",
-      tags: ["Resources"],
-      requestParams: { path: ProjectAndIdScope },
-      requestBody: {
-        content: { "application/json": { schema: ResourcePosition } },
-      },
-      responses: {
-        200: {
-          description: "Updated",
-          content: { "application/json": { schema: Resource } },
-        },
         ...itemErrors,
       },
     },

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type DiskCreate,
   type Resource,
-  ServiceAppCreate,
+  ResourceAppCreate,
 } from "@vyft/spec";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -152,9 +152,9 @@ function SectionHeader({
 function DisksFormSectionWrapper({
   control,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
 }) {
-  const { append } = useFieldArray({ control, name: "service.spec.disks" });
+  const { append } = useFieldArray({ control, name: "config.spec.disks" });
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -175,13 +175,13 @@ function DisksFormSectionWrapper({
 function RoutesFormWrapper({
   control,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
 }) {
   const { fields, replace } = useFieldArray({
     control,
-    name: "service.spec.routes",
+    name: "config.spec.routes",
   });
-  const port = useWatch({ control, name: "service.spec.port" });
+  const port = useWatch({ control, name: "config.spec.port" });
 
   return (
     <RoutesForm
@@ -231,8 +231,8 @@ function SettingsTab({
     handleSubmit,
     reset,
     formState: { isDirty },
-  } = useForm<ServiceAppCreate>({
-    resolver: zodResolver(ServiceAppCreate),
+  } = useForm<ResourceAppCreate>({
+    resolver: zodResolver(ResourceAppCreate),
     defaultValues: fromResource(resource),
   });
 
@@ -251,9 +251,9 @@ function SettingsTab({
   });
 
   const onSubmit = useCallback(
-    (data: ServiceAppCreate) => {
+    (data: ResourceAppCreate) => {
       if (isCreating && createProps) {
-        const body: ServiceAppCreate = {
+        const body: ResourceAppCreate = {
           ...data,
           name: data.name.trim(),
           positionX: createProps.position?.x ?? 0,
@@ -622,15 +622,16 @@ function RoutesSection({
   resourceId: string;
   projectId: string;
 }) {
-  const { data: routeList = [] } = useQuery({
-    ...api.routes.list(projectId, resourceId),
+  const { data: allRoutes = [] } = useQuery({
+    ...api.routes.list(projectId),
     enabled: !!resourceId,
   });
+  const routeList = allRoutes.filter((r) => r.resourceId === resourceId);
   const queryClient = useQueryClient();
 
   const invalidate = () => {
     queryClient.invalidateQueries({
-      queryKey: api.routes.list(projectId, resourceId).queryKey,
+      queryKey: api.routes.list(projectId).queryKey,
     });
     queryClient.invalidateQueries({ queryKey: ["resources"] });
     queryClient.invalidateQueries({
@@ -658,8 +659,8 @@ function RoutesSection({
             createRoute.mutate(
               {
                 projectId,
-                resourceId,
                 body: {
+                  resourceId,
                   domain: added.domain,
                   path: added.path,
                   pathType: added.pathType as "prefix" | "exact",
@@ -731,44 +732,56 @@ function useVariableSuggestionGroups(
   projectId: string,
   excludeResourceId?: string,
 ) {
-  const { data } = useQuery({
-    ...api.variables.suggestions(projectId, { excludeResourceId }),
+  // Importable = every project variable except those owned by the resource
+  // we're adding to. Groups by source service (or "Shared" for project-level).
+  const { data: allVars = [] } = useQuery({
+    ...api.variables.project.list(projectId),
+    enabled: !!projectId,
+  });
+  const { data: resources = [] } = useQuery({
+    ...api.resources.list(projectId),
     enabled: !!projectId,
   });
 
-  if (!data) return [];
-
-  type Suggestion = import("@/components/variable/form").VariableSuggestion;
   type Group = import("@/components/variable/form").SuggestionGroup;
+  const resourceById = new Map(resources.map((r) => [r.id, r] as const));
+  const importable = allVars.filter((v) => v.resourceId !== excludeResourceId);
+  if (importable.length === 0) return [] as Group[];
+
+  const sharedItems = importable
+    .filter((v) => v.resourceId == null)
+    .map((v) => ({ id: v.id, key: v.key, secret: v.secret }));
+
+  const ownedByResource = new Map<
+    string,
+    { name: string; image?: string; items: Group["items"] }
+  >();
+  for (const v of importable) {
+    if (v.resourceId == null) continue;
+    const r = resourceById.get(v.resourceId);
+    if (!r) continue;
+    const entry = ownedByResource.get(v.resourceId) ?? {
+      name: r.name,
+      image:
+        r.config.kind === "app" ? r.config.spec.source.image : undefined,
+      items: [],
+    };
+    entry.items.push({
+      id: v.id,
+      key: v.key,
+      secret: v.secret,
+      resourceName: r.name,
+    });
+    ownedByResource.set(v.resourceId, entry);
+  }
+
   const groups: Group[] = [];
-
-  if (data.shared.length > 0) {
-    groups.push({ label: "Shared", items: data.shared });
+  if (sharedItems.length > 0) {
+    groups.push({ label: "Shared", items: sharedItems });
   }
-
-  // Merge built-ins and user-defined service vars under each owning service.
-  const byService = new Map<string, { items: Suggestion[]; image?: string }>();
-  const ensure = (name: string, image?: string) => {
-    let entry = byService.get(name);
-    if (!entry) {
-      entry = { items: [], image };
-      byService.set(name, entry);
-    } else if (!entry.image && image) {
-      entry.image = image;
-    }
-    return entry;
-  };
-  for (const b of data.builtin ?? []) {
-    ensure(b.resourceName ?? "Unknown", b.resourceImage).items.push(b);
+  for (const [, entry] of ownedByResource) {
+    groups.push({ label: entry.name, image: entry.image, items: entry.items });
   }
-  for (const v of data.service) {
-    ensure(v.resourceName ?? "Unknown", v.resourceImage).items.push(v);
-  }
-
-  for (const [name, { items, image }] of byService) {
-    groups.push({ label: name, image, items });
-  }
-
   return groups;
 }
 
@@ -782,13 +795,15 @@ function VariablesTab({
   projectId: string;
 }) {
   const { data: rawVars = [] } = useQuery({
-    ...api.variables.list(projectId, { resourceId }),
+    ...api.variables.resource.list(projectId, resourceId),
     enabled: !!resourceId,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const existingKeys = new Set(rawVars.map((v) => v.key));
   const existingSourceIds = new Set(
-    rawVars.filter((v) => v.sourceVariableId).map((v) => v.sourceVariableId),
+    rawVars
+      .filter((v) => v.kind === "imported")
+      .map((v) => v.sourceVariableId),
   );
   const suggestionGroups = useVariableSuggestionGroups(projectId, resourceId)
     .map((g) => ({
@@ -799,25 +814,32 @@ function VariablesTab({
     }))
     .filter((g) => g.items.length > 0);
 
-  const deleteVar = useMutation(api.variables.remove);
+  const deleteVar = useMutation(api.variables.resource.remove);
 
   return (
     <div>
       <Variables
-        variables={rawVars.map((v) => {
-          const source = "source" in v ? v.source : null;
-          return {
-            key: v.key,
-            value: v.value ?? "",
-            secret: v.secret,
-            sourceVariableId: v.sourceVariableId ?? undefined,
-            sourceKey: source?.key,
-            sourceResourceName: source?.resource?.name,
-          };
-        })}
+        variables={rawVars.map((v) =>
+          v.kind === "owned"
+            ? {
+                key: v.key,
+                value: v.value ?? "",
+                secret: v.secret,
+                sourceVariableId: undefined,
+                sourceKey: undefined,
+                sourceResourceName: undefined,
+              }
+            : {
+                key: v.key,
+                value: "",
+                secret: v.source?.secret ?? false,
+                sourceVariableId: v.sourceVariableId,
+                sourceKey: v.source?.key,
+                sourceResourceName: v.source?.resource?.name,
+              },
+        )}
         onDelete={(key) => {
-          const variable = rawVars.find((v) => v.key === key);
-          if (variable) deleteVar.mutate({ projectId, id: variable.id });
+          deleteVar.mutate({ projectId, resourceId, key });
         }}
       >
         <Variables.List />

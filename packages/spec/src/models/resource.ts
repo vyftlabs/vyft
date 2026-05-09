@@ -6,8 +6,8 @@ import {
   Port,
   ResourceName,
 } from "./common.ts";
-import { Route, RouteCreate } from "./route.ts";
-import { Variable, VariableCreate } from "./variable.ts";
+import { NestedRouteCreate, Route } from "./route.ts";
+import { ResourceVariable, ResourceVariableCreate } from "./variable.ts";
 
 export const Source = z
   .object({
@@ -82,7 +82,7 @@ export const AppSpecCreate = z
     resources: Resources,
     healthCheck: HealthCheck,
     disks: z.array(DiskCreate).optional(),
-    routes: z.array(RouteCreate).optional(),
+    routes: z.array(NestedRouteCreate).optional(),
   })
   .meta({ id: "AppSpecCreate" });
 
@@ -90,85 +90,76 @@ export const AppSpecUpdate = AppSpecCreate.partial().meta({
   id: "AppSpecUpdate",
 });
 
-export const ServiceVariant = z
+// =============================================================================
+// Resource config — single discriminated union over all resource kinds.
+//
+// Each variant: { kind: <literal>, spec: <kind-specific shape> }
+// Future kinds (worker, postgres, template) add as additional union members.
+// =============================================================================
+
+export const ResourceConfig = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("app"), spec: AppSpec }),
   ])
-  .meta({ id: "ServiceVariant" });
+  .meta({ id: "ResourceConfig" });
 
-export const ServiceVariantCreate = z
+export const ResourceConfigCreate = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("app"), spec: AppSpecCreate }),
   ])
-  .meta({ id: "ServiceVariantCreate" });
+  .meta({ id: "ResourceConfigCreate" });
 
-export const ServiceVariantUpdate = z
+export const ResourceConfigUpdate = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("app"), spec: AppSpecUpdate.optional() }),
   ])
-  .meta({ id: "ServiceVariantUpdate" });
+  .meta({ id: "ResourceConfigUpdate" });
 
 const ResourceBase = BaseFields.extend({
   name: ResourceName,
   projectId: z.uuid(),
   positionX: z.number(),
   positionY: z.number(),
-  variables: z.array(Variable).optional(),
+  variables: z.array(ResourceVariable).optional(),
 });
 
-export const Resource = ResourceBase.and(
-  z.discriminatedUnion("category", [
-    z.object({ category: z.literal("service"), service: ServiceVariant }),
-  ]),
-).meta({ id: "Resource" });
+export const Resource = ResourceBase.extend({
+  config: ResourceConfig,
+}).meta({ id: "Resource" });
 
-const ResourceCreateBase = z.object({
-  name: ResourceName,
-  positionX: z.number(),
-  positionY: z.number(),
-  variables: z.array(VariableCreate.omit({ resourceId: true })).optional(),
-});
-
-export const ResourceCreate = ResourceCreateBase.and(
-  z.discriminatedUnion("category", [
-    z.object({
-      category: z.literal("service"),
-      service: ServiceVariantCreate,
-    }),
-  ]),
-).meta({ id: "ResourceCreate" });
-
-// Narrowed app-only variant. Used by form layer (RHF) and any client that builds
-// a service+app create directly. Adding worker/store/template = add sibling exports.
-export const ServiceAppCreate = ResourceCreateBase.extend({
-  category: z.literal("service"),
-  service: z.object({
-    kind: z.literal("app"),
-    spec: AppSpecCreate,
-  }),
-}).meta({ id: "ServiceAppCreate" });
-
-const ResourceUpdateBase = z.object({
-  name: ResourceName.optional(),
-});
-
-export const ResourceUpdate = ResourceUpdateBase.and(
-  z
-    .discriminatedUnion("category", [
-      z.object({
-        category: z.literal("service"),
-        service: ServiceVariantUpdate.optional(),
-      }),
-    ])
-    .optional(),
-).meta({ id: "ResourceUpdate" });
-
-export const ResourcePosition = z
+export const ResourceCreate = z
   .object({
+    name: ResourceName,
     positionX: z.number(),
     positionY: z.number(),
+    variables: z.array(ResourceVariableCreate).optional(),
+    config: ResourceConfigCreate,
   })
-  .meta({ id: "ResourcePosition" });
+  .meta({ id: "ResourceCreate" });
+
+// Narrowed app-only variant. Used by form layer (RHF).
+// Adding worker/postgres/template = export sibling type.
+export const ResourceAppCreate = z
+  .object({
+    name: ResourceName,
+    positionX: z.number(),
+    positionY: z.number(),
+    variables: z.array(ResourceVariableCreate).optional(),
+    config: z.object({
+      kind: z.literal("app"),
+      spec: AppSpecCreate,
+    }),
+  })
+  .meta({ id: "ResourceAppCreate" });
+
+export const ResourceUpdate = z
+  .object({
+    name: ResourceName.optional(),
+    positionX: z.number().optional(),
+    positionY: z.number().optional(),
+    config: ResourceConfigUpdate.optional(),
+  })
+  .meta({ id: "ResourceUpdate" });
 
 export type Source = z.infer<typeof Source>;
 export type Resources = z.infer<typeof Resources>;
@@ -178,11 +169,10 @@ export type DiskCreate = z.infer<typeof DiskCreate>;
 export type AppSpec = z.infer<typeof AppSpec>;
 export type AppSpecCreate = z.infer<typeof AppSpecCreate>;
 export type AppSpecUpdate = z.infer<typeof AppSpecUpdate>;
-export type ServiceVariant = z.infer<typeof ServiceVariant>;
-export type ServiceVariantCreate = z.infer<typeof ServiceVariantCreate>;
-export type ServiceVariantUpdate = z.infer<typeof ServiceVariantUpdate>;
+export type ResourceConfig = z.infer<typeof ResourceConfig>;
+export type ResourceConfigCreate = z.infer<typeof ResourceConfigCreate>;
+export type ResourceConfigUpdate = z.infer<typeof ResourceConfigUpdate>;
 export type Resource = z.infer<typeof Resource>;
 export type ResourceCreate = z.infer<typeof ResourceCreate>;
-export type ServiceAppCreate = z.infer<typeof ServiceAppCreate>;
+export type ResourceAppCreate = z.infer<typeof ResourceAppCreate>;
 export type ResourceUpdate = z.infer<typeof ResourceUpdate>;
-export type ResourcePosition = z.infer<typeof ResourcePosition>;

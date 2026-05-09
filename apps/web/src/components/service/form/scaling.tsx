@@ -1,4 +1,4 @@
-import type { ServiceAppCreate } from "@vyft/spec";
+import type { ResourceAppCreate } from "@vyft/spec";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -86,14 +86,14 @@ export function ScalingForm({
   control,
   showInstances = true,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
   showInstances?: boolean;
 }) {
   return (
     <div className="space-y-3">
       {showInstances && (
         <Controller
-          name="service.spec.instances"
+          name="config.spec.instances"
           control={control}
           render={({ field, fieldState }) => {
             const value = Number.isFinite(field.value) ? field.value : 1;
@@ -140,7 +140,7 @@ export function ScalingForm({
 
       <div className="grid grid-cols-2 gap-6">
         <Controller
-          name="service.spec.resources.cpu"
+          name="config.spec.resources.cpu"
           control={control}
           render={({ field }) => (
             <ResourceStep
@@ -154,7 +154,7 @@ export function ScalingForm({
         />
 
         <Controller
-          name="service.spec.resources.memory"
+          name="config.spec.resources.memory"
           control={control}
           render={({ field }) => (
             <ResourceStep

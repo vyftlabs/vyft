@@ -1,7 +1,7 @@
 import {
   type HealthCheck,
   healthCheckDefaults,
-  type ServiceAppCreate,
+  type ResourceAppCreate,
 } from "@vyft/spec";
 import { type Control, Controller } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -143,11 +143,11 @@ function HealthEditor({
 export function HealthForm({
   control,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
 }) {
   return (
     <Controller
-      name="service.spec.healthCheck"
+      name="config.spec.healthCheck"
       control={control}
       render={({ field, fieldState }) => (
         <div className="space-y-2">

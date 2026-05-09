@@ -1,4 +1,4 @@
-import type { ServiceAppCreate } from "@vyft/spec";
+import type { ResourceAppCreate } from "@vyft/spec";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { type Control, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,13 @@ export function DisksFormSection({
   onAdd,
   addDialog,
 }: {
-  control: Control<ServiceAppCreate>;
+  control: Control<ResourceAppCreate>;
   onAdd: () => void;
   addDialog?: React.ReactNode;
 }) {
   const { fields, remove } = useFieldArray({
     control,
-    name: "service.spec.disks",
+    name: "config.spec.disks",
   });
 
   return (
