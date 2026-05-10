@@ -11,9 +11,8 @@ import (
 )
 
 type Querier interface {
-	// seq is NULL on insert; the BEFORE INSERT trigger assigns it under the
-	// per-project advisory lock.
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) (Deployment, error)
+	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error)
 	CreatePlainVariable(ctx context.Context, arg CreatePlainVariableParams) (Variable, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateRegistry(ctx context.Context, arg CreateRegistryParams) (Registry, error)
@@ -22,16 +21,18 @@ type Querier interface {
 	CreateRoute(ctx context.Context, arg CreateRouteParams) (Route, error)
 	CreateSecretVariable(ctx context.Context, arg CreateSecretVariableParams) (Variable, error)
 	DeleteAllResourceVariables(ctx context.Context, resourceID pgtype.UUID) error
+	DeleteEnvironment(ctx context.Context, id pgtype.UUID) error
 	DeleteProject(ctx context.Context, id pgtype.UUID) error
 	DeleteRegistry(ctx context.Context, id pgtype.UUID) error
 	DeleteResource(ctx context.Context, id pgtype.UUID) error
 	DeleteResourceVariable(ctx context.Context, arg DeleteResourceVariableParams) error
 	DeleteRoute(ctx context.Context, id pgtype.UUID) error
 	DeleteVariable(ctx context.Context, id pgtype.UUID) error
-	// The unique partial index guarantees at most one row.
-	GetActiveDeployment(ctx context.Context, projectID pgtype.UUID) (Deployment, error)
+	// The unique partial index guarantees at most one row per (project, env).
+	GetActiveDeployment(ctx context.Context, arg GetActiveDeploymentParams) (Deployment, error)
 	GetDeployment(ctx context.Context, id pgtype.UUID) (Deployment, error)
-	GetLatestDeployment(ctx context.Context, projectID pgtype.UUID) (Deployment, error)
+	GetEnvironment(ctx context.Context, id pgtype.UUID) (Environment, error)
+	GetEnvironmentBySlug(ctx context.Context, arg GetEnvironmentBySlugParams) (Environment, error)
 	GetOwnedVariableByKey(ctx context.Context, arg GetOwnedVariableByKeyParams) (Variable, error)
 	GetProject(ctx context.Context, id pgtype.UUID) (Project, error)
 	GetProjectBySlug(ctx context.Context, slug string) (Project, error)
@@ -41,16 +42,24 @@ type Querier interface {
 	GetResourceByName(ctx context.Context, arg GetResourceByNameParams) (Resource, error)
 	GetRoute(ctx context.Context, id pgtype.UUID) (Route, error)
 	GetVariable(ctx context.Context, id pgtype.UUID) (Variable, error)
+	// Boot recovery: re-fire goroutines for deployments stuck in pending/applying.
+	ListActiveDeployments(ctx context.Context) ([]Deployment, error)
 	ListDeploymentsByProject(ctx context.Context, arg ListDeploymentsByProjectParams) ([]Deployment, error)
+	ListDeploymentsByProjectEnv(ctx context.Context, arg ListDeploymentsByProjectEnvParams) ([]Deployment, error)
+	ListEnvironmentsByProject(ctx context.Context, projectID pgtype.UUID) ([]Environment, error)
 	ListImportsOfVariable(ctx context.Context, variableID pgtype.UUID) ([]ResourceVariable, error)
 	ListOwnedVariables(ctx context.Context, arg ListOwnedVariablesParams) ([]Variable, error)
 	ListProjects(ctx context.Context) ([]Project, error)
 	ListRegistries(ctx context.Context) ([]Registry, error)
-	ListResourceImports(ctx context.Context, resourceID pgtype.UUID) ([]ResourceVariable, error)
+	ListResourceImports(ctx context.Context, arg ListResourceImportsParams) ([]ResourceVariable, error)
+	ListResourceImportsByEnv(ctx context.Context, arg ListResourceImportsByEnvParams) ([]ResourceVariable, error)
 	ListResourcesByProject(ctx context.Context, projectID pgtype.UUID) ([]Resource, error)
 	ListRoutesByProject(ctx context.Context, projectID pgtype.UUID) ([]Route, error)
+	ListRoutesByProjectEnv(ctx context.Context, arg ListRoutesByProjectEnvParams) ([]Route, error)
 	ListRoutesByResource(ctx context.Context, resourceID pgtype.UUID) ([]Route, error)
+	ListRoutesByResourceEnv(ctx context.Context, arg ListRoutesByResourceEnvParams) ([]Route, error)
 	ListVariablesByProject(ctx context.Context, projectID pgtype.UUID) ([]Variable, error)
+	ListVariablesByProjectEnv(ctx context.Context, arg ListVariablesByProjectEnvParams) ([]Variable, error)
 	LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error)
 	MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error)

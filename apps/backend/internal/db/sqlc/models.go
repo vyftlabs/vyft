@@ -142,13 +142,19 @@ func (ns NullVariableScope) Value() (driver.Value, error) {
 type Deployment struct {
 	ID            pgtype.UUID        `json:"id"`
 	ProjectID     pgtype.UUID        `json:"project_id"`
-	Seq           int32              `json:"seq"`
+	EnvironmentID pgtype.UUID        `json:"environment_id"`
 	Status        DeploymentStatus   `json:"status"`
-	StatusMessage *string            `json:"status_message"`
-	Payload       []byte             `json:"payload"`
-	Checksum      string             `json:"checksum"`
+	Error         *string            `json:"error"`
 	Created       pgtype.Timestamptz `json:"created"`
 	Applied       pgtype.Timestamptz `json:"applied"`
+	Snapshot      []byte             `json:"snapshot"`
+}
+
+type Environment struct {
+	ID        pgtype.UUID        `json:"id"`
+	ProjectID pgtype.UUID        `json:"project_id"`
+	Slug      string             `json:"slug"`
+	Created   pgtype.Timestamptz `json:"created"`
 }
 
 type Project struct {
@@ -183,30 +189,33 @@ type Resource struct {
 }
 
 type ResourceVariable struct {
-	ProjectID  pgtype.UUID        `json:"project_id"`
-	ResourceID pgtype.UUID        `json:"resource_id"`
-	VariableID pgtype.UUID        `json:"variable_id"`
-	Key        string             `json:"key"`
-	Created    pgtype.Timestamptz `json:"created"`
+	ProjectID     pgtype.UUID        `json:"project_id"`
+	EnvironmentID pgtype.UUID        `json:"environment_id"`
+	ResourceID    pgtype.UUID        `json:"resource_id"`
+	VariableID    pgtype.UUID        `json:"variable_id"`
+	Key           string             `json:"key"`
+	Created       pgtype.Timestamptz `json:"created"`
 }
 
 type Route struct {
-	ID         pgtype.UUID        `json:"id"`
-	ProjectID  pgtype.UUID        `json:"project_id"`
-	ResourceID pgtype.UUID        `json:"resource_id"`
-	Domain     string             `json:"domain"`
-	Path       string             `json:"path"`
-	PathType   RoutePathType      `json:"path_type"`
-	Port       int32              `json:"port"`
-	Tls        bool               `json:"tls"`
-	Config     []byte             `json:"config"`
-	Created    pgtype.Timestamptz `json:"created"`
-	Updated    pgtype.Timestamptz `json:"updated"`
+	ID            pgtype.UUID        `json:"id"`
+	ProjectID     pgtype.UUID        `json:"project_id"`
+	EnvironmentID pgtype.UUID        `json:"environment_id"`
+	ResourceID    pgtype.UUID        `json:"resource_id"`
+	Domain        string             `json:"domain"`
+	Path          string             `json:"path"`
+	PathType      RoutePathType      `json:"path_type"`
+	Port          int32              `json:"port"`
+	Tls           bool               `json:"tls"`
+	Config        []byte             `json:"config"`
+	Created       pgtype.Timestamptz `json:"created"`
+	Updated       pgtype.Timestamptz `json:"updated"`
 }
 
 type Variable struct {
 	ID             pgtype.UUID        `json:"id"`
 	ProjectID      pgtype.UUID        `json:"project_id"`
+	EnvironmentID  pgtype.UUID        `json:"environment_id"`
 	ResourceID     pgtype.UUID        `json:"resource_id"`
 	Scope          *VariableScope     `json:"scope"`
 	Key            string             `json:"key"`

@@ -1,30 +1,33 @@
 import { z } from "zod";
 
+export const DeploymentStatus = z.enum([
+  "pending",
+  "applying",
+  "applied",
+  "failed",
+]);
+
 export const Deployment = z
   .object({
     id: z.uuid(),
     projectId: z.uuid(),
-    checksum: z.string(),
-    status: z.enum(["created", "pending", "applying", "applied", "failed"]),
-    statusMessage: z.string().nullable(),
-    triggeredBy: z.uuid().nullable(),
+    environment: z.string(),
+    status: DeploymentStatus,
+    error: z.string().nullable(),
     createdAt: z.iso.datetime(),
     appliedAt: z.iso.datetime().nullable(),
+    // Canonical reduced shape of the env-scoped state at the time the
+    // deployment was created. Frontend hashes this together with its own
+    // current view (built from the list endpoints) to gate the deploy button.
+    snapshot: z.unknown(),
   })
   .meta({ id: "Deployment" });
 
-export const DeploymentChecksum = z
-  .object({ checksum: z.string().nullable() })
-  .meta({ id: "DeploymentChecksum" });
-
-export const DeploymentLatest = Deployment.pick({
-  checksum: true,
-  status: true,
-  createdAt: true,
-})
-  .nullable()
-  .meta({ id: "DeploymentLatest" });
+export const DeploymentCreate = z
+  .object({
+    environment: z.string().optional(),
+  })
+  .meta({ id: "DeploymentCreate" });
 
 export type Deployment = z.infer<typeof Deployment>;
-export type DeploymentChecksum = z.infer<typeof DeploymentChecksum>;
-export type DeploymentLatest = z.infer<typeof DeploymentLatest>;
+export type DeploymentCreate = z.infer<typeof DeploymentCreate>;

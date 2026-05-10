@@ -1,188 +1,263 @@
-// Package deployment owns business logic for deployments.
+// Package deployment owns the deployment service: REST surface, async
+// goroutine that calls Runtime.Apply, and boot recovery.
 package deployment
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
+	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
-	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
 )
 
+// applyTimeout bounds a single deployment goroutine. Long enough for typical
+// k8s rollouts, short enough to surface stuck applies as `failed`.
+const applyTimeout = 5 * time.Minute
+
 type Service struct {
-	db *db.DB
-	rt Runtime
+	db  *db.DB
+	env *environment.Service
+	rt  Runtime
 }
 
-func New(d *db.DB, rt Runtime) *Service { return &Service{db: d, rt: rt} }
-
-// statusUpdater is the Service-internal StatusUpdater handed to Runtime.Apply.
-// Lives on the Service so it can use the same *db.DB.
-type statusUpdater struct{ db *db.DB }
-
-func (u *statusUpdater) MarkApplying(ctx context.Context, id uuid.UUID) error {
-	_, err := u.db.Q.UpdateDeploymentStatus(ctx, sqlc.UpdateDeploymentStatusParams{
-		ID:            pgxid.PgUUID(id),
-		Status:        sqlc.DeploymentStatusApplying,
-		StatusMessage: nil,
-	})
-	return err
+func New(d *db.DB, env *environment.Service, rt Runtime) *Service {
+	return &Service{db: d, env: env, rt: rt}
 }
 
-func (u *statusUpdater) MarkApplied(ctx context.Context, id uuid.UUID) error {
-	_, err := u.db.Q.MarkDeploymentApplied(ctx, pgxid.PgUUID(id))
-	return err
-}
+// =============================================================================
+// REST surface
+// =============================================================================
 
-func (u *statusUpdater) MarkFailed(ctx context.Context, id uuid.UUID, reason string) error {
-	_, err := u.db.Q.MarkDeploymentFailed(ctx, sqlc.MarkDeploymentFailedParams{
-		ID:            pgxid.PgUUID(id),
-		StatusMessage: &reason,
-	})
-	return err
-}
-
-func (s *Service) Checksum(ctx context.Context, projectID uuid.UUID) (openapi.DeploymentChecksum, error) {
-	rs, err := s.db.Q.ListResourcesByProject(ctx, pgxid.PgUUID(projectID))
-	if err != nil {
-		return openapi.DeploymentChecksum{}, apierr.Internal(err)
-	}
-	if len(rs) == 0 {
-		return openapi.DeploymentChecksum{Checksum: nil}, nil
-	}
-	_, sum, err := s.snapshot(ctx, projectID)
-	if err != nil {
-		return openapi.DeploymentChecksum{}, apierr.Internal(err)
-	}
-	return openapi.DeploymentChecksum{Checksum: &sum}, nil
-}
-
-func (s *Service) Latest(ctx context.Context, projectID uuid.UUID) (*openapi.DeploymentLatest, error) {
-	d, err := s.db.Q.GetLatestDeployment(ctx, pgxid.PgUUID(projectID))
+// Get fetches a single deployment by id.
+func (s *Service) Get(ctx context.Context, id uuid.UUID) (sqlc.Deployment, error) {
+	row, err := s.db.Q.GetDeployment(ctx, pgxid.PgUUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return sqlc.Deployment{}, apierr.NotFound("deployment not found")
 		}
-		return nil, apierr.Internal(err)
+		return sqlc.Deployment{}, apierr.Internal(err)
 	}
-	out := openapi.DeploymentLatest{
-		Checksum:  d.Checksum,
-		Status:    openapi.DeploymentLatestStatus(d.Status),
-		CreatedAt: d.Created.Time,
-	}
-	return &out, nil
+	return row, nil
 }
 
-func (s *Service) Create(ctx context.Context, projectID uuid.UUID) (openapi.Deployment, error) {
-	payload, sum, err := s.snapshot(ctx, projectID)
-	if err != nil {
-		return openapi.Deployment{}, apierr.Internal(err)
+// List returns deployments for a project, optionally filtered by env slug.
+// `envSlug` nil → all envs.
+func (s *Service) List(ctx context.Context, projectID uuid.UUID, envSlug *string, limit, offset int32) ([]sqlc.Deployment, error) {
+	if limit <= 0 {
+		limit = 50
 	}
-	d, err := s.db.Q.CreateDeployment(ctx, sqlc.CreateDeploymentParams{
-		ID:            pgxid.PgUUID(uuid.New()),
-		ProjectID:     pgxid.PgUUID(projectID),
-		Status:        sqlc.DeploymentStatusPending,
-		StatusMessage: nil,
-		Payload:       payload,
-		Checksum:      sum,
+	if envSlug != nil {
+		envRow, err := s.env.GetBySlug(ctx, projectID, *envSlug)
+		if err != nil {
+			return nil, err
+		}
+		rows, err := s.db.Q.ListDeploymentsByProjectEnv(ctx, sqlc.ListDeploymentsByProjectEnvParams{
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: envRow.ID,
+			Limit:         limit,
+			Offset:        offset,
+		})
+		if err != nil {
+			return nil, apierr.Internal(err)
+		}
+		return rows, nil
+	}
+	rows, err := s.db.Q.ListDeploymentsByProject(ctx, sqlc.ListDeploymentsByProjectParams{
+		ProjectID: pgxid.PgUUID(projectID),
+		Limit:     limit,
+		Offset:    offset,
 	})
 	if err != nil {
-		return openapi.Deployment{}, apierr.Internal(err)
+		return nil, apierr.Internal(err)
 	}
-	// Hand off to runtime. Runtime is responsible for transitioning status.
-	depID := uuid.UUID(d.ID.Bytes)
-	s.rt.Apply(ctx, depID, payload, &statusUpdater{db: s.db})
-	return toWire(d), nil
+	return rows, nil
+}
+
+// Create inserts a new deployment row and fires the async runApply goroutine.
+// `envSlug` nil → resolves to the production env.
+func (s *Service) Create(ctx context.Context, projectID uuid.UUID, envSlug *string) (sqlc.Deployment, error) {
+	slug := environment.DefaultSlug
+	if envSlug != nil && *envSlug != "" {
+		slug = *envSlug
+	}
+	envRow, err := s.env.GetBySlug(ctx, projectID, slug)
+	if err != nil {
+		return sqlc.Deployment{}, err
+	}
+	snapshot, err := s.buildSnapshot(ctx, projectID, uuid.UUID(envRow.ID.Bytes))
+	if err != nil {
+		return sqlc.Deployment{}, apierr.Internal(err)
+	}
+	dep, err := s.db.Q.CreateDeployment(ctx, sqlc.CreateDeploymentParams{
+		ID:            pgxid.PgUUID(uuid.New()),
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: envRow.ID,
+		Status:        sqlc.DeploymentStatusPending,
+		Snapshot:      snapshot,
+	})
+	if err != nil {
+		if pgerr.IsUniqueViolation(err) {
+			return sqlc.Deployment{}, apierr.Conflict("deployment already in progress for this environment")
+		}
+		return sqlc.Deployment{}, apierr.Internal(err)
+	}
+	depID := uuid.UUID(dep.ID.Bytes)
+	go s.runApply(depID)
+	return dep, nil
 }
 
 // =============================================================================
-// Snapshot + checksum
+// Async apply
 // =============================================================================
 
-func (s *Service) snapshot(ctx context.Context, projectID uuid.UUID) ([]byte, string, error) {
+// runApply runs a single deployment to completion. Detached from the request
+// context — apply lives past the HTTP response. Bounded by applyTimeout.
+//
+// Re-entrant: spawning a second goroutine for the same depID is harmless;
+// each one runs the full Build → Apply → Prune sequence, and SSA semantics
+// are idempotent. Boot recovery relies on this.
+func (s *Service) runApply(depID uuid.UUID) {
+	ctx, cancel := context.WithTimeout(context.Background(), applyTimeout)
+	defer cancel()
+
+	if _, err := s.db.Q.UpdateDeploymentStatus(ctx, sqlc.UpdateDeploymentStatusParams{
+		ID:     pgxid.PgUUID(depID),
+		Status: sqlc.DeploymentStatusApplying,
+		Error:  nil,
+	}); err != nil {
+		slog.Error("deployment: mark applying", "id", depID, "error", err)
+		return
+	}
+
+	dep, err := s.db.Q.GetDeployment(ctx, pgxid.PgUUID(depID))
+	if err != nil {
+		s.markFailed(ctx, depID, "load deployment: "+err.Error())
+		return
+	}
+	projectID := uuid.UUID(dep.ProjectID.Bytes)
+	envID := uuid.UUID(dep.EnvironmentID.Bytes)
+
+	project, state, envSlug, err := s.loadSnapshot(ctx, projectID, envID)
+	if err != nil {
+		s.markFailed(ctx, depID, "load snapshot: "+err.Error())
+		return
+	}
+
+	if err := s.rt.Apply(ctx, project, envSlug, state); err != nil {
+		s.markFailed(ctx, depID, err.Error())
+		return
+	}
+
+	if _, err := s.db.Q.MarkDeploymentApplied(ctx, pgxid.PgUUID(depID)); err != nil {
+		slog.Error("deployment: mark applied", "id", depID, "error", err)
+		return
+	}
+	slog.Info("deployment applied", "id", depID, "project", project.Slug, "env", envSlug)
+}
+
+func (s *Service) markFailed(ctx context.Context, depID uuid.UUID, reason string) {
+	slog.Error("deployment failed", "id", depID, "reason", reason)
+	bg, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := s.db.Q.MarkDeploymentFailed(bg, sqlc.MarkDeploymentFailedParams{
+		ID:    pgxid.PgUUID(depID),
+		Error: &reason,
+	})
+	if err != nil {
+		slog.Error("deployment: mark failed", "id", depID, "error", err)
+	}
+	_ = ctx
+}
+
+// =============================================================================
+// Snapshot loading
+// =============================================================================
+
+// loadSnapshot pulls project + env-scoped state from the DB and returns the
+// runtime-facing Project + State + env slug.
+func (s *Service) loadSnapshot(ctx context.Context, projectID, envID uuid.UUID) (Project, State, string, error) {
 	pid := pgxid.PgUUID(projectID)
+	eid := pgxid.PgUUID(envID)
+
+	projectRow, err := s.db.Q.GetProject(ctx, pid)
+	if err != nil {
+		return Project{}, State{}, "", err
+	}
+	envRow, err := s.db.Q.GetEnvironment(ctx, eid)
+	if err != nil {
+		return Project{}, State{}, "", err
+	}
 
 	resources, err := s.db.Q.ListResourcesByProject(ctx, pid)
 	if err != nil {
-		return nil, "", apierr.Internal(err)
+		return Project{}, State{}, "", err
 	}
-	routes, err := s.db.Q.ListRoutesByProject(ctx, pid)
+	registries, err := s.db.Q.ListRegistries(ctx)
 	if err != nil {
-		return nil, "", apierr.Internal(err)
+		return Project{}, State{}, "", err
 	}
-	vars, err := s.db.Q.ListVariablesByProject(ctx, pid)
+	routes, err := s.db.Q.ListRoutesByProjectEnv(ctx, sqlc.ListRoutesByProjectEnvParams{
+		ProjectID:     pid,
+		EnvironmentID: eid,
+	})
 	if err != nil {
-		return nil, "", apierr.Internal(err)
+		return Project{}, State{}, "", err
+	}
+	variables, err := s.db.Q.ListVariablesByProjectEnv(ctx, sqlc.ListVariablesByProjectEnvParams{
+		ProjectID:     pid,
+		EnvironmentID: eid,
+	})
+	if err != nil {
+		return Project{}, State{}, "", err
+	}
+	imports, err := s.db.Q.ListResourceImportsByEnv(ctx, sqlc.ListResourceImportsByEnvParams{
+		ProjectID:     pid,
+		EnvironmentID: eid,
+	})
+	if err != nil {
+		return Project{}, State{}, "", err
 	}
 
-	type rRes struct {
-		ID        string          `json:"id"`
-		Name      string          `json:"name"`
-		Kind      string          `json:"kind"`
-		PositionX float64         `json:"positionX"`
-		PositionY float64         `json:"positionY"`
-		Spec      json.RawMessage `json:"spec"`
+	state := State{
+		Resources:         make([]Resource, len(resources)),
+		Registries:        make([]Registry, len(registries)),
+		Routes:            make([]Route, len(routes)),
+		Variables:         make([]Variable, len(variables)),
+		ResourceVariables: make([]ResourceVariable, len(imports)),
 	}
-	type rRoute struct {
-		ID         string          `json:"id"`
-		ResourceID string          `json:"resourceId"`
-		Domain     string          `json:"domain"`
-		Path       string          `json:"path"`
-		PathType   string          `json:"pathType"`
-		Port       int32           `json:"port"`
-		TLS        bool            `json:"tls"`
-		Config     json.RawMessage `json:"config,omitempty"`
-	}
-	type rVar struct {
-		ID         string  `json:"id"`
-		ResourceID string  `json:"resourceId,omitempty"`
-		Key        string  `json:"key"`
-		Value      *string `json:"value,omitempty"`
-		Secret     bool    `json:"secret"`
-	}
-	type rImport struct {
-		ResourceID string `json:"resourceId"`
-		Key        string `json:"key"`
-		VariableID string `json:"variableId"`
-	}
-
-	wireResources := make([]rRes, len(resources))
-	imports := []rImport{}
-	for i, res := range resources {
-		wireResources[i] = rRes{
-			ID:        uuid.UUID(res.ID.Bytes).String(),
-			Name:      res.Name,
-			Kind:      res.Kind,
-			PositionX: res.PositionX,
-			PositionY: res.PositionY,
-			Spec:      res.Spec,
-		}
-		imps, err := s.db.Q.ListResourceImports(ctx, res.ID)
-		if err != nil {
-			return nil, "", apierr.Internal(err)
-		}
-		for _, imp := range imps {
-			imports = append(imports, rImport{
-				ResourceID: uuid.UUID(imp.ResourceID.Bytes).String(),
-				Key:        imp.Key,
-				VariableID: uuid.UUID(imp.VariableID.Bytes).String(),
-			})
+	for i, r := range resources {
+		state.Resources[i] = Resource{
+			ID:        uuid.UUID(r.ID.Bytes),
+			Name:      r.Name,
+			Kind:      r.Kind,
+			Spec:      r.Spec,
+			PositionX: r.PositionX,
+			PositionY: r.PositionY,
 		}
 	}
-	wireRoutes := make([]rRoute, len(routes))
+	for i, r := range registries {
+		// TODO real decryption — current variable code stores plaintext bytes.
+		state.Registries[i] = Registry{
+			ID:       uuid.UUID(r.ID.Bytes),
+			Name:     r.Name,
+			URL:      r.Url,
+			Username: r.Username,
+			Password: string(r.PasswordEncrypted),
+		}
+	}
 	for i, rt := range routes {
-		wireRoutes[i] = rRoute{
-			ID:         uuid.UUID(rt.ID.Bytes).String(),
-			ResourceID: uuid.UUID(rt.ResourceID.Bytes).String(),
+		state.Routes[i] = Route{
+			ID:         uuid.UUID(rt.ID.Bytes),
+			ResourceID: uuid.UUID(rt.ResourceID.Bytes),
 			Domain:     rt.Domain,
 			Path:       rt.Path,
 			PathType:   string(rt.PathType),
@@ -191,32 +266,59 @@ func (s *Service) snapshot(ctx context.Context, projectID uuid.UUID) ([]byte, st
 			Config:     rt.Config,
 		}
 	}
-	wireVars := make([]rVar, len(vars))
-	for i, v := range vars {
+	for i, v := range variables {
 		secret := v.Secret != nil && *v.Secret
-		var val *string
-		if !secret {
-			val = v.Value
+		var value string
+		if secret {
+			value = string(v.ValueEncrypted) // TODO real decryption
+		} else if v.Value != nil {
+			value = *v.Value
 		}
-		wireVars[i] = rVar{
-			ID:         uuid.UUID(v.ID.Bytes).String(),
-			ResourceID: uuid.UUID(v.ResourceID.Bytes).String(),
+		var rid *uuid.UUID
+		if v.ResourceID.Valid {
+			id := uuid.UUID(v.ResourceID.Bytes)
+			rid = &id
+		}
+		state.Variables[i] = Variable{
+			ID:         uuid.UUID(v.ID.Bytes),
+			ResourceID: rid,
 			Key:        v.Key,
-			Value:      val,
+			Value:      value,
 			Secret:     secret,
 		}
 	}
+	for i, imp := range imports {
+		state.ResourceVariables[i] = ResourceVariable{
+			ResourceID: uuid.UUID(imp.ResourceID.Bytes),
+			VariableID: uuid.UUID(imp.VariableID.Bytes),
+			Key:        imp.Key,
+		}
+	}
 
-	payload := map[string]any{
-		"resources": wireResources,
-		"routes":    wireRoutes,
-		"variables": wireVars,
-		"imports":   imports,
+	project := Project{
+		ID:   uuid.UUID(projectRow.ID.Bytes),
+		Slug: projectRow.Slug,
+		Name: projectRow.Name,
 	}
-	bytes, err := json.Marshal(payload)
+	return project, state, envRow.Slug, nil
+}
+
+// =============================================================================
+// Boot recovery
+// =============================================================================
+
+// RecoverActive re-fires goroutines for any deployment row stuck in
+// pending/applying. Idempotent because the goroutine path re-runs the full
+// Apply from scratch and SSA semantics are idempotent.
+func (s *Service) RecoverActive(ctx context.Context) error {
+	rows, err := s.db.Q.ListActiveDeployments(ctx)
 	if err != nil {
-		return nil, "", apierr.Internal(err)
+		return err
 	}
-	hash := sha256.Sum256(bytes)
-	return bytes, hex.EncodeToString(hash[:]), nil
+	for _, row := range rows {
+		id := uuid.UUID(row.ID.Bytes)
+		slog.Info("deployment: recovering active", "id", id, "status", row.Status)
+		go s.runApply(id)
+	}
+	return nil
 }

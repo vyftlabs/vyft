@@ -1,8 +1,11 @@
 package server
 
 import (
+	"context"
+
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/deployment"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/observability"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/project"
@@ -16,6 +19,7 @@ import (
 // the unqualified field name "Handler". Method promotion is unaffected.
 type (
 	projectAPI       = project.Handler
+	environmentAPI   = environment.Handler
 	resourceAPI      = resource.Handler
 	routeAPI         = route.Handler
 	variableAPI      = variable.Handler
@@ -26,6 +30,7 @@ type (
 
 type API struct {
 	*projectAPI
+	*environmentAPI
 	*resourceAPI
 	*routeAPI
 	*variableAPI
@@ -39,15 +44,25 @@ type API struct {
 var _ openapi.StrictServerInterface = (*API)(nil)
 
 // NewAPI requires every handler — forgotten init = compile error, not
-// runtime panic.
-func NewAPI(database *db.DB) *API {
-	return &API{
-		projectAPI:       project.NewHandler(project.New(database)),
-		resourceAPI:      resource.NewHandler(resource.New(database)),
-		routeAPI:         route.NewHandler(route.New(database)),
-		variableAPI:      variable.NewHandler(variable.New(database)),
-		registryAPI:      registry.NewHandler(registry.New(database)),
-		deploymentAPI:    deployment.NewHandler(deployment.New(database, deployment.NewStubRuntime())),
-		observabilityAPI: observability.NewHandler(observability.New()),
+// runtime panic. Returns the deployment service alongside the API so the
+// caller can fire boot recovery before serving requests.
+func NewAPI(database *db.DB, rt deployment.Runtime, cleanup func(ctx context.Context, slug string)) (*API, *deployment.Service) {
+	envSvc := environment.New(database)
+	depSvc := deployment.New(database, envSvc, rt)
+	projectSvc := project.New(database)
+	if cleanup != nil {
+		projectSvc = projectSvc.WithClusterCleanup(func(ctx context.Context, slug string) {
+			cleanup(ctx, slug)
+		})
 	}
+	return &API{
+		projectAPI:       project.NewHandler(projectSvc),
+		environmentAPI:   environment.NewHandler(envSvc),
+		resourceAPI:      resource.NewHandler(resource.New(database, envSvc)),
+		routeAPI:         route.NewHandler(route.New(database, envSvc)),
+		variableAPI:      variable.NewHandler(variable.New(database, envSvc)),
+		registryAPI:      registry.NewHandler(registry.New(database)),
+		deploymentAPI:    deployment.NewHandler(depSvc),
+		observabilityAPI: observability.NewHandler(observability.New()),
+	}, depSvc
 }

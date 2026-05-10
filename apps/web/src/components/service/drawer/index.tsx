@@ -635,7 +635,7 @@ function RoutesSection({
     });
     queryClient.invalidateQueries({ queryKey: ["resources"] });
     queryClient.invalidateQueries({
-      queryKey: api.deployments.checksum(projectId).queryKey,
+      queryKey: api.deployments.list(projectId).queryKey,
     });
   };
 

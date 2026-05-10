@@ -12,72 +12,72 @@ import (
 )
 
 const createDeployment = `-- name: CreateDeployment :one
-INSERT INTO deployments (id, project_id, status, status_message, payload, checksum)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, project_id, seq, status, status_message, payload, checksum, created, applied
+INSERT INTO deployments (id, project_id, environment_id, status, snapshot)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, project_id, environment_id, status, error, created, applied, snapshot
 `
 
 type CreateDeploymentParams struct {
 	ID            pgtype.UUID      `json:"id"`
 	ProjectID     pgtype.UUID      `json:"project_id"`
+	EnvironmentID pgtype.UUID      `json:"environment_id"`
 	Status        DeploymentStatus `json:"status"`
-	StatusMessage *string          `json:"status_message"`
-	Payload       []byte           `json:"payload"`
-	Checksum      string           `json:"checksum"`
+	Snapshot      []byte           `json:"snapshot"`
 }
 
-// seq is NULL on insert; the BEFORE INSERT trigger assigns it under the
-// per-project advisory lock.
 func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentParams) (Deployment, error) {
 	row := q.db.QueryRow(ctx, createDeployment,
 		arg.ID,
 		arg.ProjectID,
+		arg.EnvironmentID,
 		arg.Status,
-		arg.StatusMessage,
-		arg.Payload,
-		arg.Checksum,
+		arg.Snapshot,
 	)
 	var i Deployment
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }
 
 const getActiveDeployment = `-- name: GetActiveDeployment :one
-SELECT id, project_id, seq, status, status_message, payload, checksum, created, applied FROM deployments
- WHERE project_id = $1
+SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments
+ WHERE project_id     = $1
+   AND environment_id = $2
    AND status IN ('pending', 'applying')
 `
 
-// The unique partial index guarantees at most one row.
-func (q *Queries) GetActiveDeployment(ctx context.Context, projectID pgtype.UUID) (Deployment, error) {
-	row := q.db.QueryRow(ctx, getActiveDeployment, projectID)
+type GetActiveDeploymentParams struct {
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+// The unique partial index guarantees at most one row per (project, env).
+func (q *Queries) GetActiveDeployment(ctx context.Context, arg GetActiveDeploymentParams) (Deployment, error) {
+	row := q.db.QueryRow(ctx, getActiveDeployment, arg.ProjectID, arg.EnvironmentID)
 	var i Deployment
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }
 
 const getDeployment = `-- name: GetDeployment :one
-SELECT id, project_id, seq, status, status_message, payload, checksum, created, applied FROM deployments WHERE id = $1
+SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments WHERE id = $1
 `
 
 func (q *Queries) GetDeployment(ctx context.Context, id pgtype.UUID) (Deployment, error) {
@@ -86,45 +86,56 @@ func (q *Queries) GetDeployment(ctx context.Context, id pgtype.UUID) (Deployment
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }
 
-const getLatestDeployment = `-- name: GetLatestDeployment :one
-SELECT id, project_id, seq, status, status_message, payload, checksum, created, applied FROM deployments
- WHERE project_id = $1
- ORDER BY seq DESC
- LIMIT 1
+const listActiveDeployments = `-- name: ListActiveDeployments :many
+SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments
+ WHERE status IN ('pending', 'applying')
+ ORDER BY created
 `
 
-func (q *Queries) GetLatestDeployment(ctx context.Context, projectID pgtype.UUID) (Deployment, error) {
-	row := q.db.QueryRow(ctx, getLatestDeployment, projectID)
-	var i Deployment
-	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.Seq,
-		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
-		&i.Created,
-		&i.Applied,
-	)
-	return i, err
+// Boot recovery: re-fire goroutines for deployments stuck in pending/applying.
+func (q *Queries) ListActiveDeployments(ctx context.Context) ([]Deployment, error) {
+	rows, err := q.db.Query(ctx, listActiveDeployments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deployment
+	for rows.Next() {
+		var i Deployment
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.Status,
+			&i.Error,
+			&i.Created,
+			&i.Applied,
+			&i.Snapshot,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDeploymentsByProject = `-- name: ListDeploymentsByProject :many
-SELECT id, project_id, seq, status, status_message, payload, checksum, created, applied FROM deployments
+SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments
  WHERE project_id = $1
- ORDER BY seq DESC
+ ORDER BY created DESC
  LIMIT $2 OFFSET $3
 `
 
@@ -146,13 +157,61 @@ func (q *Queries) ListDeploymentsByProject(ctx context.Context, arg ListDeployme
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
-			&i.Seq,
+			&i.EnvironmentID,
 			&i.Status,
-			&i.StatusMessage,
-			&i.Payload,
-			&i.Checksum,
+			&i.Error,
 			&i.Created,
 			&i.Applied,
+			&i.Snapshot,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeploymentsByProjectEnv = `-- name: ListDeploymentsByProjectEnv :many
+SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments
+ WHERE project_id     = $1
+   AND environment_id = $2
+ ORDER BY created DESC
+ LIMIT $3 OFFSET $4
+`
+
+type ListDeploymentsByProjectEnvParams struct {
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	Limit         int32       `json:"limit"`
+	Offset        int32       `json:"offset"`
+}
+
+func (q *Queries) ListDeploymentsByProjectEnv(ctx context.Context, arg ListDeploymentsByProjectEnvParams) ([]Deployment, error) {
+	rows, err := q.db.Query(ctx, listDeploymentsByProjectEnv,
+		arg.ProjectID,
+		arg.EnvironmentID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deployment
+	for rows.Next() {
+		var i Deployment
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.Status,
+			&i.Error,
+			&i.Created,
+			&i.Applied,
+			&i.Snapshot,
 		); err != nil {
 			return nil, err
 		}
@@ -166,9 +225,11 @@ func (q *Queries) ListDeploymentsByProject(ctx context.Context, arg ListDeployme
 
 const markDeploymentApplied = `-- name: MarkDeploymentApplied :one
 UPDATE deployments
-   SET status = 'applied', applied = NOW(), status_message = NULL
+   SET status = 'applied',
+       applied = NOW(),
+       error = NULL
  WHERE id = $1
-RETURNING id, project_id, seq, status, status_message, payload, checksum, created, applied
+RETURNING id, project_id, environment_id, status, error, created, applied, snapshot
 `
 
 func (q *Queries) MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error) {
@@ -177,72 +238,71 @@ func (q *Queries) MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (De
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }
 
 const markDeploymentFailed = `-- name: MarkDeploymentFailed :one
 UPDATE deployments
-   SET status = 'failed', status_message = $2
+   SET status = 'failed',
+       error  = $2
  WHERE id = $1
-RETURNING id, project_id, seq, status, status_message, payload, checksum, created, applied
+RETURNING id, project_id, environment_id, status, error, created, applied, snapshot
 `
 
 type MarkDeploymentFailedParams struct {
-	ID            pgtype.UUID `json:"id"`
-	StatusMessage *string     `json:"status_message"`
+	ID    pgtype.UUID `json:"id"`
+	Error *string     `json:"error"`
 }
 
 func (q *Queries) MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error) {
-	row := q.db.QueryRow(ctx, markDeploymentFailed, arg.ID, arg.StatusMessage)
+	row := q.db.QueryRow(ctx, markDeploymentFailed, arg.ID, arg.Error)
 	var i Deployment
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }
 
 const updateDeploymentStatus = `-- name: UpdateDeploymentStatus :one
 UPDATE deployments
-   SET status = $2, status_message = $3
+   SET status = $2,
+       error  = $3
  WHERE id = $1
-RETURNING id, project_id, seq, status, status_message, payload, checksum, created, applied
+RETURNING id, project_id, environment_id, status, error, created, applied, snapshot
 `
 
 type UpdateDeploymentStatusParams struct {
-	ID            pgtype.UUID      `json:"id"`
-	Status        DeploymentStatus `json:"status"`
-	StatusMessage *string          `json:"status_message"`
+	ID     pgtype.UUID      `json:"id"`
+	Status DeploymentStatus `json:"status"`
+	Error  *string          `json:"error"`
 }
 
 func (q *Queries) UpdateDeploymentStatus(ctx context.Context, arg UpdateDeploymentStatusParams) (Deployment, error) {
-	row := q.db.QueryRow(ctx, updateDeploymentStatus, arg.ID, arg.Status, arg.StatusMessage)
+	row := q.db.QueryRow(ctx, updateDeploymentStatus, arg.ID, arg.Status, arg.Error)
 	var i Deployment
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.Seq,
+		&i.EnvironmentID,
 		&i.Status,
-		&i.StatusMessage,
-		&i.Payload,
-		&i.Checksum,
+		&i.Error,
 		&i.Created,
 		&i.Applied,
+		&i.Snapshot,
 	)
 	return i, err
 }

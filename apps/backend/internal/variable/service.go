@@ -2,6 +2,10 @@
 //
 //   - shared variables (project-scoped, identified by id)
 //   - resource env (owned + imported, identified by key per resource)
+//
+// Every read/write is scoped by (project_id, environment_id). v1 callers
+// don't pass env explicitly — the service resolves the production env via
+// the env service helper.
 package variable
 
 import (
@@ -15,6 +19,7 @@ import (
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
@@ -37,18 +42,32 @@ func peekKind(v any) (string, error) {
 	return probe.Kind, nil
 }
 
-type Service struct{ db *db.DB }
+type Service struct {
+	db  *db.DB
+	env *environment.Service
+}
 
-func New(d *db.DB) *Service { return &Service{db: d} }
+func New(d *db.DB, env *environment.Service) *Service { return &Service{db: d, env: env} }
+
+func (s *Service) defaultEnvID(ctx context.Context, projectID uuid.UUID) (uuid.UUID, error) {
+	return s.env.DefaultID(ctx, projectID)
+}
 
 // =============================================================================
 // Project variables (all — shared + owned)
 // =============================================================================
 
-// List returns every variable in the project. Frontend slices by
-// `resourceId` for context-specific views.
+// List returns every variable in the project, scoped to the production env.
+// Frontend slices by `resourceId` for context-specific views.
 func (s *Service) List(ctx context.Context, projectID uuid.UUID) ([]openapi.Variable, error) {
-	rows, err := s.db.Q.ListVariablesByProject(ctx, pgxid.PgUUID(projectID))
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Q.ListVariablesByProjectEnv(ctx, sqlc.ListVariablesByProjectEnvParams{
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
@@ -78,8 +97,12 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 	if body.Key == "" {
 		return openapi.Variable{}, apierr.BadRequest("key required")
 	}
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return openapi.Variable{}, err
+	}
 	secret := body.Secret != nil && *body.Secret
-	v, err := s.createVariable(ctx, pgxid.PgUUID(projectID), pgtype.UUID{}, body.Key, body.Value, secret)
+	v, err := s.createVariable(ctx, pgxid.PgUUID(projectID), pgxid.PgUUID(envID), pgtype.UUID{}, body.Key, body.Value, secret)
 	if err != nil {
 		return openapi.Variable{}, apierr.Wrap(err)
 	}
@@ -109,14 +132,22 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 // =============================================================================
 
 func (s *Service) ListResourceEnv(ctx context.Context, projectID, resourceID uuid.UUID) ([]openapi.ResourceVariable, error) {
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
 	owned, err := s.db.Q.ListOwnedVariables(ctx, sqlc.ListOwnedVariablesParams{
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(resourceID),
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		ResourceID:    pgxid.PgUUID(resourceID),
 	})
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
-	imports, err := s.db.Q.ListResourceImports(ctx, pgxid.PgUUID(resourceID))
+	imports, err := s.db.Q.ListResourceImports(ctx, sqlc.ListResourceImportsParams{
+		ResourceID:    pgxid.PgUUID(resourceID),
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
@@ -141,10 +172,15 @@ func (s *Service) ListResourceEnv(ctx context.Context, projectID, resourceID uui
 }
 
 func (s *Service) GetResourceEnv(ctx context.Context, projectID, resourceID uuid.UUID, key string) (openapi.ResourceVariable, error) {
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return openapi.ResourceVariable{}, err
+	}
 	v, err := s.db.Q.GetOwnedVariableByKey(ctx, sqlc.GetOwnedVariableByKeyParams{
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(resourceID),
-		Key:        key,
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		ResourceID:    pgxid.PgUUID(resourceID),
+		Key:           key,
 	})
 	if err == nil {
 		return wrapOwned(ownedToWire(v))
@@ -153,7 +189,10 @@ func (s *Service) GetResourceEnv(ctx context.Context, projectID, resourceID uuid
 		return openapi.ResourceVariable{}, apierr.Wrap(err)
 	}
 
-	imports, err := s.db.Q.ListResourceImports(ctx, pgxid.PgUUID(resourceID))
+	imports, err := s.db.Q.ListResourceImports(ctx, sqlc.ListResourceImportsParams{
+		ResourceID:    pgxid.PgUUID(resourceID),
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.Wrap(err)
 	}
@@ -167,6 +206,10 @@ func (s *Service) GetResourceEnv(ctx context.Context, projectID, resourceID uuid
 }
 
 func (s *Service) CreateResourceEnv(ctx context.Context, projectID, resourceID uuid.UUID, body openapi.ResourceVariableCreate) (openapi.ResourceVariable, error) {
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return openapi.ResourceVariable{}, err
+	}
 	kind, err := peekKind(body)
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.BadRequest("missing kind discriminator")
@@ -181,7 +224,7 @@ func (s *Service) CreateResourceEnv(ctx context.Context, projectID, resourceID u
 			return openapi.ResourceVariable{}, apierr.BadRequest("key required")
 		}
 		secret := owned.Secret != nil && *owned.Secret
-		v, err := s.createVariable(ctx, pgxid.PgUUID(projectID), pgxid.PgUUID(resourceID), owned.Key, owned.Value, secret)
+		v, err := s.createVariable(ctx, pgxid.PgUUID(projectID), pgxid.PgUUID(envID), pgxid.PgUUID(resourceID), owned.Key, owned.Value, secret)
 		if err != nil {
 			return openapi.ResourceVariable{}, apierr.Wrap(err)
 		}
@@ -193,10 +236,11 @@ func (s *Service) CreateResourceEnv(ctx context.Context, projectID, resourceID u
 			return openapi.ResourceVariable{}, apierr.BadRequest(err.Error())
 		}
 		row, err := s.db.Q.CreateResourceVariable(ctx, sqlc.CreateResourceVariableParams{
-			ProjectID:  pgxid.PgUUID(projectID),
-			ResourceID: pgxid.PgUUID(resourceID),
-			VariableID: pgxid.PgUUID(uuid.UUID(imported.SourceVariableId)),
-			Key:        imported.Key,
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: pgxid.PgUUID(envID),
+			ResourceID:    pgxid.PgUUID(resourceID),
+			VariableID:    pgxid.PgUUID(uuid.UUID(imported.SourceVariableId)),
+			Key:           imported.Key,
 		})
 		if err != nil {
 			if pgerr.IsUniqueViolation(err) {
@@ -214,6 +258,10 @@ func (s *Service) CreateResourceEnv(ctx context.Context, projectID, resourceID u
 }
 
 func (s *Service) UpdateResourceEnv(ctx context.Context, projectID, resourceID uuid.UUID, key string, body openapi.ResourceVariableUpdate) (openapi.ResourceVariable, error) {
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return openapi.ResourceVariable{}, err
+	}
 	kind, err := peekKind(body)
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.BadRequest("missing kind discriminator")
@@ -224,9 +272,10 @@ func (s *Service) UpdateResourceEnv(ctx context.Context, projectID, resourceID u
 			return openapi.ResourceVariable{}, apierr.BadRequest(err.Error())
 		}
 		v, err := s.db.Q.GetOwnedVariableByKey(ctx, sqlc.GetOwnedVariableByKeyParams{
-			ProjectID:  pgxid.PgUUID(projectID),
-			ResourceID: pgxid.PgUUID(resourceID),
-			Key:        key,
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: pgxid.PgUUID(envID),
+			ResourceID:    pgxid.PgUUID(resourceID),
+			Key:           key,
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -241,12 +290,15 @@ func (s *Service) UpdateResourceEnv(ctx context.Context, projectID, resourceID u
 		return wrapOwned(ownedToWire(updated))
 	}
 
-	// imported: composite PK (resource_id, key). Rename or repoint = drop+recreate.
+	// imported: composite PK (resource_id, env_id, key). Rename or repoint = drop+recreate.
 	imported, err := body.AsResourceVariableUpdate1()
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.BadRequest(err.Error())
 	}
-	imports, err := s.db.Q.ListResourceImports(ctx, pgxid.PgUUID(resourceID))
+	imports, err := s.db.Q.ListResourceImports(ctx, sqlc.ListResourceImportsParams{
+		ResourceID:    pgxid.PgUUID(resourceID),
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.Wrap(err)
 	}
@@ -271,16 +323,18 @@ func (s *Service) UpdateResourceEnv(ctx context.Context, projectID, resourceID u
 	}
 
 	if err := s.db.Q.DeleteResourceVariable(ctx, sqlc.DeleteResourceVariableParams{
-		ResourceID: pgxid.PgUUID(resourceID),
-		Key:        key,
+		ResourceID:    pgxid.PgUUID(resourceID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		Key:           key,
 	}); err != nil {
 		return openapi.ResourceVariable{}, apierr.Wrap(err)
 	}
 	row, err := s.db.Q.CreateResourceVariable(ctx, sqlc.CreateResourceVariableParams{
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(resourceID),
-		VariableID: newSrcID,
-		Key:        newKey,
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		ResourceID:    pgxid.PgUUID(resourceID),
+		VariableID:    newSrcID,
+		Key:           newKey,
 	})
 	if err != nil {
 		return openapi.ResourceVariable{}, apierr.Wrap(err)
@@ -290,10 +344,15 @@ func (s *Service) UpdateResourceEnv(ctx context.Context, projectID, resourceID u
 }
 
 func (s *Service) DeleteResourceEnv(ctx context.Context, projectID, resourceID uuid.UUID, key string) error {
+	envID, err := s.defaultEnvID(ctx, projectID)
+	if err != nil {
+		return err
+	}
 	v, err := s.db.Q.GetOwnedVariableByKey(ctx, sqlc.GetOwnedVariableByKeyParams{
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(resourceID),
-		Key:        key,
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		ResourceID:    pgxid.PgUUID(resourceID),
+		Key:           key,
 	})
 	if err == nil {
 		// FK on resource_variables.variable_id is ON DELETE CASCADE; any
@@ -308,8 +367,9 @@ func (s *Service) DeleteResourceEnv(ctx context.Context, projectID, resourceID u
 	}
 
 	if err := s.db.Q.DeleteResourceVariable(ctx, sqlc.DeleteResourceVariableParams{
-		ResourceID: pgxid.PgUUID(resourceID),
-		Key:        key,
+		ResourceID:    pgxid.PgUUID(resourceID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		Key:           key,
 	}); err != nil {
 		return apierr.Internal(err)
 	}
@@ -355,7 +415,7 @@ func (s *Service) sourceFor(ctx context.Context, variableID pgtype.UUID) (*opena
 
 func (s *Service) createVariable(
 	ctx context.Context,
-	projectID, resourceID pgtype.UUID,
+	projectID, envID, resourceID pgtype.UUID,
 	key string,
 	value *string,
 	secret bool,
@@ -368,6 +428,7 @@ func (s *Service) createVariable(
 		v, err := s.db.Q.CreateSecretVariable(ctx, sqlc.CreateSecretVariableParams{
 			ID:             pgxid.PgUUID(uuid.New()),
 			ProjectID:      projectID,
+			EnvironmentID:  envID,
 			ResourceID:     resourceID,
 			Key:            key,
 			ValueEncrypted: ciphertext,
@@ -375,11 +436,12 @@ func (s *Service) createVariable(
 		return v, mapPgError(err)
 	}
 	v, err := s.db.Q.CreatePlainVariable(ctx, sqlc.CreatePlainVariableParams{
-		ID:         pgxid.PgUUID(uuid.New()),
-		ProjectID:  projectID,
-		ResourceID: resourceID,
-		Key:        key,
-		Value:      value,
+		ID:            pgxid.PgUUID(uuid.New()),
+		ProjectID:     projectID,
+		EnvironmentID: envID,
+		ResourceID:    resourceID,
+		Key:           key,
+		Value:         value,
 	})
 	return v, mapPgError(err)
 }

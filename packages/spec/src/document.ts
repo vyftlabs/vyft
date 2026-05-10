@@ -1,5 +1,6 @@
 import { createDocument } from "zod-openapi";
 import { deploymentPaths } from "./paths/deployments.ts";
+import { environmentPaths } from "./paths/environments.ts";
 import { observabilityPaths } from "./paths/observability.ts";
 import { projectPaths } from "./paths/projects.ts";
 import { registryPaths } from "./paths/registries.ts";
@@ -18,6 +19,7 @@ export const document = createDocument({
   servers: [{ url: "/api", description: "Default" }],
   tags: [
     { name: "Projects" },
+    { name: "Environments" },
     { name: "Resources" },
     { name: "Variables" },
     { name: "Routes" },
@@ -27,6 +29,7 @@ export const document = createDocument({
   ],
   paths: {
     ...projectPaths,
+    ...environmentPaths,
     ...resourcePaths,
     ...variablePaths,
     ...routePaths,

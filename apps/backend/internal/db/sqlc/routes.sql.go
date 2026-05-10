@@ -12,27 +12,29 @@ import (
 )
 
 const createRoute = `-- name: CreateRoute :one
-INSERT INTO routes (id, project_id, resource_id, domain, path, path_type, port, tls, config)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated
+INSERT INTO routes (id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated
 `
 
 type CreateRouteParams struct {
-	ID         pgtype.UUID   `json:"id"`
-	ProjectID  pgtype.UUID   `json:"project_id"`
-	ResourceID pgtype.UUID   `json:"resource_id"`
-	Domain     string        `json:"domain"`
-	Path       string        `json:"path"`
-	PathType   RoutePathType `json:"path_type"`
-	Port       int32         `json:"port"`
-	Tls        bool          `json:"tls"`
-	Config     []byte        `json:"config"`
+	ID            pgtype.UUID   `json:"id"`
+	ProjectID     pgtype.UUID   `json:"project_id"`
+	EnvironmentID pgtype.UUID   `json:"environment_id"`
+	ResourceID    pgtype.UUID   `json:"resource_id"`
+	Domain        string        `json:"domain"`
+	Path          string        `json:"path"`
+	PathType      RoutePathType `json:"path_type"`
+	Port          int32         `json:"port"`
+	Tls           bool          `json:"tls"`
+	Config        []byte        `json:"config"`
 }
 
 func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Route, error) {
 	row := q.db.QueryRow(ctx, createRoute,
 		arg.ID,
 		arg.ProjectID,
+		arg.EnvironmentID,
 		arg.ResourceID,
 		arg.Domain,
 		arg.Path,
@@ -45,6 +47,7 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Route
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Domain,
 		&i.Path,
@@ -68,7 +71,7 @@ func (q *Queries) DeleteRoute(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getRoute = `-- name: GetRoute :one
-SELECT id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE id = $1
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE id = $1
 `
 
 func (q *Queries) GetRoute(ctx context.Context, id pgtype.UUID) (Route, error) {
@@ -77,6 +80,7 @@ func (q *Queries) GetRoute(ctx context.Context, id pgtype.UUID) (Route, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Domain,
 		&i.Path,
@@ -91,7 +95,7 @@ func (q *Queries) GetRoute(ctx context.Context, id pgtype.UUID) (Route, error) {
 }
 
 const listRoutesByProject = `-- name: ListRoutesByProject :many
-SELECT id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE project_id = $1 ORDER BY domain, path
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE project_id = $1 ORDER BY domain, path
 `
 
 func (q *Queries) ListRoutesByProject(ctx context.Context, projectID pgtype.UUID) ([]Route, error) {
@@ -106,6 +110,51 @@ func (q *Queries) ListRoutesByProject(ctx context.Context, projectID pgtype.UUID
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.ResourceID,
+			&i.Domain,
+			&i.Path,
+			&i.PathType,
+			&i.Port,
+			&i.Tls,
+			&i.Config,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoutesByProjectEnv = `-- name: ListRoutesByProjectEnv :many
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes
+ WHERE project_id = $1 AND environment_id = $2
+ ORDER BY domain, path
+`
+
+type ListRoutesByProjectEnvParams struct {
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+func (q *Queries) ListRoutesByProjectEnv(ctx context.Context, arg ListRoutesByProjectEnvParams) ([]Route, error) {
+	rows, err := q.db.Query(ctx, listRoutesByProjectEnv, arg.ProjectID, arg.EnvironmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Route
+	for rows.Next() {
+		var i Route
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.Domain,
 			&i.Path,
@@ -127,7 +176,7 @@ func (q *Queries) ListRoutesByProject(ctx context.Context, projectID pgtype.UUID
 }
 
 const listRoutesByResource = `-- name: ListRoutesByResource :many
-SELECT id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE resource_id = $1 ORDER BY domain, path
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes WHERE resource_id = $1 ORDER BY domain, path
 `
 
 func (q *Queries) ListRoutesByResource(ctx context.Context, resourceID pgtype.UUID) ([]Route, error) {
@@ -142,6 +191,51 @@ func (q *Queries) ListRoutesByResource(ctx context.Context, resourceID pgtype.UU
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.ResourceID,
+			&i.Domain,
+			&i.Path,
+			&i.PathType,
+			&i.Port,
+			&i.Tls,
+			&i.Config,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoutesByResourceEnv = `-- name: ListRoutesByResourceEnv :many
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes
+ WHERE resource_id = $1 AND environment_id = $2
+ ORDER BY domain, path
+`
+
+type ListRoutesByResourceEnvParams struct {
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+func (q *Queries) ListRoutesByResourceEnv(ctx context.Context, arg ListRoutesByResourceEnvParams) ([]Route, error) {
+	rows, err := q.db.Query(ctx, listRoutesByResourceEnv, arg.ResourceID, arg.EnvironmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Route
+	for rows.Next() {
+		var i Route
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.Domain,
 			&i.Path,
@@ -163,22 +257,23 @@ func (q *Queries) ListRoutesByResource(ctx context.Context, resourceID pgtype.UU
 }
 
 const lookupRoute = `-- name: LookupRoute :one
-SELECT id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes
- WHERE domain = $1 AND path = $2 AND path_type = $3
+SELECT id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated FROM routes
+ WHERE environment_id = $1 AND domain = $2 AND path = $3
 `
 
 type LookupRouteParams struct {
-	Domain   string        `json:"domain"`
-	Path     string        `json:"path"`
-	PathType RoutePathType `json:"path_type"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	Domain        string      `json:"domain"`
+	Path          string      `json:"path"`
 }
 
 func (q *Queries) LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error) {
-	row := q.db.QueryRow(ctx, lookupRoute, arg.Domain, arg.Path, arg.PathType)
+	row := q.db.QueryRow(ctx, lookupRoute, arg.EnvironmentID, arg.Domain, arg.Path)
 	var i Route
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Domain,
 		&i.Path,
@@ -201,7 +296,7 @@ UPDATE routes
        tls       = $6,
        config    = $7
  WHERE id = $1
-RETURNING id, project_id, resource_id, domain, path, path_type, port, tls, config, created, updated
+RETURNING id, project_id, environment_id, resource_id, domain, path, path_type, port, tls, config, created, updated
 `
 
 type UpdateRouteParams struct {
@@ -228,6 +323,7 @@ func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) (Route
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Domain,
 		&i.Path,

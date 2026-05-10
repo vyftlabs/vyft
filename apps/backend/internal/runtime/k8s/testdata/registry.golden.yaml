@@ -1,0 +1,69 @@
+Deployments:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    name: api
+    namespace: ""
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        vyft.dev/project: demo
+        vyft.dev/resource: api
+    template:
+      metadata:
+        labels:
+          vyft.dev/project: demo
+          vyft.dev/resource: api
+      spec:
+        containers:
+        - image: myreg.io/api:1.0
+          name: api
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+        imagePullSecrets:
+        - name: vyft-registry-myreg
+Ingresses: null
+PVCs: null
+Secrets:
+- apiVersion: v1
+  data:
+    .dockerconfigjson: eyJhdXRocyI6eyJteXJlZy5pbyI6eyJhdXRoIjoiZFRwdyIsInBhc3N3b3JkIjoicCIsInVzZXJuYW1lIjoidSJ9fX0=
+  kind: Secret
+  metadata:
+    labels:
+      vyft.dev/project: demo
+    name: vyft-registry-myreg
+    namespace: ""
+  type: kubernetes.io/dockerconfigjson
+Services:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    name: api
+    namespace: ""
+  spec:
+    ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+    selector:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    type: ClusterIP

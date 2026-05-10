@@ -2,44 +2,36 @@ package deployment
 
 import (
 	"context"
-	"log/slog"
-	"time"
-
-	"github.com/google/uuid"
+	"sync"
 )
 
-// StubRuntime is an in-memory dev/test runtime. Simulates an apply by
-// transitioning pending → applying → applied over a couple of seconds.
+// StubRuntime records Apply calls in-memory. Used by deployment-service
+// tests to assert what the service handed off, without spinning up k8s.
 type StubRuntime struct {
-	// applyDelay is the simulated time spent in `applying`. Configurable for
-	// tests; defaults to 2s.
-	applyDelay time.Duration
+	mu    sync.Mutex
+	Calls []StubCall
+	// Err, when set, is returned from every Apply.
+	Err error
 }
 
-func NewStubRuntime() *StubRuntime {
-	return &StubRuntime{applyDelay: 2 * time.Second}
+type StubCall struct {
+	Project Project
+	Env     string
+	State   State
 }
 
-func (r *StubRuntime) Apply(
-	ctx context.Context,
-	deploymentID uuid.UUID,
-	_ []byte,
-	su StatusUpdater,
-) {
-	// Detach from request ctx — apply lives past the HTTP response. Bound to
-	// the process lifetime; SIGTERM cancels via cmd/backend signal handler in
-	// future. For now: best-effort, lost on restart.
-	go func() {
-		bg := context.Background()
-		if err := su.MarkApplying(bg, deploymentID); err != nil {
-			slog.Error("stub runtime: mark applying", "id", deploymentID, "error", err)
-			return
-		}
-		time.Sleep(r.applyDelay)
-		if err := su.MarkApplied(bg, deploymentID); err != nil {
-			slog.Error("stub runtime: mark applied", "id", deploymentID, "error", err)
-			return
-		}
-		slog.Info("stub runtime: deployment applied", "id", deploymentID)
-	}()
+func NewStubRuntime() *StubRuntime { return &StubRuntime{} }
+
+func (r *StubRuntime) Apply(_ context.Context, p Project, env string, s State) error {
+	r.mu.Lock()
+	r.Calls = append(r.Calls, StubCall{Project: p, Env: env, State: s})
+	err := r.Err
+	r.mu.Unlock()
+	return err
+}
+
+func (r *StubRuntime) CallCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.Calls)
 }

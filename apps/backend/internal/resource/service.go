@@ -15,6 +15,7 @@ import (
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
@@ -29,18 +30,28 @@ type ResourceWithRoutes struct {
 	Routes []sqlc.Route
 }
 
-type Service struct{ db *db.DB }
+type Service struct {
+	db  *db.DB
+	env *environment.Service
+}
 
-func New(d *db.DB) *Service { return &Service{db: d} }
+func New(d *db.DB, env *environment.Service) *Service { return &Service{db: d, env: env} }
 
 func (s *Service) ListByProject(ctx context.Context, projectID uuid.UUID) ([]ResourceWithRoutes, error) {
+	envID, err := s.env.DefaultID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.db.Q.ListResourcesByProject(ctx, pgxid.PgUUID(projectID))
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
 	out := make([]ResourceWithRoutes, 0, len(rows))
 	for _, r := range rows {
-		routes, err := s.db.Q.ListRoutesByResource(ctx, r.ID)
+		routes, err := s.db.Q.ListRoutesByResourceEnv(ctx, sqlc.ListRoutesByResourceEnvParams{
+			ResourceID:    r.ID,
+			EnvironmentID: pgxid.PgUUID(envID),
+		})
 		if err != nil {
 			return nil, apierr.Internal(err)
 		}
@@ -57,7 +68,14 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (ResourceWithRoutes, er
 		}
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}
-	routes, err := s.db.Q.ListRoutesByResource(ctx, row.ID)
+	envID, err := s.env.DefaultID(ctx, uuid.UUID(row.ProjectID.Bytes))
+	if err != nil {
+		return ResourceWithRoutes{}, err
+	}
+	routes, err := s.db.Q.ListRoutesByResourceEnv(ctx, sqlc.ListRoutesByResourceEnvParams{
+		ResourceID:    row.ID,
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}
@@ -88,6 +106,11 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 		return ResourceWithRoutes{}, apierr.BadRequest("invalid spec: " + err.Error())
 	}
 
+	envID, err := s.env.DefaultID(ctx, projectID)
+	if err != nil {
+		return ResourceWithRoutes{}, err
+	}
+
 	resourceID := uuid.New()
 	var row sqlc.Resource
 	err = s.db.WithTx(ctx, func(q *sqlc.Queries) error {
@@ -105,13 +128,13 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 			return txErr
 		}
 		for _, rawRoute := range rawRoutes {
-			if err := persistEmbeddedRoute(ctx, q, projectID, resourceID, rawRoute); err != nil {
+			if err := persistEmbeddedRoute(ctx, q, projectID, envID, resourceID, rawRoute); err != nil {
 				return err
 			}
 		}
 		if body.Variables != nil {
 			for _, v := range *body.Variables {
-				if err := persistEmbeddedVariable(ctx, q, projectID, resourceID, v); err != nil {
+				if err := persistEmbeddedVariable(ctx, q, projectID, envID, resourceID, v); err != nil {
 					return err
 				}
 			}
@@ -125,7 +148,14 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}
 
-	routes, err := s.db.Q.ListRoutesByResource(ctx, row.ID)
+	envIDCreate, err := s.env.DefaultID(ctx, uuid.UUID(row.ProjectID.Bytes))
+	if err != nil {
+		return ResourceWithRoutes{}, err
+	}
+	routes, err := s.db.Q.ListRoutesByResourceEnv(ctx, sqlc.ListRoutesByResourceEnvParams{
+		ResourceID:    row.ID,
+		EnvironmentID: pgxid.PgUUID(envIDCreate),
+	})
 	if err != nil {
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}
@@ -141,10 +171,10 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.Resourc
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}
 
-	name := current.Name
-	if body.Name != nil {
-		name = *body.Name
+	if body.Name != nil && *body.Name != current.Name {
+		return ResourceWithRoutes{}, apierr.Conflict("resource name is immutable")
 	}
+	name := current.Name
 	kind := current.Kind
 	specBytes := current.Spec
 	if body.Config != nil {
@@ -200,7 +230,14 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.Resourc
 		row, _ = s.db.Q.GetResource(ctx, pgxid.PgUUID(id))
 	}
 
-	routes, err := s.db.Q.ListRoutesByResource(ctx, row.ID)
+	envID, err := s.env.DefaultID(ctx, uuid.UUID(row.ProjectID.Bytes))
+	if err != nil {
+		return ResourceWithRoutes{}, err
+	}
+	routes, err := s.db.Q.ListRoutesByResourceEnv(ctx, sqlc.ListRoutesByResourceEnvParams{
+		ResourceID:    row.ID,
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return ResourceWithRoutes{}, apierr.Internal(err)
 	}

@@ -21,52 +21,22 @@ import (
 
 // Defines values for DeploymentStatus.
 const (
-	DeploymentStatusApplied  DeploymentStatus = "applied"
-	DeploymentStatusApplying DeploymentStatus = "applying"
-	DeploymentStatusCreated  DeploymentStatus = "created"
-	DeploymentStatusFailed   DeploymentStatus = "failed"
-	DeploymentStatusPending  DeploymentStatus = "pending"
+	Applied  DeploymentStatus = "applied"
+	Applying DeploymentStatus = "applying"
+	Failed   DeploymentStatus = "failed"
+	Pending  DeploymentStatus = "pending"
 )
 
 // Valid indicates whether the value is a known member of the DeploymentStatus enum.
 func (e DeploymentStatus) Valid() bool {
 	switch e {
-	case DeploymentStatusApplied:
+	case Applied:
 		return true
-	case DeploymentStatusApplying:
+	case Applying:
 		return true
-	case DeploymentStatusCreated:
+	case Failed:
 		return true
-	case DeploymentStatusFailed:
-		return true
-	case DeploymentStatusPending:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeploymentLatestStatus.
-const (
-	DeploymentLatestStatusApplied  DeploymentLatestStatus = "applied"
-	DeploymentLatestStatusApplying DeploymentLatestStatus = "applying"
-	DeploymentLatestStatusCreated  DeploymentLatestStatus = "created"
-	DeploymentLatestStatusFailed   DeploymentLatestStatus = "failed"
-	DeploymentLatestStatusPending  DeploymentLatestStatus = "pending"
-)
-
-// Valid indicates whether the value is a known member of the DeploymentLatestStatus enum.
-func (e DeploymentLatestStatus) Valid() bool {
-	switch e {
-	case DeploymentLatestStatusApplied:
-		return true
-	case DeploymentLatestStatusApplying:
-		return true
-	case DeploymentLatestStatusCreated:
-		return true
-	case DeploymentLatestStatusFailed:
-		return true
-	case DeploymentLatestStatusPending:
+	case Pending:
 		return true
 	default:
 		return false
@@ -538,33 +508,23 @@ type AppSpecUpdate struct {
 
 // Deployment defines model for Deployment.
 type Deployment struct {
-	AppliedAt     *time.Time          `json:"appliedAt"`
-	Checksum      string              `json:"checksum"`
-	CreatedAt     time.Time           `json:"createdAt"`
-	Id            openapi_types.UUID  `json:"id"`
-	ProjectId     openapi_types.UUID  `json:"projectId"`
-	Status        DeploymentStatus    `json:"status"`
-	StatusMessage *string             `json:"statusMessage"`
-	TriggeredBy   *openapi_types.UUID `json:"triggeredBy"`
+	AppliedAt   *time.Time         `json:"appliedAt"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Environment string             `json:"environment"`
+	Error       *string            `json:"error"`
+	Id          openapi_types.UUID `json:"id"`
+	ProjectId   openapi_types.UUID `json:"projectId"`
+	Snapshot    interface{}        `json:"snapshot"`
+	Status      DeploymentStatus   `json:"status"`
 }
 
 // DeploymentStatus defines model for Deployment.Status.
 type DeploymentStatus string
 
-// DeploymentChecksum defines model for DeploymentChecksum.
-type DeploymentChecksum struct {
-	Checksum *string `json:"checksum"`
+// DeploymentCreate defines model for DeploymentCreate.
+type DeploymentCreate struct {
+	Environment *string `json:"environment,omitempty"`
 }
-
-// DeploymentLatest defines model for DeploymentLatest.
-type DeploymentLatest struct {
-	Checksum  string                 `json:"checksum"`
-	CreatedAt time.Time              `json:"createdAt"`
-	Status    DeploymentLatestStatus `json:"status"`
-}
-
-// DeploymentLatestStatus defines model for DeploymentLatest.Status.
-type DeploymentLatestStatus string
 
 // Disk Persistent disk attached to a resource. `size` is megabytes.
 type Disk struct {
@@ -579,6 +539,19 @@ type DiskCreate struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Size int    `json:"size"`
+}
+
+// Environment defines model for Environment.
+type Environment struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+	ProjectId openapi_types.UUID `json:"projectId"`
+	Slug      string             `json:"slug"`
+}
+
+// EnvironmentCreate defines model for EnvironmentCreate.
+type EnvironmentCreate struct {
+	Slug string `json:"slug"`
 }
 
 // Error defines model for Error.
@@ -1099,6 +1072,13 @@ type ListProjectsParamsSort string
 // ListProjectsParamsOrder defines parameters for ListProjects.
 type ListProjectsParamsOrder string
 
+// ListDeploymentsParams defines parameters for ListDeployments.
+type ListDeploymentsParams struct {
+	Environment *string `form:"environment,omitempty" json:"environment,omitempty"`
+	Limit       *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset      *int    `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListResourceLogsParams defines parameters for ListResourceLogs.
 type ListResourceLogsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1109,6 +1089,12 @@ type CreateProjectJSONRequestBody = ProjectCreate
 
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = ProjectUpdate
+
+// CreateDeploymentJSONRequestBody defines body for CreateDeployment for application/json ContentType.
+type CreateDeploymentJSONRequestBody = DeploymentCreate
+
+// CreateEnvironmentJSONRequestBody defines body for CreateEnvironment for application/json ContentType.
+type CreateEnvironmentJSONRequestBody = EnvironmentCreate
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = ResourceCreate
@@ -1703,15 +1689,27 @@ type ServerInterface interface {
 	// Update project
 	// (PATCH /projects/{id})
 	UpdateProject(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// List deployments
+	// (GET /projects/{projectId}/deployments)
+	ListDeployments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params ListDeploymentsParams)
 	// Trigger deployment
 	// (POST /projects/{projectId}/deployments)
 	CreateDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
-	// Current snapshot checksum
-	// (GET /projects/{projectId}/deployments/checksum)
-	GetDeploymentChecksum(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
-	// Latest non-failed deployment
-	// (GET /projects/{projectId}/deployments/latest)
-	GetLatestDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	// Get deployment
+	// (GET /projects/{projectId}/deployments/{id})
+	GetDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID)
+	// List environments
+	// (GET /projects/{projectId}/environments)
+	ListEnvironments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	// Create environment
+	// (POST /projects/{projectId}/environments)
+	CreateEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	// Delete environment
+	// (DELETE /projects/{projectId}/environments/{id})
+	DeleteEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID)
+	// Get environment
+	// (GET /projects/{projectId}/environments/{id})
+	GetEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID)
 	// List resources in project
 	// (GET /projects/{projectId}/resources)
 	ListResources(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
@@ -1939,6 +1937,74 @@ func (siw *ServerInterfaceWrapper) UpdateProject(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// ListDeployments operation middleware
+func (siw *ServerInterfaceWrapper) ListDeployments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDeploymentsParams
+
+	// ------------- Optional query parameter "environment" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "environment", r.URL.Query(), &params.Environment, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "environment"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "environment", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDeployments(w, r, projectId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateDeployment operation middleware
 func (siw *ServerInterfaceWrapper) CreateDeployment(w http.ResponseWriter, r *http.Request) {
 
@@ -1965,8 +2031,8 @@ func (siw *ServerInterfaceWrapper) CreateDeployment(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
-// GetDeploymentChecksum operation middleware
-func (siw *ServerInterfaceWrapper) GetDeploymentChecksum(w http.ResponseWriter, r *http.Request) {
+// GetDeployment operation middleware
+func (siw *ServerInterfaceWrapper) GetDeployment(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -1980,8 +2046,17 @@ func (siw *ServerInterfaceWrapper) GetDeploymentChecksum(w http.ResponseWriter, 
 		return
 	}
 
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDeploymentChecksum(w, r, projectId)
+		siw.Handler.GetDeployment(w, r, projectId, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1991,8 +2066,8 @@ func (siw *ServerInterfaceWrapper) GetDeploymentChecksum(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
-// GetLatestDeployment operation middleware
-func (siw *ServerInterfaceWrapper) GetLatestDeployment(w http.ResponseWriter, r *http.Request) {
+// ListEnvironments operation middleware
+func (siw *ServerInterfaceWrapper) ListEnvironments(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -2007,7 +2082,103 @@ func (siw *ServerInterfaceWrapper) GetLatestDeployment(w http.ResponseWriter, r 
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetLatestDeployment(w, r, projectId)
+		siw.Handler.ListEnvironments(w, r, projectId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateEnvironment operation middleware
+func (siw *ServerInterfaceWrapper) CreateEnvironment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateEnvironment(w, r, projectId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteEnvironment operation middleware
+func (siw *ServerInterfaceWrapper) DeleteEnvironment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteEnvironment(w, r, projectId, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetEnvironment operation middleware
+func (siw *ServerInterfaceWrapper) GetEnvironment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetEnvironment(w, r, projectId, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2990,9 +3161,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{id}", wrapper.DeleteProject)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{id}", wrapper.GetProject)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/projects/{id}", wrapper.UpdateProject)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/deployments", wrapper.ListDeployments)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/deployments", wrapper.CreateDeployment)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/deployments/checksum", wrapper.GetDeploymentChecksum)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/deployments/latest", wrapper.GetLatestDeployment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/deployments/{id}", wrapper.GetDeployment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/environments", wrapper.ListEnvironments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/environments", wrapper.CreateEnvironment)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{projectId}/environments/{id}", wrapper.DeleteEnvironment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/environments/{id}", wrapper.GetEnvironment)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/resources", wrapper.CreateResource)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.DeleteResource)
@@ -3450,24 +3625,104 @@ func (response UpdateProject409JSONResponse) VisitUpdateProjectResponse(w http.R
 	return err
 }
 
-type CreateDeploymentRequestObject struct {
+type ListDeploymentsRequestObject struct {
 	ProjectId openapi_types.UUID `json:"projectId"`
+	Params    ListDeploymentsParams
 }
 
-type CreateDeploymentResponseObject interface {
-	VisitCreateDeploymentResponse(w http.ResponseWriter) error
+type ListDeploymentsResponseObject interface {
+	VisitListDeploymentsResponse(w http.ResponseWriter) error
 }
 
-type CreateDeployment201JSONResponse Deployment
+type ListDeployments200JSONResponse []Deployment
 
-func (response CreateDeployment201JSONResponse) VisitCreateDeploymentResponse(w http.ResponseWriter) error {
+func (response ListDeployments200JSONResponse) VisitListDeploymentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDeployments400JSONResponse Error
+
+func (response ListDeployments400JSONResponse) VisitListDeploymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDeployments401JSONResponse Error
+
+func (response ListDeployments401JSONResponse) VisitListDeploymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDeployments403JSONResponse Error
+
+func (response ListDeployments403JSONResponse) VisitListDeploymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDeployments409JSONResponse Error
+
+func (response ListDeployments409JSONResponse) VisitListDeploymentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateDeploymentRequestObject struct {
+	ProjectId openapi_types.UUID `json:"projectId"`
+	Body      *CreateDeploymentJSONRequestBody
+}
+
+type CreateDeploymentResponseObject interface {
+	VisitCreateDeploymentResponse(w http.ResponseWriter) error
+}
+
+type CreateDeployment202JSONResponse Deployment
+
+func (response CreateDeployment202JSONResponse) VisitCreateDeploymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3528,17 +3783,18 @@ func (response CreateDeployment409JSONResponse) VisitCreateDeploymentResponse(w 
 	return err
 }
 
-type GetDeploymentChecksumRequestObject struct {
+type GetDeploymentRequestObject struct {
 	ProjectId openapi_types.UUID `json:"projectId"`
+	Id        openapi_types.UUID `json:"id"`
 }
 
-type GetDeploymentChecksumResponseObject interface {
-	VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error
+type GetDeploymentResponseObject interface {
+	VisitGetDeploymentResponse(w http.ResponseWriter) error
 }
 
-type GetDeploymentChecksum200JSONResponse DeploymentChecksum
+type GetDeployment200JSONResponse Deployment
 
-func (response GetDeploymentChecksum200JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment200JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3550,9 +3806,9 @@ func (response GetDeploymentChecksum200JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetDeploymentChecksum400JSONResponse Error
+type GetDeployment400JSONResponse Error
 
-func (response GetDeploymentChecksum400JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment400JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3564,9 +3820,9 @@ func (response GetDeploymentChecksum400JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetDeploymentChecksum401JSONResponse Error
+type GetDeployment401JSONResponse Error
 
-func (response GetDeploymentChecksum401JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment401JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3578,9 +3834,9 @@ func (response GetDeploymentChecksum401JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetDeploymentChecksum403JSONResponse Error
+type GetDeployment403JSONResponse Error
 
-func (response GetDeploymentChecksum403JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment403JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3592,9 +3848,9 @@ func (response GetDeploymentChecksum403JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetDeploymentChecksum404JSONResponse Error
+type GetDeployment404JSONResponse Error
 
-func (response GetDeploymentChecksum404JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment404JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3606,9 +3862,9 @@ func (response GetDeploymentChecksum404JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetDeploymentChecksum409JSONResponse Error
+type GetDeployment409JSONResponse Error
 
-func (response GetDeploymentChecksum409JSONResponse) VisitGetDeploymentChecksumResponse(w http.ResponseWriter) error {
+func (response GetDeployment409JSONResponse) VisitGetDeploymentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3620,17 +3876,17 @@ func (response GetDeploymentChecksum409JSONResponse) VisitGetDeploymentChecksumR
 	return err
 }
 
-type GetLatestDeploymentRequestObject struct {
+type ListEnvironmentsRequestObject struct {
 	ProjectId openapi_types.UUID `json:"projectId"`
 }
 
-type GetLatestDeploymentResponseObject interface {
-	VisitGetLatestDeploymentResponse(w http.ResponseWriter) error
+type ListEnvironmentsResponseObject interface {
+	VisitListEnvironmentsResponse(w http.ResponseWriter) error
 }
 
-type GetLatestDeployment200JSONResponse DeploymentLatest
+type ListEnvironments200JSONResponse []Environment
 
-func (response GetLatestDeployment200JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response ListEnvironments200JSONResponse) VisitListEnvironmentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3642,9 +3898,9 @@ func (response GetLatestDeployment200JSONResponse) VisitGetLatestDeploymentRespo
 	return err
 }
 
-type GetLatestDeployment400JSONResponse Error
+type ListEnvironments400JSONResponse Error
 
-func (response GetLatestDeployment400JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response ListEnvironments400JSONResponse) VisitListEnvironmentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3656,9 +3912,9 @@ func (response GetLatestDeployment400JSONResponse) VisitGetLatestDeploymentRespo
 	return err
 }
 
-type GetLatestDeployment401JSONResponse Error
+type ListEnvironments401JSONResponse Error
 
-func (response GetLatestDeployment401JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response ListEnvironments401JSONResponse) VisitListEnvironmentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3670,9 +3926,9 @@ func (response GetLatestDeployment401JSONResponse) VisitGetLatestDeploymentRespo
 	return err
 }
 
-type GetLatestDeployment403JSONResponse Error
+type ListEnvironments403JSONResponse Error
 
-func (response GetLatestDeployment403JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response ListEnvironments403JSONResponse) VisitListEnvironmentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3684,9 +3940,161 @@ func (response GetLatestDeployment403JSONResponse) VisitGetLatestDeploymentRespo
 	return err
 }
 
-type GetLatestDeployment404JSONResponse Error
+type ListEnvironments409JSONResponse Error
 
-func (response GetLatestDeployment404JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response ListEnvironments409JSONResponse) VisitListEnvironmentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEnvironmentRequestObject struct {
+	ProjectId openapi_types.UUID `json:"projectId"`
+	Body      *CreateEnvironmentJSONRequestBody
+}
+
+type CreateEnvironmentResponseObject interface {
+	VisitCreateEnvironmentResponse(w http.ResponseWriter) error
+}
+
+type CreateEnvironment201JSONResponse Environment
+
+func (response CreateEnvironment201JSONResponse) VisitCreateEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEnvironment400JSONResponse Error
+
+func (response CreateEnvironment400JSONResponse) VisitCreateEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEnvironment401JSONResponse Error
+
+func (response CreateEnvironment401JSONResponse) VisitCreateEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEnvironment403JSONResponse Error
+
+func (response CreateEnvironment403JSONResponse) VisitCreateEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEnvironment409JSONResponse Error
+
+func (response CreateEnvironment409JSONResponse) VisitCreateEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEnvironmentRequestObject struct {
+	ProjectId openapi_types.UUID `json:"projectId"`
+	Id        openapi_types.UUID `json:"id"`
+}
+
+type DeleteEnvironmentResponseObject interface {
+	VisitDeleteEnvironmentResponse(w http.ResponseWriter) error
+}
+
+type DeleteEnvironment204Response struct {
+}
+
+func (response DeleteEnvironment204Response) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteEnvironment400JSONResponse Error
+
+func (response DeleteEnvironment400JSONResponse) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEnvironment401JSONResponse Error
+
+func (response DeleteEnvironment401JSONResponse) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEnvironment403JSONResponse Error
+
+func (response DeleteEnvironment403JSONResponse) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEnvironment404JSONResponse Error
+
+func (response DeleteEnvironment404JSONResponse) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3698,9 +4106,102 @@ func (response GetLatestDeployment404JSONResponse) VisitGetLatestDeploymentRespo
 	return err
 }
 
-type GetLatestDeployment409JSONResponse Error
+type DeleteEnvironment409JSONResponse Error
 
-func (response GetLatestDeployment409JSONResponse) VisitGetLatestDeploymentResponse(w http.ResponseWriter) error {
+func (response DeleteEnvironment409JSONResponse) VisitDeleteEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironmentRequestObject struct {
+	ProjectId openapi_types.UUID `json:"projectId"`
+	Id        openapi_types.UUID `json:"id"`
+}
+
+type GetEnvironmentResponseObject interface {
+	VisitGetEnvironmentResponse(w http.ResponseWriter) error
+}
+
+type GetEnvironment200JSONResponse Environment
+
+func (response GetEnvironment200JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironment400JSONResponse Error
+
+func (response GetEnvironment400JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironment401JSONResponse Error
+
+func (response GetEnvironment401JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironment403JSONResponse Error
+
+func (response GetEnvironment403JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironment404JSONResponse Error
+
+func (response GetEnvironment404JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEnvironment409JSONResponse Error
+
+func (response GetEnvironment409JSONResponse) VisitGetEnvironmentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -5961,15 +6462,27 @@ type StrictServerInterface interface {
 	// Update project
 	// (PATCH /projects/{id})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
+	// List deployments
+	// (GET /projects/{projectId}/deployments)
+	ListDeployments(ctx context.Context, request ListDeploymentsRequestObject) (ListDeploymentsResponseObject, error)
 	// Trigger deployment
 	// (POST /projects/{projectId}/deployments)
 	CreateDeployment(ctx context.Context, request CreateDeploymentRequestObject) (CreateDeploymentResponseObject, error)
-	// Current snapshot checksum
-	// (GET /projects/{projectId}/deployments/checksum)
-	GetDeploymentChecksum(ctx context.Context, request GetDeploymentChecksumRequestObject) (GetDeploymentChecksumResponseObject, error)
-	// Latest non-failed deployment
-	// (GET /projects/{projectId}/deployments/latest)
-	GetLatestDeployment(ctx context.Context, request GetLatestDeploymentRequestObject) (GetLatestDeploymentResponseObject, error)
+	// Get deployment
+	// (GET /projects/{projectId}/deployments/{id})
+	GetDeployment(ctx context.Context, request GetDeploymentRequestObject) (GetDeploymentResponseObject, error)
+	// List environments
+	// (GET /projects/{projectId}/environments)
+	ListEnvironments(ctx context.Context, request ListEnvironmentsRequestObject) (ListEnvironmentsResponseObject, error)
+	// Create environment
+	// (POST /projects/{projectId}/environments)
+	CreateEnvironment(ctx context.Context, request CreateEnvironmentRequestObject) (CreateEnvironmentResponseObject, error)
+	// Delete environment
+	// (DELETE /projects/{projectId}/environments/{id})
+	DeleteEnvironment(ctx context.Context, request DeleteEnvironmentRequestObject) (DeleteEnvironmentResponseObject, error)
+	// Get environment
+	// (GET /projects/{projectId}/environments/{id})
+	GetEnvironment(ctx context.Context, request GetEnvironmentRequestObject) (GetEnvironmentResponseObject, error)
 	// List resources in project
 	// (GET /projects/{projectId}/resources)
 	ListResources(ctx context.Context, request ListResourcesRequestObject) (ListResourcesResponseObject, error)
@@ -6227,11 +6740,48 @@ func (sh *strictHandler) UpdateProject(w http.ResponseWriter, r *http.Request, i
 	}
 }
 
+// ListDeployments operation middleware
+func (sh *strictHandler) ListDeployments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params ListDeploymentsParams) {
+	var request ListDeploymentsRequestObject
+
+	request.ProjectId = projectId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDeployments(ctx, request.(ListDeploymentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDeployments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDeploymentsResponseObject); ok {
+		if err := validResponse.VisitListDeploymentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateDeployment operation middleware
 func (sh *strictHandler) CreateDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
 	var request CreateDeploymentRequestObject
 
 	request.ProjectId = projectId
+
+	var body CreateDeploymentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.CreateDeployment(ctx, request.(CreateDeploymentRequestObject))
@@ -6253,25 +6803,26 @@ func (sh *strictHandler) CreateDeployment(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// GetDeploymentChecksum operation middleware
-func (sh *strictHandler) GetDeploymentChecksum(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
-	var request GetDeploymentChecksumRequestObject
+// GetDeployment operation middleware
+func (sh *strictHandler) GetDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID) {
+	var request GetDeploymentRequestObject
 
 	request.ProjectId = projectId
+	request.Id = id
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDeploymentChecksum(ctx, request.(GetDeploymentChecksumRequestObject))
+		return sh.ssi.GetDeployment(ctx, request.(GetDeploymentRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDeploymentChecksum")
+		handler = middleware(handler, "GetDeployment")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetDeploymentChecksumResponseObject); ok {
-		if err := validResponse.VisitGetDeploymentChecksumResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetDeploymentResponseObject); ok {
+		if err := validResponse.VisitGetDeploymentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -6279,25 +6830,115 @@ func (sh *strictHandler) GetDeploymentChecksum(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// GetLatestDeployment operation middleware
-func (sh *strictHandler) GetLatestDeployment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
-	var request GetLatestDeploymentRequestObject
+// ListEnvironments operation middleware
+func (sh *strictHandler) ListEnvironments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+	var request ListEnvironmentsRequestObject
 
 	request.ProjectId = projectId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetLatestDeployment(ctx, request.(GetLatestDeploymentRequestObject))
+		return sh.ssi.ListEnvironments(ctx, request.(ListEnvironmentsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetLatestDeployment")
+		handler = middleware(handler, "ListEnvironments")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetLatestDeploymentResponseObject); ok {
-		if err := validResponse.VisitGetLatestDeploymentResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListEnvironmentsResponseObject); ok {
+		if err := validResponse.VisitListEnvironmentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateEnvironment operation middleware
+func (sh *strictHandler) CreateEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID) {
+	var request CreateEnvironmentRequestObject
+
+	request.ProjectId = projectId
+
+	var body CreateEnvironmentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateEnvironment(ctx, request.(CreateEnvironmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateEnvironment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateEnvironmentResponseObject); ok {
+		if err := validResponse.VisitCreateEnvironmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteEnvironment operation middleware
+func (sh *strictHandler) DeleteEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID) {
+	var request DeleteEnvironmentRequestObject
+
+	request.ProjectId = projectId
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteEnvironment(ctx, request.(DeleteEnvironmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteEnvironment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteEnvironmentResponseObject); ok {
+		if err := validResponse.VisitDeleteEnvironmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetEnvironment operation middleware
+func (sh *strictHandler) GetEnvironment(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID) {
+	var request GetEnvironmentRequestObject
+
+	request.ProjectId = projectId
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetEnvironment(ctx, request.(GetEnvironmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetEnvironment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetEnvironmentResponseObject); ok {
+		if err := validResponse.VisitGetEnvironmentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

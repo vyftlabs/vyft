@@ -12,23 +12,25 @@ import (
 )
 
 const createPlainVariable = `-- name: CreatePlainVariable :one
-INSERT INTO variables (id, project_id, resource_id, key, value)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
+INSERT INTO variables (id, project_id, environment_id, resource_id, key, value)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
 `
 
 type CreatePlainVariableParams struct {
-	ID         pgtype.UUID `json:"id"`
-	ProjectID  pgtype.UUID `json:"project_id"`
-	ResourceID pgtype.UUID `json:"resource_id"`
-	Key        string      `json:"key"`
-	Value      *string     `json:"value"`
+	ID            pgtype.UUID `json:"id"`
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	Key           string      `json:"key"`
+	Value         *string     `json:"value"`
 }
 
 func (q *Queries) CreatePlainVariable(ctx context.Context, arg CreatePlainVariableParams) (Variable, error) {
 	row := q.db.QueryRow(ctx, createPlainVariable,
 		arg.ID,
 		arg.ProjectID,
+		arg.EnvironmentID,
 		arg.ResourceID,
 		arg.Key,
 		arg.Value,
@@ -37,6 +39,7 @@ func (q *Queries) CreatePlainVariable(ctx context.Context, arg CreatePlainVariab
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -50,14 +53,15 @@ func (q *Queries) CreatePlainVariable(ctx context.Context, arg CreatePlainVariab
 }
 
 const createSecretVariable = `-- name: CreateSecretVariable :one
-INSERT INTO variables (id, project_id, resource_id, key, value_encrypted)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
+INSERT INTO variables (id, project_id, environment_id, resource_id, key, value_encrypted)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
 `
 
 type CreateSecretVariableParams struct {
 	ID             pgtype.UUID `json:"id"`
 	ProjectID      pgtype.UUID `json:"project_id"`
+	EnvironmentID  pgtype.UUID `json:"environment_id"`
 	ResourceID     pgtype.UUID `json:"resource_id"`
 	Key            string      `json:"key"`
 	ValueEncrypted []byte      `json:"value_encrypted"`
@@ -67,6 +71,7 @@ func (q *Queries) CreateSecretVariable(ctx context.Context, arg CreateSecretVari
 	row := q.db.QueryRow(ctx, createSecretVariable,
 		arg.ID,
 		arg.ProjectID,
+		arg.EnvironmentID,
 		arg.ResourceID,
 		arg.Key,
 		arg.ValueEncrypted,
@@ -75,6 +80,7 @@ func (q *Queries) CreateSecretVariable(ctx context.Context, arg CreateSecretVari
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -97,22 +103,32 @@ func (q *Queries) DeleteVariable(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getOwnedVariableByKey = `-- name: GetOwnedVariableByKey :one
-SELECT id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables
- WHERE project_id = $1 AND resource_id = $2 AND key = $3
+SELECT id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables
+ WHERE project_id     = $1
+   AND environment_id = $2
+   AND resource_id    = $3
+   AND key            = $4
 `
 
 type GetOwnedVariableByKeyParams struct {
-	ProjectID  pgtype.UUID `json:"project_id"`
-	ResourceID pgtype.UUID `json:"resource_id"`
-	Key        string      `json:"key"`
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	Key           string      `json:"key"`
 }
 
 func (q *Queries) GetOwnedVariableByKey(ctx context.Context, arg GetOwnedVariableByKeyParams) (Variable, error) {
-	row := q.db.QueryRow(ctx, getOwnedVariableByKey, arg.ProjectID, arg.ResourceID, arg.Key)
+	row := q.db.QueryRow(ctx, getOwnedVariableByKey,
+		arg.ProjectID,
+		arg.EnvironmentID,
+		arg.ResourceID,
+		arg.Key,
+	)
 	var i Variable
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -126,7 +142,7 @@ func (q *Queries) GetOwnedVariableByKey(ctx context.Context, arg GetOwnedVariabl
 }
 
 const getVariable = `-- name: GetVariable :one
-SELECT id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables WHERE id = $1
+SELECT id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables WHERE id = $1
 `
 
 func (q *Queries) GetVariable(ctx context.Context, id pgtype.UUID) (Variable, error) {
@@ -135,6 +151,7 @@ func (q *Queries) GetVariable(ctx context.Context, id pgtype.UUID) (Variable, er
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -148,18 +165,19 @@ func (q *Queries) GetVariable(ctx context.Context, id pgtype.UUID) (Variable, er
 }
 
 const listOwnedVariables = `-- name: ListOwnedVariables :many
-SELECT id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables
- WHERE project_id = $1 AND resource_id = $2
+SELECT id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables
+ WHERE project_id = $1 AND environment_id = $2 AND resource_id = $3
  ORDER BY key
 `
 
 type ListOwnedVariablesParams struct {
-	ProjectID  pgtype.UUID `json:"project_id"`
-	ResourceID pgtype.UUID `json:"resource_id"`
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	ResourceID    pgtype.UUID `json:"resource_id"`
 }
 
 func (q *Queries) ListOwnedVariables(ctx context.Context, arg ListOwnedVariablesParams) ([]Variable, error) {
-	rows, err := q.db.Query(ctx, listOwnedVariables, arg.ProjectID, arg.ResourceID)
+	rows, err := q.db.Query(ctx, listOwnedVariables, arg.ProjectID, arg.EnvironmentID, arg.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +188,7 @@ func (q *Queries) ListOwnedVariables(ctx context.Context, arg ListOwnedVariables
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.Scope,
 			&i.Key,
@@ -190,7 +209,7 @@ func (q *Queries) ListOwnedVariables(ctx context.Context, arg ListOwnedVariables
 }
 
 const listVariablesByProject = `-- name: ListVariablesByProject :many
-SELECT id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables WHERE project_id = $1 ORDER BY scope, key
+SELECT id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables WHERE project_id = $1 ORDER BY scope, key
 `
 
 func (q *Queries) ListVariablesByProject(ctx context.Context, projectID pgtype.UUID) ([]Variable, error) {
@@ -205,6 +224,50 @@ func (q *Queries) ListVariablesByProject(ctx context.Context, projectID pgtype.U
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.ResourceID,
+			&i.Scope,
+			&i.Key,
+			&i.Value,
+			&i.ValueEncrypted,
+			&i.Secret,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVariablesByProjectEnv = `-- name: ListVariablesByProjectEnv :many
+SELECT id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated FROM variables
+ WHERE project_id = $1 AND environment_id = $2
+ ORDER BY scope, key
+`
+
+type ListVariablesByProjectEnvParams struct {
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+func (q *Queries) ListVariablesByProjectEnv(ctx context.Context, arg ListVariablesByProjectEnvParams) ([]Variable, error) {
+	rows, err := q.db.Query(ctx, listVariablesByProjectEnv, arg.ProjectID, arg.EnvironmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Variable
+	for rows.Next() {
+		var i Variable
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.Scope,
 			&i.Key,
@@ -228,7 +291,7 @@ const updatePlainVariableValue = `-- name: UpdatePlainVariableValue :one
 UPDATE variables
    SET value = $2, value_encrypted = NULL
  WHERE id = $1
-RETURNING id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
+RETURNING id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
 `
 
 type UpdatePlainVariableValueParams struct {
@@ -242,6 +305,7 @@ func (q *Queries) UpdatePlainVariableValue(ctx context.Context, arg UpdatePlainV
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -258,7 +322,7 @@ const updateSecretVariableValue = `-- name: UpdateSecretVariableValue :one
 UPDATE variables
    SET value_encrypted = $2, value = NULL
  WHERE id = $1
-RETURNING id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
+RETURNING id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
 `
 
 type UpdateSecretVariableValueParams struct {
@@ -272,6 +336,7 @@ func (q *Queries) UpdateSecretVariableValue(ctx context.Context, arg UpdateSecre
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,
@@ -285,7 +350,7 @@ func (q *Queries) UpdateSecretVariableValue(ctx context.Context, arg UpdateSecre
 }
 
 const updateVariableKey = `-- name: UpdateVariableKey :one
-UPDATE variables SET key = $2 WHERE id = $1 RETURNING id, project_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
+UPDATE variables SET key = $2 WHERE id = $1 RETURNING id, project_id, environment_id, resource_id, scope, key, value, value_encrypted, secret, created, updated
 `
 
 type UpdateVariableKeyParams struct {
@@ -299,6 +364,7 @@ func (q *Queries) UpdateVariableKey(ctx context.Context, arg UpdateVariableKeyPa
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.Scope,
 		&i.Key,

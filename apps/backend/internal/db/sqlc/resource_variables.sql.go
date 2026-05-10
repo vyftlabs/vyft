@@ -12,21 +12,23 @@ import (
 )
 
 const createResourceVariable = `-- name: CreateResourceVariable :one
-INSERT INTO resource_variables (project_id, resource_id, variable_id, key)
-VALUES ($1, $2, $3, $4)
-RETURNING project_id, resource_id, variable_id, key, created
+INSERT INTO resource_variables (project_id, environment_id, resource_id, variable_id, key)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING project_id, environment_id, resource_id, variable_id, key, created
 `
 
 type CreateResourceVariableParams struct {
-	ProjectID  pgtype.UUID `json:"project_id"`
-	ResourceID pgtype.UUID `json:"resource_id"`
-	VariableID pgtype.UUID `json:"variable_id"`
-	Key        string      `json:"key"`
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	VariableID    pgtype.UUID `json:"variable_id"`
+	Key           string      `json:"key"`
 }
 
 func (q *Queries) CreateResourceVariable(ctx context.Context, arg CreateResourceVariableParams) (ResourceVariable, error) {
 	row := q.db.QueryRow(ctx, createResourceVariable,
 		arg.ProjectID,
+		arg.EnvironmentID,
 		arg.ResourceID,
 		arg.VariableID,
 		arg.Key,
@@ -34,6 +36,7 @@ func (q *Queries) CreateResourceVariable(ctx context.Context, arg CreateResource
 	var i ResourceVariable
 	err := row.Scan(
 		&i.ProjectID,
+		&i.EnvironmentID,
 		&i.ResourceID,
 		&i.VariableID,
 		&i.Key,
@@ -53,21 +56,24 @@ func (q *Queries) DeleteAllResourceVariables(ctx context.Context, resourceID pgt
 
 const deleteResourceVariable = `-- name: DeleteResourceVariable :exec
 DELETE FROM resource_variables
- WHERE resource_id = $1 AND key = $2
+ WHERE resource_id    = $1
+   AND environment_id = $2
+   AND key            = $3
 `
 
 type DeleteResourceVariableParams struct {
-	ResourceID pgtype.UUID `json:"resource_id"`
-	Key        string      `json:"key"`
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+	Key           string      `json:"key"`
 }
 
 func (q *Queries) DeleteResourceVariable(ctx context.Context, arg DeleteResourceVariableParams) error {
-	_, err := q.db.Exec(ctx, deleteResourceVariable, arg.ResourceID, arg.Key)
+	_, err := q.db.Exec(ctx, deleteResourceVariable, arg.ResourceID, arg.EnvironmentID, arg.Key)
 	return err
 }
 
 const listImportsOfVariable = `-- name: ListImportsOfVariable :many
-SELECT project_id, resource_id, variable_id, key, created FROM resource_variables
+SELECT project_id, environment_id, resource_id, variable_id, key, created FROM resource_variables
  WHERE variable_id = $1
  ORDER BY resource_id, key
 `
@@ -83,6 +89,7 @@ func (q *Queries) ListImportsOfVariable(ctx context.Context, variableID pgtype.U
 		var i ResourceVariable
 		if err := rows.Scan(
 			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.VariableID,
 			&i.Key,
@@ -99,13 +106,18 @@ func (q *Queries) ListImportsOfVariable(ctx context.Context, variableID pgtype.U
 }
 
 const listResourceImports = `-- name: ListResourceImports :many
-SELECT project_id, resource_id, variable_id, key, created FROM resource_variables
- WHERE resource_id = $1
+SELECT project_id, environment_id, resource_id, variable_id, key, created FROM resource_variables
+ WHERE resource_id = $1 AND environment_id = $2
  ORDER BY key
 `
 
-func (q *Queries) ListResourceImports(ctx context.Context, resourceID pgtype.UUID) ([]ResourceVariable, error) {
-	rows, err := q.db.Query(ctx, listResourceImports, resourceID)
+type ListResourceImportsParams struct {
+	ResourceID    pgtype.UUID `json:"resource_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+func (q *Queries) ListResourceImports(ctx context.Context, arg ListResourceImportsParams) ([]ResourceVariable, error) {
+	rows, err := q.db.Query(ctx, listResourceImports, arg.ResourceID, arg.EnvironmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +127,45 @@ func (q *Queries) ListResourceImports(ctx context.Context, resourceID pgtype.UUI
 		var i ResourceVariable
 		if err := rows.Scan(
 			&i.ProjectID,
+			&i.EnvironmentID,
+			&i.ResourceID,
+			&i.VariableID,
+			&i.Key,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceImportsByEnv = `-- name: ListResourceImportsByEnv :many
+SELECT project_id, environment_id, resource_id, variable_id, key, created FROM resource_variables
+ WHERE project_id = $1 AND environment_id = $2
+ ORDER BY resource_id, key
+`
+
+type ListResourceImportsByEnvParams struct {
+	ProjectID     pgtype.UUID `json:"project_id"`
+	EnvironmentID pgtype.UUID `json:"environment_id"`
+}
+
+func (q *Queries) ListResourceImportsByEnv(ctx context.Context, arg ListResourceImportsByEnvParams) ([]ResourceVariable, error) {
+	rows, err := q.db.Query(ctx, listResourceImportsByEnv, arg.ProjectID, arg.EnvironmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourceVariable
+	for rows.Next() {
+		var i ResourceVariable
+		if err := rows.Scan(
+			&i.ProjectID,
+			&i.EnvironmentID,
 			&i.ResourceID,
 			&i.VariableID,
 			&i.Key,

@@ -1,4 +1,6 @@
-// Package route owns business logic for HTTP routes.
+// Package route owns business logic for HTTP routes. Routes are env-scoped:
+// every read/write resolves the production env via environment.Service for
+// v1 callers that don't pass env explicitly.
 package route
 
 import (
@@ -11,18 +13,29 @@ import (
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
 )
 
-type Service struct{ db *db.DB }
+type Service struct {
+	db  *db.DB
+	env *environment.Service
+}
 
-func New(d *db.DB) *Service { return &Service{db: d} }
+func New(d *db.DB, env *environment.Service) *Service { return &Service{db: d, env: env} }
 
 func (s *Service) ListByProject(ctx context.Context, projectID uuid.UUID) ([]sqlc.Route, error) {
-	rows, err := s.db.Q.ListRoutesByProject(ctx, pgxid.PgUUID(projectID))
+	envID, err := s.env.DefaultID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Q.ListRoutesByProjectEnv(ctx, sqlc.ListRoutesByProjectEnvParams{
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+	})
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
@@ -41,6 +54,10 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (sqlc.Route, error) {
 }
 
 func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.RouteCreate) (sqlc.Route, error) {
+	envID, err := s.env.DefaultID(ctx, projectID)
+	if err != nil {
+		return sqlc.Route{}, err
+	}
 	pathType := sqlc.RoutePathType(body.PathType)
 	if pathType == "" {
 		pathType = sqlc.RoutePathTypePrefix
@@ -55,19 +72,20 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 	}
 
 	row, err := s.db.Q.CreateRoute(ctx, sqlc.CreateRouteParams{
-		ID:         pgxid.PgUUID(uuid.New()),
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(uuid.UUID(body.ResourceId)),
-		Domain:     body.Domain,
-		Path:       body.Path,
-		PathType:   pathType,
-		Port:       int32(body.Port),
-		Tls:        body.Tls,
-		Config:     cfg,
+		ID:            pgxid.PgUUID(uuid.New()),
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(envID),
+		ResourceID:    pgxid.PgUUID(uuid.UUID(body.ResourceId)),
+		Domain:        body.Domain,
+		Path:          body.Path,
+		PathType:      pathType,
+		Port:          int32(body.Port),
+		Tls:           body.Tls,
+		Config:        cfg,
 	})
 	if err != nil {
 		if pgerr.IsUniqueViolation(err) {
-			return sqlc.Route{}, apierr.Conflict("route (domain, path, pathType) already exists")
+			return sqlc.Route{}, apierr.Conflict("route (domain, path) already exists in this environment")
 		}
 		if pgerr.IsForeignKeyViolation(err) {
 			return sqlc.Route{}, apierr.BadRequest("resource does not belong to project")
@@ -126,7 +144,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.RouteUp
 	})
 	if err != nil {
 		if pgerr.IsUniqueViolation(err) {
-			return sqlc.Route{}, apierr.Conflict("route (domain, path, pathType) already exists")
+			return sqlc.Route{}, apierr.Conflict("route (domain, path) already exists in this environment")
 		}
 		return sqlc.Route{}, apierr.Internal(err)
 	}

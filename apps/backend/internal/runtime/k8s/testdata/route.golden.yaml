@@ -1,0 +1,81 @@
+Deployments:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    name: api
+    namespace: ""
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        vyft.dev/project: demo
+        vyft.dev/resource: api
+    template:
+      metadata:
+        labels:
+          vyft.dev/project: demo
+          vyft.dev/resource: api
+      spec:
+        containers:
+        - image: n:1
+          name: api
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+Ingresses:
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    name: api-bcd10f73
+    namespace: ""
+  spec:
+    rules:
+    - host: api.example.com
+      http:
+        paths:
+        - backend:
+            service:
+              name: api
+              port:
+                number: 8080
+          path: /
+          pathType: Prefix
+    tls:
+    - hosts:
+      - api.example.com
+      secretName: api-tls
+PVCs: null
+Secrets: null
+Services:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    name: api
+    namespace: ""
+  spec:
+    ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+    selector:
+      vyft.dev/project: demo
+      vyft.dev/resource: api
+    type: ClusterIP

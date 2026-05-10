@@ -14,27 +14,69 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import * as api from "@/lib/api";
+import {
+  buildSnapshot,
+  canonicalStringify,
+  snapshotHash,
+} from "@/lib/deploy/snapshot";
 
 function DeployButton({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
 
-  const { data: current } = useQuery({
-    ...api.deployments.checksum(projectId),
-    staleTime: 0,
-  });
-  const { data: latest } = useQuery({
-    ...api.deployments.latest(projectId),
+  // Latest deployment = first item of the list (ordered created DESC by API).
+  // Poll while pending/applying so the spinner clears as soon as the row settles.
+  const { data: deployments } = useQuery({
+    ...api.deployments.list(projectId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
+      const status = query.state.data?.[0]?.status;
       if (status === "pending" || status === "applying") return 1000;
       return false;
     },
   });
+  const latest = deployments?.[0];
+
+  // Build the current-view snapshot from cached query data and compare its
+  // hash to the snapshot stored on the latest deployment row. Mismatch =
+  // changes pending → show button.
+  const { data: resources = [] } = useQuery(api.resources.list(projectId));
+  const { data: routes = [] } = useQuery(api.routes.list(projectId));
+  const { data: variables = [] } = useQuery(
+    api.variables.project.list(projectId),
+  );
+
+  // Default hidden. The async compare flips it on if hashes differ.
+  const [hasChanges, setHasChanges] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const current = buildSnapshot({ resources, routes, variables });
+      const currentHash = await snapshotHash(current);
+      const deployedHash = latest?.snapshot
+        ? await snapshotHash(latest.snapshot)
+        : null;
+      if (cancelled) return;
+      setHasChanges(deployedHash == null || deployedHash !== currentHash);
+      if (
+        import.meta.env.DEV &&
+        deployedHash != null &&
+        deployedHash !== currentHash
+      ) {
+        // Diagnostic for hash mismatches. Drop once gating is stable.
+        console.debug("[deploy] hash mismatch", {
+          currentHash,
+          deployedHash,
+          current: canonicalStringify(current),
+          deployed: canonicalStringify(latest?.snapshot),
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resources, routes, variables, latest?.snapshot]);
 
   const isDeploying =
     latest?.status === "pending" || latest?.status === "applying";
-  const hasChanges =
-    current?.checksum && (!latest || latest.checksum !== current.checksum);
   const wasDeploying = React.useRef(false);
 
   const deploy = useMutation(api.deployments.create);
@@ -44,15 +86,14 @@ function DeployButton({ projectId }: { projectId: string }) {
       wasDeploying.current = true;
     } else if (wasDeploying.current && latest) {
       wasDeploying.current = false;
-      if (latest.status === "applied") {
-        queryClient.invalidateQueries({
-          queryKey: api.deployments.checksum(projectId).queryKey,
-        });
-      } else if (latest.status === "failed") {
-        toast.error("Deployment failed");
+      if (latest.status === "failed") {
+        toast.error(latest.error ?? "Deployment failed");
       }
+      queryClient.invalidateQueries({
+        queryKey: api.deployments.list(projectId).queryKey,
+      });
     }
-  }, [latest?.status, queryClient, projectId, isDeploying, latest]);
+  }, [latest?.status, latest, queryClient, projectId, isDeploying]);
 
   if (!hasChanges && !isDeploying) return null;
 

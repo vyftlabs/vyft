@@ -42,7 +42,7 @@ type embeddedRoute struct {
 	Config   json.RawMessage `json:"config,omitempty"`
 }
 
-func persistEmbeddedRoute(ctx context.Context, q *sqlc.Queries, projectID, resourceID uuid.UUID, raw json.RawMessage) error {
+func persistEmbeddedRoute(ctx context.Context, q *sqlc.Queries, projectID, environmentID, resourceID uuid.UUID, raw json.RawMessage) error {
 	var er embeddedRoute
 	if err := json.Unmarshal(raw, &er); err != nil {
 		return nil // ignore malformed entries
@@ -55,20 +55,21 @@ func persistEmbeddedRoute(ctx context.Context, q *sqlc.Queries, projectID, resou
 		cfg = json.RawMessage("{}")
 	}
 	_, err := q.CreateRoute(ctx, sqlc.CreateRouteParams{
-		ID:         pgxid.PgUUID(uuid.New()),
-		ProjectID:  pgxid.PgUUID(projectID),
-		ResourceID: pgxid.PgUUID(resourceID),
-		Domain:     er.Domain,
-		Path:       er.Path,
-		PathType:   sqlc.RoutePathType(er.PathType),
-		Port:       er.Port,
-		Tls:        er.Tls,
-		Config:     cfg,
+		ID:            pgxid.PgUUID(uuid.New()),
+		ProjectID:     pgxid.PgUUID(projectID),
+		EnvironmentID: pgxid.PgUUID(environmentID),
+		ResourceID:    pgxid.PgUUID(resourceID),
+		Domain:        er.Domain,
+		Path:          er.Path,
+		PathType:      sqlc.RoutePathType(er.PathType),
+		Port:          er.Port,
+		Tls:           er.Tls,
+		Config:        cfg,
 	})
 	return err
 }
 
-func persistEmbeddedVariable(ctx context.Context, q *sqlc.Queries, projectID, resourceID uuid.UUID, v openapi.ResourceVariableCreate) error {
+func persistEmbeddedVariable(ctx context.Context, q *sqlc.Queries, projectID, environmentID, resourceID uuid.UUID, v openapi.ResourceVariableCreate) error {
 	raw, err := json.Marshal(v)
 	if err != nil {
 		return nil
@@ -94,17 +95,19 @@ func persistEmbeddedVariable(ctx context.Context, q *sqlc.Queries, projectID, re
 			_, err = q.CreateSecretVariable(ctx, sqlc.CreateSecretVariableParams{
 				ID:             pgxid.PgUUID(uuid.New()),
 				ProjectID:      pgxid.PgUUID(projectID),
+				EnvironmentID:  pgxid.PgUUID(environmentID),
 				ResourceID:     pgxid.PgUUID(resourceID),
 				Key:            owned.Key,
 				ValueEncrypted: cipher,
 			})
 		} else {
 			_, err = q.CreatePlainVariable(ctx, sqlc.CreatePlainVariableParams{
-				ID:         pgxid.PgUUID(uuid.New()),
-				ProjectID:  pgxid.PgUUID(projectID),
-				ResourceID: pgxid.PgUUID(resourceID),
-				Key:        owned.Key,
-				Value:      owned.Value,
+				ID:            pgxid.PgUUID(uuid.New()),
+				ProjectID:     pgxid.PgUUID(projectID),
+				EnvironmentID: pgxid.PgUUID(environmentID),
+				ResourceID:    pgxid.PgUUID(resourceID),
+				Key:           owned.Key,
+				Value:         owned.Value,
 			})
 		}
 		return err
@@ -114,10 +117,11 @@ func persistEmbeddedVariable(ctx context.Context, q *sqlc.Queries, projectID, re
 			return nil
 		}
 		_, err = q.CreateResourceVariable(ctx, sqlc.CreateResourceVariableParams{
-			ProjectID:  pgxid.PgUUID(projectID),
-			ResourceID: pgxid.PgUUID(resourceID),
-			VariableID: pgxid.PgUUID(uuid.UUID(imported.SourceVariableId)),
-			Key:        imported.Key,
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: pgxid.PgUUID(environmentID),
+			ResourceID:    pgxid.PgUUID(resourceID),
+			VariableID:    pgxid.PgUUID(uuid.UUID(imported.SourceVariableId)),
+			Key:           imported.Key,
 		})
 		return err
 	}

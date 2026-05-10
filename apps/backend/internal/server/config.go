@@ -11,6 +11,10 @@ type Config struct {
 	BasicAuthUser   string
 	BasicAuthPass   string
 	DatabaseURL     string
+	// KubeconfigPath, when set, points the runtime at a kubeconfig file.
+	// Empty = try in-cluster config; failure to find either falls back to
+	// the StubRuntime (dev mode).
+	KubeconfigPath string
 }
 
 func LoadConfig() Config {
@@ -23,6 +27,7 @@ func LoadConfig() Config {
 			"DATABASE_URL",
 			"postgres://postgres:postgres@localhost:5432/vyft?sslmode=disable",
 		),
+		KubeconfigPath: os.Getenv("KUBECONFIG"),
 	}
 }
 
