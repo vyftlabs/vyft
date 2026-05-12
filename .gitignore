@@ -8,3 +8,4 @@ dist/
 .claude
 .vscode/
 .env*.local
+.kube/

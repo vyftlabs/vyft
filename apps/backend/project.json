@@ -8,7 +8,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "go tool air -c .air.toml",
+        "command": "KUBECONFIG=\"$(pwd)/../../.kube/config\" go tool air -c .air.toml",
         "cwd": "apps/backend"
       }
     },

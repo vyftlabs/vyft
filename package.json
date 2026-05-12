@@ -6,6 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "predev": "pnpm cluster:up",
     "dev": "nx run-many -t dev --outputStyle stream",
     "build": "nx run-many -t build --outputStyle stream",
     "test": "nx run-many -t test --outputStyle stream",
@@ -13,7 +14,9 @@
     "lint": "nx run-many -t lint --outputStyle stream",
     "db:generate": "nx run @vyft/backend:db:generate --outputStyle stream",
     "spec:build": "pnpm --filter @vyft/spec build",
-    "spec:gen": "pnpm spec:build && pnpm --filter web gen:api && nx run @vyft/backend:api:generate --outputStyle stream"
+    "spec:gen": "pnpm spec:build && pnpm --filter web gen:api && nx run @vyft/backend:api:generate --outputStyle stream",
+    "cluster:up": "go -C apps/backend tool kind get clusters 2>/dev/null | grep -qx vyft-dev || (mkdir -p .kube && go -C apps/backend tool kind create cluster --name vyft-dev --kubeconfig .kube/config --wait 60s)",
+    "cluster:down": "go -C apps/backend tool kind delete cluster --name vyft-dev"
   },
   "pnpm": {
     "overrides": {
