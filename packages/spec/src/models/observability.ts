@@ -38,19 +38,6 @@ export const LatencyPoint = z
   })
   .meta({ id: "LatencyPoint" });
 
-export const MetricsOverview = z
-  .object({
-    reqRate: z.array(RangePoint),
-    errRate: z.array(RangePoint),
-    cpu: z.array(RangePoint),
-    memory: z.array(RangePoint),
-    latency: z.array(LatencyPoint),
-  })
-  .meta({
-    id: "MetricsOverview",
-    description: "`cpu` values are millicores. `memory` values are bytes.",
-  });
-
 export const MetricKind = z
   .enum(["cpu", "memory", "reqRate", "errRate", "latency"])
   .meta({ id: "MetricKind" });
@@ -114,7 +101,6 @@ export type ServiceEvent = z.infer<typeof ServiceEvent>;
 export type LogLine = z.infer<typeof LogLine>;
 export type RangePoint = z.infer<typeof RangePoint>;
 export type LatencyPoint = z.infer<typeof LatencyPoint>;
-export type MetricsOverview = z.infer<typeof MetricsOverview>;
 export type MetricKind = z.infer<typeof MetricKind>;
 export type MetricRange = z.infer<typeof MetricRange>;
 export type MetricsCapabilities = z.infer<typeof MetricsCapabilities>;

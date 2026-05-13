@@ -11,7 +11,6 @@ import {
   MetricRange,
   MetricSeries,
   MetricsCapabilities,
-  MetricsOverview,
   ServiceEvent,
 } from "../models/observability.ts";
 
@@ -46,21 +45,6 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
         200: {
           description: "Log lines",
           content: { "application/json": { schema: z.array(LogLine) } },
-        },
-        ...collectionErrors,
-      },
-    },
-  },
-  "/projects/{projectId}/resources/{resourceId}/metrics": {
-    get: {
-      operationId: "getResourceMetrics",
-      summary: "Metrics overview for resource",
-      tags: ["Observability"],
-      requestParams: { path: ResourceScope },
-      responses: {
-        200: {
-          description: "Metrics",
-          content: { "application/json": { schema: MetricsOverview } },
         },
         ...collectionErrors,
       },

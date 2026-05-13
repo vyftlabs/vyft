@@ -32,18 +32,6 @@ export const logs = (
     },
   });
 
-export const metrics = (projectId: string, resourceId: string) =>
-  queryOptions({
-    queryKey: [...ROOT, "metrics", projectId, resourceId],
-    queryFn: async () => {
-      const { data } = await client.GET(
-        "/projects/{projectId}/resources/{resourceId}/metrics",
-        { params: { path: { projectId, resourceId } } },
-      );
-      return data!;
-    },
-  });
-
 // metricsCapabilities reports which kinds the active metrics source has
 // runtime-detected for the instance. Stable for minutes; the 5-minute
 // stale window matches the backend's caching budget.

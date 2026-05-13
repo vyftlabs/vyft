@@ -200,7 +200,7 @@ function ServicesCanvas() {
               api.observability.logs(projectId, r.id, 50),
             );
             queryClient.prefetchQuery(
-              api.observability.metrics(projectId, r.id),
+              api.observability.metricsCapabilities(projectId, r.id),
             );
           },
         };

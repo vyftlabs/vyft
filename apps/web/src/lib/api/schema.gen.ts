@@ -329,23 +329,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/resources/{resourceId}/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Metrics overview for resource */
-        get: operations["getResourceMetrics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/projects/{projectId}/resources/{resourceId}/metrics/capabilities": {
         parameters: {
             query?: never;
@@ -869,26 +852,6 @@ export interface components {
             level: string;
             message: string;
         };
-        /** @description `cpu` values are millicores. `memory` values are bytes. */
-        MetricsOverview: {
-            reqRate: components["schemas"]["RangePoint"][];
-            errRate: components["schemas"]["RangePoint"][];
-            cpu: components["schemas"]["RangePoint"][];
-            memory: components["schemas"]["RangePoint"][];
-            latency: components["schemas"]["LatencyPoint"][];
-        };
-        RangePoint: {
-            /** Format: date-time */
-            time: string;
-            value: number;
-        };
-        LatencyPoint: {
-            /** Format: date-time */
-            time: string;
-            p50: number;
-            p95: number;
-            p99: number;
-        };
         MetricsCapabilities: {
             sourceKind: components["schemas"]["SourceKind"] | null;
             detected: components["schemas"]["MetricKind"][];
@@ -922,6 +885,18 @@ export interface components {
             kind: "latency";
             range: components["schemas"]["MetricRange"];
             points: components["schemas"]["LatencyPoint"][];
+        };
+        RangePoint: {
+            /** Format: date-time */
+            time: string;
+            value: number;
+        };
+        LatencyPoint: {
+            /** Format: date-time */
+            time: string;
+            p50: number;
+            p95: number;
+            p99: number;
         };
         Source: {
             /** Format: uuid */
@@ -3368,65 +3343,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogLine"][];
-                };
-            };
-            /** @description Bad request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    getResourceMetrics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-                resourceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Metrics */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MetricsOverview"];
                 };
             };
             /** @description Bad request */

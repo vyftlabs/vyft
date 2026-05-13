@@ -46,18 +46,6 @@ func (h *Handler) ListResourceLogs(_ context.Context, _ openapi.ListResourceLogs
 	return openapi.ListResourceLogs200JSONResponse{}, nil
 }
 
-// GetResourceMetrics is the deprecated overview endpoint. Kept until the
-// cleanup story; returns empties.
-func (h *Handler) GetResourceMetrics(_ context.Context, _ openapi.GetResourceMetricsRequestObject) (openapi.GetResourceMetricsResponseObject, error) {
-	return openapi.GetResourceMetrics200JSONResponse{
-		ReqRate: []openapi.RangePoint{},
-		ErrRate: []openapi.RangePoint{},
-		Cpu:     []openapi.RangePoint{},
-		Memory:  []openapi.RangePoint{},
-		Latency: []openapi.LatencyPoint{},
-	}, nil
-}
-
 func (h *Handler) GetResourceMetricsCapabilities(ctx context.Context, _ openapi.GetResourceMetricsCapabilitiesRequestObject) (openapi.GetResourceMetricsCapabilitiesResponseObject, error) {
 	mc, err := h.svc.res.ResolveMetrics(ctx)
 	if err != nil {
