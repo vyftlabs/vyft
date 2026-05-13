@@ -9,12 +9,12 @@ import {
 import { NestedRouteCreate, Route } from "./route.ts";
 import { ResourceVariable, ResourceVariableCreate } from "./variable.ts";
 
-export const Source = z
+export const ImageSource = z
   .object({
     type: z.literal("image"),
     image: z.string().min(1),
   })
-  .meta({ id: "Source" });
+  .meta({ id: "ImageSource" });
 
 export const Resources = z
   .object({
@@ -62,7 +62,7 @@ export const DiskCreate = Disk.omit({ id: true }).meta({ id: "DiskCreate" });
 
 export const AppSpec = z
   .object({
-    source: Source,
+    source: ImageSource,
     port: Port.nullable(),
     startCommand: Command.nullable(),
     instances: Instances,
@@ -75,7 +75,7 @@ export const AppSpec = z
 
 export const AppSpecCreate = z
   .object({
-    source: Source,
+    source: ImageSource,
     port: Port.optional(),
     startCommand: Command.optional(),
     instances: Instances,
@@ -161,7 +161,7 @@ export const ResourceUpdate = z
   })
   .meta({ id: "ResourceUpdate" });
 
-export type Source = z.infer<typeof Source>;
+export type ImageSource = z.infer<typeof ImageSource>;
 export type Resources = z.infer<typeof Resources>;
 export type HealthCheck = z.infer<typeof HealthCheck>;
 export type Disk = z.infer<typeof Disk>;

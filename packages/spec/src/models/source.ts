@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { BaseFields } from "./common.ts";
 
-export const DataSourceKind = z
+export const SourceKind = z
   .enum(["prometheus", "metricsServer"])
-  .meta({ id: "DataSourceKind" });
+  .meta({ id: "SourceKind" });
 
-const DataSourceName = z.string().min(1).max(100);
+const SourceName = z.string().min(1).max(100);
 
-export const DataSourceAuth = z
+export const SourceAuth = z
   .discriminatedUnion("type", [
     z.object({ type: z.literal("none") }),
     z.object({
@@ -20,9 +20,9 @@ export const DataSourceAuth = z
       token: z.string().min(1),
     }),
   ])
-  .meta({ id: "DataSourceAuth" });
+  .meta({ id: "SourceAuth" });
 
-export const DataSourceAuthSafe = z
+export const SourceAuthSafe = z
   .discriminatedUnion("type", [
     z.object({ type: z.literal("none") }),
     z.object({
@@ -31,19 +31,19 @@ export const DataSourceAuthSafe = z
     }),
     z.object({ type: z.literal("bearer") }),
   ])
-  .meta({ id: "DataSourceAuthSafe" });
+  .meta({ id: "SourceAuthSafe" });
 
 export const PrometheusConfig = z
   .object({
     url: z.url().max(500),
-    auth: DataSourceAuth,
+    auth: SourceAuth,
   })
   .meta({ id: "PrometheusConfig" });
 
 export const PrometheusConfigSafe = z
   .object({
     url: z.url().max(500),
-    auth: DataSourceAuthSafe,
+    auth: SourceAuthSafe,
   })
   .meta({ id: "PrometheusConfigSafe" });
 
@@ -51,55 +51,55 @@ export const MetricsServerConfig = z
   .object({})
   .meta({ id: "MetricsServerConfig" });
 
-export const DataSource = z
+export const Source = z
   .discriminatedUnion("kind", [
     BaseFields.extend({
-      name: DataSourceName,
+      name: SourceName,
       kind: z.literal("prometheus"),
       config: PrometheusConfigSafe,
     }),
     BaseFields.extend({
-      name: DataSourceName,
+      name: SourceName,
       kind: z.literal("metricsServer"),
       config: MetricsServerConfig,
     }),
   ])
-  .meta({ id: "DataSource" });
+  .meta({ id: "Source" });
 
-export const DataSourceCreate = z
+export const SourceCreate = z
   .discriminatedUnion("kind", [
     z.object({
-      name: DataSourceName,
+      name: SourceName,
       kind: z.literal("prometheus"),
       config: PrometheusConfig,
     }),
     z.object({
-      name: DataSourceName,
+      name: SourceName,
       kind: z.literal("metricsServer"),
       config: MetricsServerConfig,
     }),
   ])
-  .meta({ id: "DataSourceCreate" });
+  .meta({ id: "SourceCreate" });
 
-export const DataSourceDefaults = z
+export const SourceDefaults = z
   .object({
     metrics: z.uuid().nullable(),
   })
-  .meta({ id: "DataSourceDefaults" });
+  .meta({ id: "SourceDefaults" });
 
-export const SetDataSourceDefault = z
+export const SetSourceDefault = z
   .object({
-    dataSourceId: z.uuid(),
+    sourceId: z.uuid(),
   })
-  .meta({ id: "SetDataSourceDefault" });
+  .meta({ id: "SetSourceDefault" });
 
-export type DataSourceKind = z.infer<typeof DataSourceKind>;
-export type DataSourceAuth = z.infer<typeof DataSourceAuth>;
-export type DataSourceAuthSafe = z.infer<typeof DataSourceAuthSafe>;
+export type SourceKind = z.infer<typeof SourceKind>;
+export type SourceAuth = z.infer<typeof SourceAuth>;
+export type SourceAuthSafe = z.infer<typeof SourceAuthSafe>;
 export type PrometheusConfig = z.infer<typeof PrometheusConfig>;
 export type PrometheusConfigSafe = z.infer<typeof PrometheusConfigSafe>;
 export type MetricsServerConfig = z.infer<typeof MetricsServerConfig>;
-export type DataSource = z.infer<typeof DataSource>;
-export type DataSourceCreate = z.infer<typeof DataSourceCreate>;
-export type DataSourceDefaults = z.infer<typeof DataSourceDefaults>;
-export type SetDataSourceDefault = z.infer<typeof SetDataSourceDefault>;
+export type Source = z.infer<typeof Source>;
+export type SourceCreate = z.infer<typeof SourceCreate>;
+export type SourceDefaults = z.infer<typeof SourceDefaults>;
+export type SetSourceDefault = z.infer<typeof SetSourceDefault>;

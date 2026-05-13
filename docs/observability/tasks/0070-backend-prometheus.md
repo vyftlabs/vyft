@@ -1,10 +1,10 @@
-# Backend: Prometheus data source
-Implement Prometheus as a `DataSource` + `MetricsCapable` using `prometheus/client_golang/api`.
+# Backend: Prometheus source
+Implement Prometheus as a `Source` + `MetricsCapable` using `prometheus/client_golang/api`.
 
 Acceptance:
-- `internal/datasource/prometheus/client.go`: wraps API with auth round-tripper for `none | basic | bearer`.
-- `internal/datasource/prometheus/queries.go`: PromQL templates per kind, parameterized by `{namespace, resource}`.
-- `internal/datasource/prometheus/prometheus.go`:
+- `internal/source/prometheus/client.go`: wraps API with auth round-tripper for `none | basic | bearer`.
+- `internal/source/prometheus/queries.go`: PromQL templates per kind, parameterized by `{namespace, resource}`.
+- `internal/source/prometheus/prometheus.go`:
   - `Kind() = "prometheus"`.
   - `Supports()` returns `[cpu, memory, reqRate, errRate, latency]` (ceiling, static).
   - `ProbeMetricNames(kind) []string` returns the metric names that must exist in Prom for the kind to be considered detected. Used by capability handler's combined probe.
@@ -46,7 +46,7 @@ Both confirmed: returned data for the `vyft-demo-production / nginx` pod (37 MiB
 
 ## RED templates (semconv primary, legacy fallback)
 
-OTel semantic conventions are the canonical contract. Legacy `http_requests_total` accepted when semconv is absent. The Prometheus data source's `Query` should try semconv first; fall back to legacy at query time if semconv returns no series.
+OTel semantic conventions are the canonical contract. Legacy `http_requests_total` accepted when semconv is absent. The Prometheus source's `Query` should try semconv first; fall back to legacy at query time if semconv returns no series.
 
 ```
 # Request rate (req/s) — semconv

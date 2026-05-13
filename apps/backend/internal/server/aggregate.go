@@ -12,6 +12,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/registry"
 	"github.com/vyftlabs/vyft/apps/backend/internal/resource"
 	"github.com/vyftlabs/vyft/apps/backend/internal/route"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source"
 	"github.com/vyftlabs/vyft/apps/backend/internal/variable"
 )
 
@@ -26,6 +27,7 @@ type (
 	registryAPI      = registry.Handler
 	deploymentAPI    = deployment.Handler
 	observabilityAPI = observability.Handler
+	sourceAPI        = source.Handler
 )
 
 type API struct {
@@ -37,6 +39,7 @@ type API struct {
 	*registryAPI
 	*deploymentAPI
 	*observabilityAPI
+	*sourceAPI
 }
 
 // Compile-time guard: missing method on any embedded handler fails build,
@@ -64,5 +67,6 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cleanup func(ctx context.Con
 		registryAPI:      registry.NewHandler(registry.New(database)),
 		deploymentAPI:    deployment.NewHandler(depSvc),
 		observabilityAPI: observability.NewHandler(observability.New()),
+		sourceAPI:        source.NewHandler(),
 	}, depSvc
 }

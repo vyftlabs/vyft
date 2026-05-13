@@ -346,6 +346,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/resources/{resourceId}/metrics/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detected metric kinds for resource */
+        get: operations["getResourceMetricsCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/metrics/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Time series for one metric kind */
+        get: operations["getResourceMetricSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sources */
+        get: operations["listSources"];
+        put?: never;
+        /** Create source */
+        post: operations["createSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete source */
+        delete: operations["deleteSource"];
+        options?: never;
+        head?: never;
+        /** Update source */
+        patch: operations["updateSource"];
+        trace?: never;
+    };
+    "/source-defaults/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the metrics-domain default source */
+        get: operations["getMetricsSourceDefault"];
+        /** Set the metrics-domain default source */
+        put: operations["setMetricsSourceDefault"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -388,7 +476,7 @@ export interface components {
             spec: components["schemas"]["AppSpecCreate"];
         };
         AppSpecCreate: {
-            source: components["schemas"]["Source"];
+            source: components["schemas"]["ImageSource"];
             port?: number;
             startCommand?: string;
             instances: number;
@@ -397,7 +485,7 @@ export interface components {
             disks?: components["schemas"]["DiskCreate"][];
             routes?: components["schemas"]["NestedRouteCreate"][];
         };
-        Source: {
+        ImageSource: {
             /** @enum {string} */
             type: "image";
             image: string;
@@ -474,7 +562,7 @@ export interface components {
             spec?: components["schemas"]["AppSpecUpdate"];
         };
         AppSpecUpdate: {
-            source?: components["schemas"]["Source"];
+            source?: components["schemas"]["ImageSource"];
             port?: number;
             startCommand?: string;
             instances?: number;
@@ -533,6 +621,44 @@ export interface components {
         };
         DeploymentCreate: {
             environment?: string;
+        };
+        /** @enum {string} */
+        MetricKind: "cpu" | "memory" | "reqRate" | "errRate" | "latency";
+        /** @enum {string} */
+        MetricRange: "15m" | "1h" | "6h" | "24h";
+        SourceCreate: {
+            name: string;
+            /** @enum {string} */
+            kind: "prometheus";
+            config: components["schemas"]["PrometheusConfig"];
+        } | {
+            name: string;
+            /** @enum {string} */
+            kind: "metricsServer";
+            config: components["schemas"]["MetricsServerConfig"];
+        };
+        PrometheusConfig: {
+            /** Format: uri */
+            url: string;
+            auth: components["schemas"]["SourceAuth"];
+        };
+        SourceAuth: {
+            /** @enum {string} */
+            type: "none";
+        } | {
+            /** @enum {string} */
+            type: "basic";
+            username: string;
+            password: string;
+        } | {
+            /** @enum {string} */
+            type: "bearer";
+            token: string;
+        };
+        MetricsServerConfig: Record<string, never>;
+        SetSourceDefault: {
+            /** Format: uuid */
+            sourceId: string;
         };
         Project: {
             /** Format: uuid */
@@ -633,7 +759,7 @@ export interface components {
             spec: components["schemas"]["AppSpec"];
         };
         AppSpec: {
-            source: components["schemas"]["SourceOutput"];
+            source: components["schemas"]["ImageSourceOutput"];
             port: number | null;
             startCommand: string | null;
             instances: number;
@@ -747,7 +873,78 @@ export interface components {
             p95: number;
             p99: number;
         };
-        SourceOutput: {
+        MetricsCapabilities: {
+            sourceKind: components["schemas"]["SourceKind"] | null;
+            detected: components["schemas"]["MetricKind"][];
+        };
+        /** @enum {string} */
+        SourceKind: "prometheus" | "metricsServer";
+        MetricSeries: {
+            /** @enum {string} */
+            kind: "cpu";
+            range: components["schemas"]["MetricRange"];
+            points: components["schemas"]["RangePoint"][];
+        } | {
+            /** @enum {string} */
+            kind: "memory";
+            range: components["schemas"]["MetricRange"];
+            points: components["schemas"]["RangePoint"][];
+        } | {
+            /** @enum {string} */
+            kind: "reqRate";
+            range: components["schemas"]["MetricRange"];
+            points: components["schemas"]["RangePoint"][];
+        } | {
+            /** @enum {string} */
+            kind: "errRate";
+            range: components["schemas"]["MetricRange"];
+            points: components["schemas"]["RangePoint"][];
+        } | {
+            /** @enum {string} */
+            kind: "latency";
+            range: components["schemas"]["MetricRange"];
+            points: components["schemas"]["LatencyPoint"][];
+        };
+        Source: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            name: string;
+            /** @enum {string} */
+            kind: "prometheus";
+            config: components["schemas"]["PrometheusConfigSafe"];
+        } | {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            name: string;
+            /** @enum {string} */
+            kind: "metricsServer";
+            config: components["schemas"]["MetricsServerConfigOutput"];
+        };
+        PrometheusConfigSafe: {
+            /** Format: uri */
+            url: string;
+            auth: components["schemas"]["SourceAuthSafe"];
+        };
+        SourceAuthSafe: {
+            /** @enum {string} */
+            type: "none";
+        } | {
+            /** @enum {string} */
+            type: "basic";
+            username: string;
+        } | {
+            /** @enum {string} */
+            type: "bearer";
+        };
+        ImageSourceOutput: {
             /** @enum {string} */
             type: "image";
             image: string;
@@ -797,6 +994,7 @@ export interface components {
                 maxAge?: number;
             };
         };
+        MetricsServerConfigOutput: Record<string, never>;
     };
     responses: never;
     parameters: never;
@@ -3225,6 +3423,513 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceMetricsCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Capabilities */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricsCapabilities"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceMetricSeries: {
+        parameters: {
+            query?: {
+                range?: components["schemas"]["MetricRange"];
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+                kind: components["schemas"]["MetricKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricSeries"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sources */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"][];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SourceCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SourceCreate"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getMetricsSourceDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active metrics source, or null when unset */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"] | null;
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setMetricsSourceDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SetSourceDefault"];
+            };
+        };
+        responses: {
+            /** @description Updated default */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

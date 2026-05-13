@@ -4,6 +4,7 @@ package observability
 
 import (
 	"context"
+	"errors"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 )
@@ -32,4 +33,15 @@ func (h *Handler) GetResourceMetrics(_ context.Context, _ openapi.GetResourceMet
 		Memory:  []openapi.RangePoint{},
 		Latency: []openapi.LatencyPoint{},
 	}, nil
+}
+
+func (h *Handler) GetResourceMetricsCapabilities(_ context.Context, _ openapi.GetResourceMetricsCapabilitiesRequestObject) (openapi.GetResourceMetricsCapabilitiesResponseObject, error) {
+	return openapi.GetResourceMetricsCapabilities200JSONResponse{
+		SourceKind: nil,
+		Detected:   []openapi.MetricKind{},
+	}, nil
+}
+
+func (h *Handler) GetResourceMetricSeries(_ context.Context, _ openapi.GetResourceMetricSeriesRequestObject) (openapi.GetResourceMetricSeriesResponseObject, error) {
+	return nil, errors.New("not implemented")
 }

@@ -3,13 +3,13 @@ Reusable components for the non-live panel states: disabled, empty-data, error. 
 
 Acceptance:
 - `src/components/service/metrics/disabled-panel.tsx`:
-  - Props: `{ cause: "none" | "ceiling" | "unreachable", dataSourceKind?, kind }`.
+  - Props: `{ cause: "none" | "ceiling" | "unreachable", sourceKind?, kind }`.
   - Muted background, full-contrast title (kind name), one-line message, "Configure metrics" button.
   - Messages by cause:
-    - `none` → "No metrics data source configured."
-    - `ceiling` → `"{dataSourceKind} doesn't support {kind label}."`
-    - `unreachable` → "Metrics data source unreachable."
-  - Button text is always "Configure metrics". Always navigates to the Data sources page (Metrics section).
+    - `none` → "No metrics source configured."
+    - `ceiling` → `"{sourceKind} doesn't support {kind label}."`
+    - `unreachable` → "Metrics source unreachable."
+  - Button text is always "Configure metrics". Always navigates to the Sources page (Metrics section).
 - `src/components/service/metrics/empty-data-panel.tsx`:
   - Props: `{ cause: "service-not-instrumented" | "no-data-in-range", kind }`.
   - Centered placeholder, distinct visual from disabled (different muted shade or icon).

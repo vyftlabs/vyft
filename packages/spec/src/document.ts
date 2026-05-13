@@ -6,6 +6,7 @@ import { projectPaths } from "./paths/projects.ts";
 import { registryPaths } from "./paths/registries.ts";
 import { resourcePaths } from "./paths/resources.ts";
 import { routePaths } from "./paths/routes.ts";
+import { sourcePaths } from "./paths/sources.ts";
 import { variablePaths } from "./paths/variables.ts";
 
 export const document = createDocument({
@@ -26,6 +27,7 @@ export const document = createDocument({
     { name: "Registries" },
     { name: "Deployments" },
     { name: "Observability" },
+    { name: "Sources" },
   ],
   paths: {
     ...projectPaths,
@@ -36,5 +38,6 @@ export const document = createDocument({
     ...registryPaths,
     ...deploymentPaths,
     ...observabilityPaths,
+    ...sourcePaths,
   },
 });

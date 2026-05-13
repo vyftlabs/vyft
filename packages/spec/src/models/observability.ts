@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DataSourceKind } from "./data-source.ts";
+import { SourceKind } from "./source.ts";
 
 export const ServiceEvent = z
   .object({
@@ -61,7 +61,7 @@ export const MetricRange = z
 
 export const MetricsCapabilities = z
   .object({
-    dataSourceKind: DataSourceKind.nullable(),
+    sourceKind: SourceKind.nullable(),
     detected: z.array(MetricKind),
   })
   .meta({ id: "MetricsCapabilities" });
@@ -97,7 +97,7 @@ export const MetricSeries = z
   .meta({ id: "MetricSeries" });
 
 export const MetricsCeiling: Record<
-  z.infer<typeof DataSourceKind>,
+  z.infer<typeof SourceKind>,
   z.infer<typeof MetricKind>[]
 > = {
   prometheus: ["cpu", "memory", "reqRate", "errRate", "latency"],

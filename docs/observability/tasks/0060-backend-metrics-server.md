@@ -1,15 +1,15 @@
-# Backend: metrics-server data source
-Define the generic `DataSource` interface + `MetricsCapable` sub-interface, and implement metrics-server.
+# Backend: metrics-server source
+Define the generic `Source` interface + `MetricsCapable` sub-interface, and implement metrics-server.
 
 Acceptance:
-- New package `internal/datasource/` with:
-  - `datasource.go`: `DataSource` interface (`ID()`, `Kind()`).
+- New package `internal/source/` with:
+  - `source.go`: `Source` interface (`ID()`, `Kind()`).
   - `metrics.go`: `MetricsCapable` sub-interface (`Supports() []MetricKind`, `ProbeMetricNames(MetricKind) []string`, `Query(ctx, kind, ResourceSelector, Range) (Series, error)`).
   - `kind.go`: `MetricKind` constants matching spec enum.
   - `range.go`: `Range` type, `Parse`, `Duration`, `Step`.
   - `selector.go`: `ResourceSelector` helper builds `{namespace, podLabelSelector}` from project/resource ids.
   - `series.go`: shared `Series`/`LatencyPoint` types and conversions to openapi types.
-- `internal/datasource/metricsserver/metricsserver.go`: constructor takes `kubernetes.Interface` + metrics-client.
+- `internal/source/metricsserver/metricsserver.go`: constructor takes `kubernetes.Interface` + metrics-client.
 - `Kind() = "metrics_server"`, `Supports() = [cpu, memory]`.
 - `ProbeMetricNames(kind) = nil` for all kinds — metrics-server detection is static (always-on for CPU/Memory when reachable). Capability handler treats `nil` as "statically detected".
 - `Query` returns single instantaneous point (length-1 series). Aggregates across pods of resource.

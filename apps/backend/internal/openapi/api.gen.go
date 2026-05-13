@@ -193,6 +193,36 @@ func (e HealthCheckOutput3Type) Valid() bool {
 	}
 }
 
+// Defines values for ImageSourceType.
+const (
+	ImageSourceTypeImage ImageSourceType = "image"
+)
+
+// Valid indicates whether the value is a known member of the ImageSourceType enum.
+func (e ImageSourceType) Valid() bool {
+	switch e {
+	case ImageSourceTypeImage:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImageSourceOutputType.
+const (
+	ImageSourceOutputTypeImage ImageSourceOutputType = "image"
+)
+
+// Valid indicates whether the value is a known member of the ImageSourceOutputType enum.
+func (e ImageSourceOutputType) Valid() bool {
+	switch e {
+	case ImageSourceOutputTypeImage:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImportedResourceVariableKind.
 const (
 	ImportedResourceVariableKindImported ImportedResourceVariableKind = "imported"
@@ -202,6 +232,132 @@ const (
 func (e ImportedResourceVariableKind) Valid() bool {
 	switch e {
 	case ImportedResourceVariableKindImported:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricKind.
+const (
+	MetricKindCpu     MetricKind = "cpu"
+	MetricKindErrRate MetricKind = "errRate"
+	MetricKindLatency MetricKind = "latency"
+	MetricKindMemory  MetricKind = "memory"
+	MetricKindReqRate MetricKind = "reqRate"
+)
+
+// Valid indicates whether the value is a known member of the MetricKind enum.
+func (e MetricKind) Valid() bool {
+	switch e {
+	case MetricKindCpu:
+		return true
+	case MetricKindErrRate:
+		return true
+	case MetricKindLatency:
+		return true
+	case MetricKindMemory:
+		return true
+	case MetricKindReqRate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricRange.
+const (
+	N15m MetricRange = "15m"
+	N1h  MetricRange = "1h"
+	N24h MetricRange = "24h"
+	N6h  MetricRange = "6h"
+)
+
+// Valid indicates whether the value is a known member of the MetricRange enum.
+func (e MetricRange) Valid() bool {
+	switch e {
+	case N15m:
+		return true
+	case N1h:
+		return true
+	case N24h:
+		return true
+	case N6h:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricSeries0Kind.
+const (
+	MetricSeries0KindCpu MetricSeries0Kind = "cpu"
+)
+
+// Valid indicates whether the value is a known member of the MetricSeries0Kind enum.
+func (e MetricSeries0Kind) Valid() bool {
+	switch e {
+	case MetricSeries0KindCpu:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricSeries1Kind.
+const (
+	Memory MetricSeries1Kind = "memory"
+)
+
+// Valid indicates whether the value is a known member of the MetricSeries1Kind enum.
+func (e MetricSeries1Kind) Valid() bool {
+	switch e {
+	case Memory:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricSeries2Kind.
+const (
+	ReqRate MetricSeries2Kind = "reqRate"
+)
+
+// Valid indicates whether the value is a known member of the MetricSeries2Kind enum.
+func (e MetricSeries2Kind) Valid() bool {
+	switch e {
+	case ReqRate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricSeries3Kind.
+const (
+	ErrRate MetricSeries3Kind = "errRate"
+)
+
+// Valid indicates whether the value is a known member of the MetricSeries3Kind enum.
+func (e MetricSeries3Kind) Valid() bool {
+	switch e {
+	case ErrRate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MetricSeries4Kind.
+const (
+	Latency MetricSeries4Kind = "latency"
+)
+
+// Valid indicates whether the value is a known member of the MetricSeries4Kind enum.
+func (e MetricSeries4Kind) Valid() bool {
+	switch e {
+	case Latency:
 		return true
 	default:
 		return false
@@ -400,30 +556,168 @@ func (e ServiceEventType) Valid() bool {
 	}
 }
 
-// Defines values for SourceType.
+// Defines values for Source0Kind.
 const (
-	SourceTypeImage SourceType = "image"
+	Source0KindPrometheus Source0Kind = "prometheus"
 )
 
-// Valid indicates whether the value is a known member of the SourceType enum.
-func (e SourceType) Valid() bool {
+// Valid indicates whether the value is a known member of the Source0Kind enum.
+func (e Source0Kind) Valid() bool {
 	switch e {
-	case SourceTypeImage:
+	case Source0KindPrometheus:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for SourceOutputType.
+// Defines values for Source1Kind.
 const (
-	SourceOutputTypeImage SourceOutputType = "image"
+	Source1KindMetricsServer Source1Kind = "metricsServer"
 )
 
-// Valid indicates whether the value is a known member of the SourceOutputType enum.
-func (e SourceOutputType) Valid() bool {
+// Valid indicates whether the value is a known member of the Source1Kind enum.
+func (e Source1Kind) Valid() bool {
 	switch e {
-	case SourceOutputTypeImage:
+	case Source1KindMetricsServer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuth0Type.
+const (
+	SourceAuth0TypeNone SourceAuth0Type = "none"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuth0Type enum.
+func (e SourceAuth0Type) Valid() bool {
+	switch e {
+	case SourceAuth0TypeNone:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuth1Type.
+const (
+	SourceAuth1TypeBasic SourceAuth1Type = "basic"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuth1Type enum.
+func (e SourceAuth1Type) Valid() bool {
+	switch e {
+	case SourceAuth1TypeBasic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuth2Type.
+const (
+	SourceAuth2TypeBearer SourceAuth2Type = "bearer"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuth2Type enum.
+func (e SourceAuth2Type) Valid() bool {
+	switch e {
+	case SourceAuth2TypeBearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuthSafe0Type.
+const (
+	SourceAuthSafe0TypeNone SourceAuthSafe0Type = "none"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuthSafe0Type enum.
+func (e SourceAuthSafe0Type) Valid() bool {
+	switch e {
+	case SourceAuthSafe0TypeNone:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuthSafe1Type.
+const (
+	SourceAuthSafe1TypeBasic SourceAuthSafe1Type = "basic"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuthSafe1Type enum.
+func (e SourceAuthSafe1Type) Valid() bool {
+	switch e {
+	case SourceAuthSafe1TypeBasic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceAuthSafe2Type.
+const (
+	SourceAuthSafe2TypeBearer SourceAuthSafe2Type = "bearer"
+)
+
+// Valid indicates whether the value is a known member of the SourceAuthSafe2Type enum.
+func (e SourceAuthSafe2Type) Valid() bool {
+	switch e {
+	case SourceAuthSafe2TypeBearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceCreate0Kind.
+const (
+	SourceCreate0KindPrometheus SourceCreate0Kind = "prometheus"
+)
+
+// Valid indicates whether the value is a known member of the SourceCreate0Kind enum.
+func (e SourceCreate0Kind) Valid() bool {
+	switch e {
+	case SourceCreate0KindPrometheus:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceCreate1Kind.
+const (
+	SourceCreate1KindMetricsServer SourceCreate1Kind = "metricsServer"
+)
+
+// Valid indicates whether the value is a known member of the SourceCreate1Kind enum.
+func (e SourceCreate1Kind) Valid() bool {
+	switch e {
+	case SourceCreate1KindMetricsServer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceKind.
+const (
+	MetricsServer SourceKind = "metricsServer"
+	Prometheus    SourceKind = "prometheus"
+)
+
+// Valid indicates whether the value is a known member of the SourceKind enum.
+func (e SourceKind) Valid() bool {
+	switch e {
+	case MetricsServer:
+		return true
+	case Prometheus:
 		return true
 	default:
 		return false
@@ -474,10 +768,10 @@ type AppSpec struct {
 	Port        *int              `json:"port"`
 
 	// Resources `cpu` is fractional cores. `memory` is megabytes.
-	Resources    ResourcesOutput `json:"resources"`
-	Routes       *[]Route        `json:"routes,omitempty"`
-	Source       SourceOutput    `json:"source"`
-	StartCommand *string         `json:"startCommand"`
+	Resources    ResourcesOutput   `json:"resources"`
+	Routes       *[]Route          `json:"routes,omitempty"`
+	Source       ImageSourceOutput `json:"source"`
+	StartCommand *string           `json:"startCommand"`
 }
 
 // AppSpecCreate defines model for AppSpecCreate.
@@ -490,7 +784,7 @@ type AppSpecCreate struct {
 	// Resources `cpu` is fractional cores. `memory` is megabytes.
 	Resources    Resources            `json:"resources"`
 	Routes       *[]NestedRouteCreate `json:"routes,omitempty"`
-	Source       Source               `json:"source"`
+	Source       ImageSource          `json:"source"`
 	StartCommand *string              `json:"startCommand,omitempty"`
 }
 
@@ -502,7 +796,7 @@ type AppSpecUpdate struct {
 	Port         *int                 `json:"port,omitempty"`
 	Resources    *Resources           `json:"resources,omitempty"`
 	Routes       *[]NestedRouteCreate `json:"routes,omitempty"`
-	Source       *Source              `json:"source,omitempty"`
+	Source       *ImageSource         `json:"source,omitempty"`
 	StartCommand *string              `json:"startCommand,omitempty"`
 }
 
@@ -645,6 +939,24 @@ type HealthCheckOutput3 struct {
 // HealthCheckOutput3Type defines model for HealthCheckOutput.3.Type.
 type HealthCheckOutput3Type string
 
+// ImageSource defines model for ImageSource.
+type ImageSource struct {
+	Image string          `json:"image"`
+	Type  ImageSourceType `json:"type"`
+}
+
+// ImageSourceType defines model for ImageSource.Type.
+type ImageSourceType string
+
+// ImageSourceOutput defines model for ImageSourceOutput.
+type ImageSourceOutput struct {
+	Image string                `json:"image"`
+	Type  ImageSourceOutputType `json:"type"`
+}
+
+// ImageSourceOutputType defines model for ImageSourceOutput.Type.
+type ImageSourceOutputType string
+
 // ImportSource defines model for ImportSource.
 type ImportSource struct {
 	Id       openapi_types.UUID `json:"id"`
@@ -683,6 +995,73 @@ type LogLine struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// MetricKind defines model for MetricKind.
+type MetricKind string
+
+// MetricRange defines model for MetricRange.
+type MetricRange string
+
+// MetricSeries defines model for MetricSeries.
+type MetricSeries struct {
+	union json.RawMessage
+}
+
+// MetricSeries0 defines model for .
+type MetricSeries0 struct {
+	Kind   MetricSeries0Kind `json:"kind"`
+	Points []RangePoint      `json:"points"`
+	Range  MetricRange       `json:"range"`
+}
+
+// MetricSeries0Kind defines model for MetricSeries.0.Kind.
+type MetricSeries0Kind string
+
+// MetricSeries1 defines model for .
+type MetricSeries1 struct {
+	Kind   MetricSeries1Kind `json:"kind"`
+	Points []RangePoint      `json:"points"`
+	Range  MetricRange       `json:"range"`
+}
+
+// MetricSeries1Kind defines model for MetricSeries.1.Kind.
+type MetricSeries1Kind string
+
+// MetricSeries2 defines model for .
+type MetricSeries2 struct {
+	Kind   MetricSeries2Kind `json:"kind"`
+	Points []RangePoint      `json:"points"`
+	Range  MetricRange       `json:"range"`
+}
+
+// MetricSeries2Kind defines model for MetricSeries.2.Kind.
+type MetricSeries2Kind string
+
+// MetricSeries3 defines model for .
+type MetricSeries3 struct {
+	Kind   MetricSeries3Kind `json:"kind"`
+	Points []RangePoint      `json:"points"`
+	Range  MetricRange       `json:"range"`
+}
+
+// MetricSeries3Kind defines model for MetricSeries.3.Kind.
+type MetricSeries3Kind string
+
+// MetricSeries4 defines model for .
+type MetricSeries4 struct {
+	Kind   MetricSeries4Kind `json:"kind"`
+	Points []LatencyPoint    `json:"points"`
+	Range  MetricRange       `json:"range"`
+}
+
+// MetricSeries4Kind defines model for MetricSeries.4.Kind.
+type MetricSeries4Kind string
+
+// MetricsCapabilities defines model for MetricsCapabilities.
+type MetricsCapabilities struct {
+	Detected   []MetricKind `json:"detected"`
+	SourceKind *SourceKind  `json:"sourceKind"`
+}
+
 // MetricsOverview `cpu` values are millicores. `memory` values are bytes.
 type MetricsOverview struct {
 	Cpu     []RangePoint   `json:"cpu"`
@@ -691,6 +1070,12 @@ type MetricsOverview struct {
 	Memory  []RangePoint   `json:"memory"`
 	ReqRate []RangePoint   `json:"reqRate"`
 }
+
+// MetricsServerConfig defines model for MetricsServerConfig.
+type MetricsServerConfig = map[string]interface{}
+
+// MetricsServerConfigOutput defines model for MetricsServerConfigOutput.
+type MetricsServerConfigOutput = map[string]interface{}
 
 // NestedRouteCreate defines model for NestedRouteCreate.
 type NestedRouteCreate struct {
@@ -742,6 +1127,18 @@ type ProjectCreate struct {
 type ProjectUpdate struct {
 	Description *string `json:"description,omitempty"`
 	Name        *string `json:"name,omitempty"`
+}
+
+// PrometheusConfig defines model for PrometheusConfig.
+type PrometheusConfig struct {
+	Auth SourceAuth `json:"auth"`
+	Url  string     `json:"url"`
+}
+
+// PrometheusConfigSafe defines model for PrometheusConfigSafe.
+type PrometheusConfigSafe struct {
+	Auth SourceAuthSafe `json:"auth"`
+	Url  string         `json:"url"`
 }
 
 // RangePoint defines model for RangePoint.
@@ -1015,23 +1412,131 @@ type ServiceEvent struct {
 // ServiceEventType defines model for ServiceEvent.Type.
 type ServiceEventType string
 
+// SetSourceDefault defines model for SetSourceDefault.
+type SetSourceDefault struct {
+	SourceId openapi_types.UUID `json:"sourceId"`
+}
+
 // Source defines model for Source.
 type Source struct {
-	Image string     `json:"image"`
-	Type  SourceType `json:"type"`
+	union json.RawMessage
 }
 
-// SourceType defines model for Source.Type.
-type SourceType string
-
-// SourceOutput defines model for SourceOutput.
-type SourceOutput struct {
-	Image string           `json:"image"`
-	Type  SourceOutputType `json:"type"`
+// Source0 defines model for .
+type Source0 struct {
+	Config    PrometheusConfigSafe `json:"config"`
+	CreatedAt time.Time            `json:"createdAt"`
+	Id        openapi_types.UUID   `json:"id"`
+	Kind      Source0Kind          `json:"kind"`
+	Name      string               `json:"name"`
+	UpdatedAt time.Time            `json:"updatedAt"`
 }
 
-// SourceOutputType defines model for SourceOutput.Type.
-type SourceOutputType string
+// Source0Kind defines model for Source.0.Kind.
+type Source0Kind string
+
+// Source1 defines model for .
+type Source1 struct {
+	Config    MetricsServerConfigOutput `json:"config"`
+	CreatedAt time.Time                 `json:"createdAt"`
+	Id        openapi_types.UUID        `json:"id"`
+	Kind      Source1Kind               `json:"kind"`
+	Name      string                    `json:"name"`
+	UpdatedAt time.Time                 `json:"updatedAt"`
+}
+
+// Source1Kind defines model for Source.1.Kind.
+type Source1Kind string
+
+// SourceAuth defines model for SourceAuth.
+type SourceAuth struct {
+	union json.RawMessage
+}
+
+// SourceAuth0 defines model for .
+type SourceAuth0 struct {
+	Type SourceAuth0Type `json:"type"`
+}
+
+// SourceAuth0Type defines model for SourceAuth.0.Type.
+type SourceAuth0Type string
+
+// SourceAuth1 defines model for .
+type SourceAuth1 struct {
+	Password string          `json:"password"`
+	Type     SourceAuth1Type `json:"type"`
+	Username string          `json:"username"`
+}
+
+// SourceAuth1Type defines model for SourceAuth.1.Type.
+type SourceAuth1Type string
+
+// SourceAuth2 defines model for .
+type SourceAuth2 struct {
+	Token string          `json:"token"`
+	Type  SourceAuth2Type `json:"type"`
+}
+
+// SourceAuth2Type defines model for SourceAuth.2.Type.
+type SourceAuth2Type string
+
+// SourceAuthSafe defines model for SourceAuthSafe.
+type SourceAuthSafe struct {
+	union json.RawMessage
+}
+
+// SourceAuthSafe0 defines model for .
+type SourceAuthSafe0 struct {
+	Type SourceAuthSafe0Type `json:"type"`
+}
+
+// SourceAuthSafe0Type defines model for SourceAuthSafe.0.Type.
+type SourceAuthSafe0Type string
+
+// SourceAuthSafe1 defines model for .
+type SourceAuthSafe1 struct {
+	Type     SourceAuthSafe1Type `json:"type"`
+	Username string              `json:"username"`
+}
+
+// SourceAuthSafe1Type defines model for SourceAuthSafe.1.Type.
+type SourceAuthSafe1Type string
+
+// SourceAuthSafe2 defines model for .
+type SourceAuthSafe2 struct {
+	Type SourceAuthSafe2Type `json:"type"`
+}
+
+// SourceAuthSafe2Type defines model for SourceAuthSafe.2.Type.
+type SourceAuthSafe2Type string
+
+// SourceCreate defines model for SourceCreate.
+type SourceCreate struct {
+	union json.RawMessage
+}
+
+// SourceCreate0 defines model for .
+type SourceCreate0 struct {
+	Config PrometheusConfig  `json:"config"`
+	Kind   SourceCreate0Kind `json:"kind"`
+	Name   string            `json:"name"`
+}
+
+// SourceCreate0Kind defines model for SourceCreate.0.Kind.
+type SourceCreate0Kind string
+
+// SourceCreate1 defines model for .
+type SourceCreate1 struct {
+	Config MetricsServerConfig `json:"config"`
+	Kind   SourceCreate1Kind   `json:"kind"`
+	Name   string              `json:"name"`
+}
+
+// SourceCreate1Kind defines model for SourceCreate.1.Kind.
+type SourceCreate1Kind string
+
+// SourceKind defines model for SourceKind.
+type SourceKind string
 
 // Variable defines model for Variable.
 type Variable struct {
@@ -1084,6 +1589,11 @@ type ListResourceLogsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// GetResourceMetricSeriesParams defines parameters for GetResourceMetricSeries.
+type GetResourceMetricSeriesParams struct {
+	Range *MetricRange `form:"range,omitempty" json:"range,omitempty"`
+}
+
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = ProjectCreate
 
@@ -1122,6 +1632,15 @@ type UpdateVariableJSONRequestBody = VariableUpdate
 
 // CreateRegistryJSONRequestBody defines body for CreateRegistry for application/json ContentType.
 type CreateRegistryJSONRequestBody = RegistryCreate
+
+// SetMetricsSourceDefaultJSONRequestBody defines body for SetMetricsSourceDefault for application/json ContentType.
+type SetMetricsSourceDefaultJSONRequestBody = SetSourceDefault
+
+// CreateSourceJSONRequestBody defines body for CreateSource for application/json ContentType.
+type CreateSourceJSONRequestBody = SourceCreate
+
+// UpdateSourceJSONRequestBody defines body for UpdateSource for application/json ContentType.
+type UpdateSourceJSONRequestBody = SourceCreate
 
 // AsHealthCheck0 returns the union data inside the HealthCheck as a HealthCheck0
 func (t HealthCheck) AsHealthCheck0() (HealthCheck0, error) {
@@ -1347,6 +1866,146 @@ func (t HealthCheckOutput) MarshalJSON() ([]byte, error) {
 }
 
 func (t *HealthCheckOutput) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsMetricSeries0 returns the union data inside the MetricSeries as a MetricSeries0
+func (t MetricSeries) AsMetricSeries0() (MetricSeries0, error) {
+	var body MetricSeries0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMetricSeries0 overwrites any union data inside the MetricSeries as the provided MetricSeries0
+func (t *MetricSeries) FromMetricSeries0(v MetricSeries0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMetricSeries0 performs a merge with any union data inside the MetricSeries, using the provided MetricSeries0
+func (t *MetricSeries) MergeMetricSeries0(v MetricSeries0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMetricSeries1 returns the union data inside the MetricSeries as a MetricSeries1
+func (t MetricSeries) AsMetricSeries1() (MetricSeries1, error) {
+	var body MetricSeries1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMetricSeries1 overwrites any union data inside the MetricSeries as the provided MetricSeries1
+func (t *MetricSeries) FromMetricSeries1(v MetricSeries1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMetricSeries1 performs a merge with any union data inside the MetricSeries, using the provided MetricSeries1
+func (t *MetricSeries) MergeMetricSeries1(v MetricSeries1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMetricSeries2 returns the union data inside the MetricSeries as a MetricSeries2
+func (t MetricSeries) AsMetricSeries2() (MetricSeries2, error) {
+	var body MetricSeries2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMetricSeries2 overwrites any union data inside the MetricSeries as the provided MetricSeries2
+func (t *MetricSeries) FromMetricSeries2(v MetricSeries2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMetricSeries2 performs a merge with any union data inside the MetricSeries, using the provided MetricSeries2
+func (t *MetricSeries) MergeMetricSeries2(v MetricSeries2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMetricSeries3 returns the union data inside the MetricSeries as a MetricSeries3
+func (t MetricSeries) AsMetricSeries3() (MetricSeries3, error) {
+	var body MetricSeries3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMetricSeries3 overwrites any union data inside the MetricSeries as the provided MetricSeries3
+func (t *MetricSeries) FromMetricSeries3(v MetricSeries3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMetricSeries3 performs a merge with any union data inside the MetricSeries, using the provided MetricSeries3
+func (t *MetricSeries) MergeMetricSeries3(v MetricSeries3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMetricSeries4 returns the union data inside the MetricSeries as a MetricSeries4
+func (t MetricSeries) AsMetricSeries4() (MetricSeries4, error) {
+	var body MetricSeries4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMetricSeries4 overwrites any union data inside the MetricSeries as the provided MetricSeries4
+func (t *MetricSeries) FromMetricSeries4(v MetricSeries4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMetricSeries4 performs a merge with any union data inside the MetricSeries, using the provided MetricSeries4
+func (t *MetricSeries) MergeMetricSeries4(v MetricSeries4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t MetricSeries) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *MetricSeries) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -1672,6 +2331,306 @@ func (t *ResourceVariableUpdate) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsSource0 returns the union data inside the Source as a Source0
+func (t Source) AsSource0() (Source0, error) {
+	var body Source0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSource0 overwrites any union data inside the Source as the provided Source0
+func (t *Source) FromSource0(v Source0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSource0 performs a merge with any union data inside the Source, using the provided Source0
+func (t *Source) MergeSource0(v Source0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSource1 returns the union data inside the Source as a Source1
+func (t Source) AsSource1() (Source1, error) {
+	var body Source1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSource1 overwrites any union data inside the Source as the provided Source1
+func (t *Source) FromSource1(v Source1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSource1 performs a merge with any union data inside the Source, using the provided Source1
+func (t *Source) MergeSource1(v Source1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t Source) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *Source) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSourceAuth0 returns the union data inside the SourceAuth as a SourceAuth0
+func (t SourceAuth) AsSourceAuth0() (SourceAuth0, error) {
+	var body SourceAuth0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuth0 overwrites any union data inside the SourceAuth as the provided SourceAuth0
+func (t *SourceAuth) FromSourceAuth0(v SourceAuth0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuth0 performs a merge with any union data inside the SourceAuth, using the provided SourceAuth0
+func (t *SourceAuth) MergeSourceAuth0(v SourceAuth0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceAuth1 returns the union data inside the SourceAuth as a SourceAuth1
+func (t SourceAuth) AsSourceAuth1() (SourceAuth1, error) {
+	var body SourceAuth1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuth1 overwrites any union data inside the SourceAuth as the provided SourceAuth1
+func (t *SourceAuth) FromSourceAuth1(v SourceAuth1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuth1 performs a merge with any union data inside the SourceAuth, using the provided SourceAuth1
+func (t *SourceAuth) MergeSourceAuth1(v SourceAuth1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceAuth2 returns the union data inside the SourceAuth as a SourceAuth2
+func (t SourceAuth) AsSourceAuth2() (SourceAuth2, error) {
+	var body SourceAuth2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuth2 overwrites any union data inside the SourceAuth as the provided SourceAuth2
+func (t *SourceAuth) FromSourceAuth2(v SourceAuth2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuth2 performs a merge with any union data inside the SourceAuth, using the provided SourceAuth2
+func (t *SourceAuth) MergeSourceAuth2(v SourceAuth2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SourceAuth) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SourceAuth) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSourceAuthSafe0 returns the union data inside the SourceAuthSafe as a SourceAuthSafe0
+func (t SourceAuthSafe) AsSourceAuthSafe0() (SourceAuthSafe0, error) {
+	var body SourceAuthSafe0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuthSafe0 overwrites any union data inside the SourceAuthSafe as the provided SourceAuthSafe0
+func (t *SourceAuthSafe) FromSourceAuthSafe0(v SourceAuthSafe0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuthSafe0 performs a merge with any union data inside the SourceAuthSafe, using the provided SourceAuthSafe0
+func (t *SourceAuthSafe) MergeSourceAuthSafe0(v SourceAuthSafe0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceAuthSafe1 returns the union data inside the SourceAuthSafe as a SourceAuthSafe1
+func (t SourceAuthSafe) AsSourceAuthSafe1() (SourceAuthSafe1, error) {
+	var body SourceAuthSafe1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuthSafe1 overwrites any union data inside the SourceAuthSafe as the provided SourceAuthSafe1
+func (t *SourceAuthSafe) FromSourceAuthSafe1(v SourceAuthSafe1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuthSafe1 performs a merge with any union data inside the SourceAuthSafe, using the provided SourceAuthSafe1
+func (t *SourceAuthSafe) MergeSourceAuthSafe1(v SourceAuthSafe1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceAuthSafe2 returns the union data inside the SourceAuthSafe as a SourceAuthSafe2
+func (t SourceAuthSafe) AsSourceAuthSafe2() (SourceAuthSafe2, error) {
+	var body SourceAuthSafe2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceAuthSafe2 overwrites any union data inside the SourceAuthSafe as the provided SourceAuthSafe2
+func (t *SourceAuthSafe) FromSourceAuthSafe2(v SourceAuthSafe2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceAuthSafe2 performs a merge with any union data inside the SourceAuthSafe, using the provided SourceAuthSafe2
+func (t *SourceAuthSafe) MergeSourceAuthSafe2(v SourceAuthSafe2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SourceAuthSafe) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SourceAuthSafe) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSourceCreate0 returns the union data inside the SourceCreate as a SourceCreate0
+func (t SourceCreate) AsSourceCreate0() (SourceCreate0, error) {
+	var body SourceCreate0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceCreate0 overwrites any union data inside the SourceCreate as the provided SourceCreate0
+func (t *SourceCreate) FromSourceCreate0(v SourceCreate0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceCreate0 performs a merge with any union data inside the SourceCreate, using the provided SourceCreate0
+func (t *SourceCreate) MergeSourceCreate0(v SourceCreate0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceCreate1 returns the union data inside the SourceCreate as a SourceCreate1
+func (t SourceCreate) AsSourceCreate1() (SourceCreate1, error) {
+	var body SourceCreate1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceCreate1 overwrites any union data inside the SourceCreate as the provided SourceCreate1
+func (t *SourceCreate) FromSourceCreate1(v SourceCreate1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceCreate1 performs a merge with any union data inside the SourceCreate, using the provided SourceCreate1
+func (t *SourceCreate) MergeSourceCreate1(v SourceCreate1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SourceCreate) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SourceCreate) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// List projects
@@ -1734,6 +2693,12 @@ type ServerInterface interface {
 	// Metrics overview for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics)
 	GetResourceMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
+	// Detected metric kinds for resource
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/capabilities)
+	GetResourceMetricsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
+	// Time series for one metric kind
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/{kind})
+	GetResourceMetricSeries(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, kind MetricKind, params GetResourceMetricSeriesParams)
 	// List resource env vars (owned + imported)
 	// (GET /projects/{projectId}/resources/{resourceId}/variables)
 	ListResourceVariables(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
@@ -1788,6 +2753,24 @@ type ServerInterface interface {
 	// Delete registry
 	// (DELETE /registries/{id})
 	DeleteRegistry(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Get the metrics-domain default source
+	// (GET /source-defaults/metrics)
+	GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request)
+	// Set the metrics-domain default source
+	// (PUT /source-defaults/metrics)
+	SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request)
+	// List sources
+	// (GET /sources)
+	ListSources(w http.ResponseWriter, r *http.Request)
+	// Create source
+	// (POST /sources)
+	CreateSource(w http.ResponseWriter, r *http.Request)
+	// Delete source
+	// (DELETE /sources/{id})
+	DeleteSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Update source
+	// (PATCH /sources/{id})
+	UpdateSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -2466,6 +3449,101 @@ func (siw *ServerInterfaceWrapper) GetResourceMetrics(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// GetResourceMetricsCapabilities operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceMetricsCapabilities(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceMetricsCapabilities(w, r, projectId, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceMetricSeries operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceMetricSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind MetricKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceMetricSeriesParams
+
+	// ------------- Optional query parameter "range" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "range", r.URL.Query(), &params.Range, runtime.BindQueryParameterOptions{Type: "", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "range"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "range", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceMetricSeries(w, r, projectId, resourceId, kind, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListResourceVariables operation middleware
 func (siw *ServerInterfaceWrapper) ListResourceVariables(w http.ResponseWriter, r *http.Request) {
 
@@ -3036,6 +4114,114 @@ func (siw *ServerInterfaceWrapper) DeleteRegistry(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetMetricsSourceDefault operation middleware
+func (siw *ServerInterfaceWrapper) GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMetricsSourceDefault(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetMetricsSourceDefault operation middleware
+func (siw *ServerInterfaceWrapper) SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetMetricsSourceDefault(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSources operation middleware
+func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSource operation middleware
+func (siw *ServerInterfaceWrapper) CreateSource(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSource(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteSource operation middleware
+func (siw *ServerInterfaceWrapper) DeleteSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSource operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -3176,6 +4362,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/events", wrapper.ListResourceEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs", wrapper.ListResourceLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics", wrapper.GetResourceMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/capabilities", wrapper.GetResourceMetricsCapabilities)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/{kind}", wrapper.GetResourceMetricSeries)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables", wrapper.ListResourceVariables)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables", wrapper.CreateResourceVariable)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables/{key}", wrapper.DeleteResourceVariable)
@@ -3194,6 +4382,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/registries", wrapper.ListRegistries)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/registries", wrapper.CreateRegistry)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/registries/{id}", wrapper.DeleteRegistry)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/source-defaults/metrics", wrapper.GetMetricsSourceDefault)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/source-defaults/metrics", wrapper.SetMetricsSourceDefault)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/sources", wrapper.ListSources)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/sources", wrapper.CreateSource)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/sources/{id}", wrapper.DeleteSource)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/sources/{id}", wrapper.UpdateSource)
 
 	return m
 }
@@ -4882,6 +6076,188 @@ func (response GetResourceMetrics409JSONResponse) VisitGetResourceMetricsRespons
 	return err
 }
 
+type GetResourceMetricsCapabilitiesRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+}
+
+type GetResourceMetricsCapabilitiesResponseObject interface {
+	VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error
+}
+
+type GetResourceMetricsCapabilities200JSONResponse MetricsCapabilities
+
+func (response GetResourceMetricsCapabilities200JSONResponse) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricsCapabilities400JSONResponse Error
+
+func (response GetResourceMetricsCapabilities400JSONResponse) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricsCapabilities401JSONResponse Error
+
+func (response GetResourceMetricsCapabilities401JSONResponse) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricsCapabilities403JSONResponse Error
+
+func (response GetResourceMetricsCapabilities403JSONResponse) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricsCapabilities409JSONResponse Error
+
+func (response GetResourceMetricsCapabilities409JSONResponse) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeriesRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Kind       MetricKind         `json:"kind"`
+	Params     GetResourceMetricSeriesParams
+}
+
+type GetResourceMetricSeriesResponseObject interface {
+	VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error
+}
+
+type GetResourceMetricSeries200JSONResponse MetricSeries
+
+func (t GetResourceMetricSeries200JSONResponse) MarshalJSON() ([]byte, error) {
+	return MetricSeries(t).MarshalJSON()
+}
+
+func (t *GetResourceMetricSeries200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*MetricSeries)(t).UnmarshalJSON(b)
+}
+
+func (response GetResourceMetricSeries200JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeries400JSONResponse Error
+
+func (response GetResourceMetricSeries400JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeries401JSONResponse Error
+
+func (response GetResourceMetricSeries401JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeries403JSONResponse Error
+
+func (response GetResourceMetricSeries403JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeries404JSONResponse Error
+
+func (response GetResourceMetricSeries404JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMetricSeries409JSONResponse Error
+
+func (response GetResourceMetricSeries409JSONResponse) VisitGetResourceMetricSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListResourceVariablesRequestObject struct {
 	ProjectId  openapi_types.UUID `json:"projectId"`
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -6445,6 +7821,533 @@ func (response DeleteRegistry409JSONResponse) VisitDeleteRegistryResponse(w http
 	return err
 }
 
+type GetMetricsSourceDefaultRequestObject struct {
+}
+
+type GetMetricsSourceDefaultResponseObject interface {
+	VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error
+}
+
+type GetMetricsSourceDefault200JSONResponse Source
+
+func (response GetMetricsSourceDefault200JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMetricsSourceDefault400JSONResponse Error
+
+func (response GetMetricsSourceDefault400JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMetricsSourceDefault401JSONResponse Error
+
+func (response GetMetricsSourceDefault401JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMetricsSourceDefault403JSONResponse Error
+
+func (response GetMetricsSourceDefault403JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMetricsSourceDefault409JSONResponse Error
+
+func (response GetMetricsSourceDefault409JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefaultRequestObject struct {
+	Body *SetMetricsSourceDefaultJSONRequestBody
+}
+
+type SetMetricsSourceDefaultResponseObject interface {
+	VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error
+}
+
+type SetMetricsSourceDefault200JSONResponse Source
+
+func (t SetMetricsSourceDefault200JSONResponse) MarshalJSON() ([]byte, error) {
+	return Source(t).MarshalJSON()
+}
+
+func (t *SetMetricsSourceDefault200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*Source)(t).UnmarshalJSON(b)
+}
+
+func (response SetMetricsSourceDefault200JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefault400JSONResponse Error
+
+func (response SetMetricsSourceDefault400JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefault401JSONResponse Error
+
+func (response SetMetricsSourceDefault401JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefault403JSONResponse Error
+
+func (response SetMetricsSourceDefault403JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefault404JSONResponse Error
+
+func (response SetMetricsSourceDefault404JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetMetricsSourceDefault409JSONResponse Error
+
+func (response SetMetricsSourceDefault409JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSourcesRequestObject struct {
+}
+
+type ListSourcesResponseObject interface {
+	VisitListSourcesResponse(w http.ResponseWriter) error
+}
+
+type ListSources200JSONResponse []Source
+
+func (response ListSources200JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSources400JSONResponse Error
+
+func (response ListSources400JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSources401JSONResponse Error
+
+func (response ListSources401JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSources403JSONResponse Error
+
+func (response ListSources403JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSources409JSONResponse Error
+
+func (response ListSources409JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSourceRequestObject struct {
+	Body *CreateSourceJSONRequestBody
+}
+
+type CreateSourceResponseObject interface {
+	VisitCreateSourceResponse(w http.ResponseWriter) error
+}
+
+type CreateSource201JSONResponse Source
+
+func (t CreateSource201JSONResponse) MarshalJSON() ([]byte, error) {
+	return Source(t).MarshalJSON()
+}
+
+func (t *CreateSource201JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*Source)(t).UnmarshalJSON(b)
+}
+
+func (response CreateSource201JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSource400JSONResponse Error
+
+func (response CreateSource400JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSource401JSONResponse Error
+
+func (response CreateSource401JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSource403JSONResponse Error
+
+func (response CreateSource403JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSource409JSONResponse Error
+
+func (response CreateSource409JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSourceRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type DeleteSourceResponseObject interface {
+	VisitDeleteSourceResponse(w http.ResponseWriter) error
+}
+
+type DeleteSource204Response struct {
+}
+
+func (response DeleteSource204Response) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteSource400JSONResponse Error
+
+func (response DeleteSource400JSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSource401JSONResponse Error
+
+func (response DeleteSource401JSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSource403JSONResponse Error
+
+func (response DeleteSource403JSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSource404JSONResponse Error
+
+func (response DeleteSource404JSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSource409JSONResponse Error
+
+func (response DeleteSource409JSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSourceRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *UpdateSourceJSONRequestBody
+}
+
+type UpdateSourceResponseObject interface {
+	VisitUpdateSourceResponse(w http.ResponseWriter) error
+}
+
+type UpdateSource200JSONResponse Source
+
+func (t UpdateSource200JSONResponse) MarshalJSON() ([]byte, error) {
+	return Source(t).MarshalJSON()
+}
+
+func (t *UpdateSource200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*Source)(t).UnmarshalJSON(b)
+}
+
+func (response UpdateSource200JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSource400JSONResponse Error
+
+func (response UpdateSource400JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSource401JSONResponse Error
+
+func (response UpdateSource401JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSource403JSONResponse Error
+
+func (response UpdateSource403JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSource404JSONResponse Error
+
+func (response UpdateSource404JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSource409JSONResponse Error
+
+func (response UpdateSource409JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List projects
@@ -6507,6 +8410,12 @@ type StrictServerInterface interface {
 	// Metrics overview for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics)
 	GetResourceMetrics(ctx context.Context, request GetResourceMetricsRequestObject) (GetResourceMetricsResponseObject, error)
+	// Detected metric kinds for resource
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/capabilities)
+	GetResourceMetricsCapabilities(ctx context.Context, request GetResourceMetricsCapabilitiesRequestObject) (GetResourceMetricsCapabilitiesResponseObject, error)
+	// Time series for one metric kind
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/{kind})
+	GetResourceMetricSeries(ctx context.Context, request GetResourceMetricSeriesRequestObject) (GetResourceMetricSeriesResponseObject, error)
 	// List resource env vars (owned + imported)
 	// (GET /projects/{projectId}/resources/{resourceId}/variables)
 	ListResourceVariables(ctx context.Context, request ListResourceVariablesRequestObject) (ListResourceVariablesResponseObject, error)
@@ -6561,6 +8470,24 @@ type StrictServerInterface interface {
 	// Delete registry
 	// (DELETE /registries/{id})
 	DeleteRegistry(ctx context.Context, request DeleteRegistryRequestObject) (DeleteRegistryResponseObject, error)
+	// Get the metrics-domain default source
+	// (GET /source-defaults/metrics)
+	GetMetricsSourceDefault(ctx context.Context, request GetMetricsSourceDefaultRequestObject) (GetMetricsSourceDefaultResponseObject, error)
+	// Set the metrics-domain default source
+	// (PUT /source-defaults/metrics)
+	SetMetricsSourceDefault(ctx context.Context, request SetMetricsSourceDefaultRequestObject) (SetMetricsSourceDefaultResponseObject, error)
+	// List sources
+	// (GET /sources)
+	ListSources(ctx context.Context, request ListSourcesRequestObject) (ListSourcesResponseObject, error)
+	// Create source
+	// (POST /sources)
+	CreateSource(ctx context.Context, request CreateSourceRequestObject) (CreateSourceResponseObject, error)
+	// Delete source
+	// (DELETE /sources/{id})
+	DeleteSource(ctx context.Context, request DeleteSourceRequestObject) (DeleteSourceResponseObject, error)
+	// Update source
+	// (PATCH /sources/{id})
+	UpdateSource(ctx context.Context, request UpdateSourceRequestObject) (UpdateSourceResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -7181,6 +9108,62 @@ func (sh *strictHandler) GetResourceMetrics(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// GetResourceMetricsCapabilities operation middleware
+func (sh *strictHandler) GetResourceMetricsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID) {
+	var request GetResourceMetricsCapabilitiesRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceMetricsCapabilities(ctx, request.(GetResourceMetricsCapabilitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceMetricsCapabilities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceMetricsCapabilitiesResponseObject); ok {
+		if err := validResponse.VisitGetResourceMetricsCapabilitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceMetricSeries operation middleware
+func (sh *strictHandler) GetResourceMetricSeries(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, kind MetricKind, params GetResourceMetricSeriesParams) {
+	var request GetResourceMetricSeriesRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Kind = kind
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceMetricSeries(ctx, request.(GetResourceMetricSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceMetricSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceMetricSeriesResponseObject); ok {
+		if err := validResponse.VisitGetResourceMetricSeriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListResourceVariables operation middleware
 func (sh *strictHandler) ListResourceVariables(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID) {
 	var request ListResourceVariablesRequestObject
@@ -7722,6 +9705,184 @@ func (sh *strictHandler) DeleteRegistry(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteRegistryResponseObject); ok {
 		if err := validResponse.VisitDeleteRegistryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMetricsSourceDefault operation middleware
+func (sh *strictHandler) GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
+	var request GetMetricsSourceDefaultRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMetricsSourceDefault(ctx, request.(GetMetricsSourceDefaultRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMetricsSourceDefault")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMetricsSourceDefaultResponseObject); ok {
+		if err := validResponse.VisitGetMetricsSourceDefaultResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetMetricsSourceDefault operation middleware
+func (sh *strictHandler) SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
+	var request SetMetricsSourceDefaultRequestObject
+
+	var body SetMetricsSourceDefaultJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetMetricsSourceDefault(ctx, request.(SetMetricsSourceDefaultRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetMetricsSourceDefault")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetMetricsSourceDefaultResponseObject); ok {
+		if err := validResponse.VisitSetMetricsSourceDefaultResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSources operation middleware
+func (sh *strictHandler) ListSources(w http.ResponseWriter, r *http.Request) {
+	var request ListSourcesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSources(ctx, request.(ListSourcesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSources")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSourcesResponseObject); ok {
+		if err := validResponse.VisitListSourcesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSource operation middleware
+func (sh *strictHandler) CreateSource(w http.ResponseWriter, r *http.Request) {
+	var request CreateSourceRequestObject
+
+	var body CreateSourceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSource(ctx, request.(CreateSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSourceResponseObject); ok {
+		if err := validResponse.VisitCreateSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteSource operation middleware
+func (sh *strictHandler) DeleteSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request DeleteSourceRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteSource(ctx, request.(DeleteSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteSourceResponseObject); ok {
+		if err := validResponse.VisitDeleteSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSource operation middleware
+func (sh *strictHandler) UpdateSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request UpdateSourceRequestObject
+
+	request.Id = id
+
+	var body UpdateSourceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSource(ctx, request.(UpdateSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSourceResponseObject); ok {
+		if err := validResponse.VisitUpdateSourceResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

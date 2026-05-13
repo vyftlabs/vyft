@@ -7,8 +7,8 @@ Acceptance:
 - State derivation per kind:
   ```
   if capabilities.error === "unreachable"           → disabled (unreachable)
-  if capabilities.dataSourceKind == null            → disabled (none)
-  if !MetricsCeiling[dataSourceKind].includes(kind) → disabled (ceiling)
+  if capabilities.sourceKind == null            → disabled (none)
+  if !MetricsCeiling[sourceKind].includes(kind) → disabled (ceiling)
   if !capabilities.detected.includes(kind)          → empty-data (service-not-instrumented)
   if kindQuery.isLoading                            → loading
   if kindQuery.error                                → error

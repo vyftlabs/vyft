@@ -1,7 +1,7 @@
 # Metrics
 
 ## Purpose
-Operator sees workload performance per service. The metrics data source is configurable; UI adapts to what is detected at runtime.
+Operator sees workload performance per service. The metrics source is configurable; UI adapts to what is detected at runtime.
 
 ## Metric kinds
 
@@ -13,14 +13,14 @@ Operator sees workload performance per service. The metrics data source is confi
 | Error rate | errored request share | percent | line | spike detection, error-budget |
 | Latency | p50/p95/p99 of request latency | time, auto-scaled (ms, s) | overlaid lines | regressions hidden by averages |
 
-## Data sources
+## Sources
 
 | Kind | Ceiling | Note |
 |---|---|---|
 | Prometheus | CPU, Memory, Request rate, Error rate, Latency | RED + Latency require HTTP server instrumentation |
 | metrics-server | CPU, Memory | built-in, resource-only |
 
-Ceiling = what the data source kind *could* offer. Settings page shows it for operator guidance. Actual UI gating is driven by runtime detection (next section), not ceiling.
+Ceiling = what the source kind *could* offer. Settings page shows it for operator guidance. Actual UI gating is driven by runtime detection (next section), not ceiling.
 
 ## Panel states
 
@@ -28,9 +28,9 @@ A panel resolves to one of these states, in priority order:
 
 | State | When | Render | CTA |
 |---|---|---|---|
-| disabled — none | No data source configured | muted slot, message + button | "Configure metrics" → settings |
+| disabled — none | No source configured | muted slot, message + button | "Configure metrics" → settings |
 | disabled — ceiling | Configured kind outside its ceiling | muted slot | "Configure metrics" → settings |
-| disabled — unreachable | Configured data source probe failed | muted slot | "Configure metrics" → settings |
+| disabled — unreachable | Configured source probe failed | muted slot | "Configure metrics" → settings |
 | loading | Initial fetch or refresh | skeleton | — |
 | empty-data | Kind detected, no series for this service | placeholder w/ message | "No data — service may not be instrumented" → docs |
 | empty-range | Kind detected, service has data elsewhere but none in selected range | placeholder | — |
@@ -41,12 +41,12 @@ Rule: **disabled = config-level issue (settings fixes it); empty = data-level is
 Single CTA across all disabled states ("Configure metrics") keeps the render path uniform. Message varies by cause; button does not.
 
 ## Outcomes
-- Operator configures a single metrics data source globally.
-- Settings shows each data source kind's ceiling so operator knows what they could get.
-- Backend probes the active data source for which kinds are detected at the instance.
+- Operator configures a single metrics source globally.
+- Settings shows each source kind's ceiling so operator knows what they could get.
+- Backend probes the active source for which kinds are detected at the instance.
 - Panels gate on detection result, not ceiling. metrics-server detection is static (CPU, Memory always). Prometheus detection is probe-driven.
 - Per-service "no data" is observed from the kind's query result, not a separate probe.
-- Data source change re-runs detection on next capability fetch.
+- Source change re-runs detection on next capability fetch.
 - Time range selectable.
 
 ## Choices
@@ -57,7 +57,7 @@ Single CTA across all disabled states ("Configure metrics") keeps the render pat
 - One disabled CTA ("Configure metrics") across all causes. Message varies, button does not. Single render path.
 - Error rate as percent, not absolute count. Comparable across traffic levels; raw count misleads when load varies.
 - OTel semantic conventions are the canonical contract for RED metric names. Legacy `http_requests_total` accepted as a fallback during probe.
-- Generic `data sources` abstraction underneath, exposed in v1 only as "Metrics" inside a Data sources settings page. Future verticals (logs, traces) and per-service overrides reuse the same substrate.
+- Generic `sources` abstraction underneath, exposed in v1 only as "Metrics" inside a Sources settings page. Future verticals (logs, traces) and per-service overrides reuse the same substrate.
 
 ## Gaps
 - Time range — global or per panel?
