@@ -1,7 +1,5 @@
-import { XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface DrawerTab {
@@ -164,7 +162,7 @@ export function ServiceDrawerShell({
           expandedContent
         ) : (
           <>
-            <div className="flex items-center justify-between px-6 py-4 shrink-0">
+            <div className="flex items-center px-6 py-4 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 {icon && (
                   <div className="shrink-0 text-foreground/70">{icon}</div>
@@ -175,14 +173,6 @@ export function ServiceDrawerShell({
                   name
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onClose}
-                data-testid="service.drawer.close"
-              >
-                <XIcon className="size-4" />
-              </Button>
             </div>
 
             {tabs.length > 0 && (
