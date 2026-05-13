@@ -350,11 +350,6 @@ export function LatencySparkline({
                 const ts = payload[0]?.payload?.time as string | undefined;
                 return (
                   <div className="rounded-md bg-popover px-2 py-1.5 shadow-md ring-1 ring-foreground/10 space-y-0.5">
-                    {ts && (
-                      <div className="text-[10px] text-muted-foreground font-mono">
-                        {fmtTime(ts)}
-                      </div>
-                    )}
                     {keys.map((k) => {
                       const entry = payload.find(
                         (p) => p.dataKey === k.dataKey,
@@ -388,6 +383,11 @@ export function LatencySparkline({
                         </div>
                       );
                     })}
+                    {ts && (
+                      <div className="text-[10px] text-muted-foreground font-mono pt-0.5">
+                        {fmtTime(ts)}
+                      </div>
+                    )}
                   </div>
                 );
               }}
