@@ -82,14 +82,26 @@ func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel sou
 		for i := range pts {
 			pts[i].Value *= 1000
 		}
-		return source.Series{Kind: kind, Range: r, Points: pts}, nil
+		limit, err := p.queryLimitInstant(ctx, expand(cpuLimitTmpl, vars))
+		if err == nil && limit > 0 {
+			limit *= 1000 // cores → millicores to match Points scale
+		}
+		return source.Series{Kind: kind, Range: r, Points: pts, Limit: limit}, nil
 
 	case openapi.MetricKindMemory:
 		pts, err := p.queryAggregated(ctx, expand(memoryTmpl, vars), rng)
 		if err != nil {
 			return source.Series{}, err
 		}
-		return source.Series{Kind: kind, Range: r, Points: pts}, nil
+		limit, _ := p.queryLimitInstant(ctx, expand(memoryLimitTmpl, vars))
+		// Pods without a memory limit get a node-capacity value from
+		// cAdvisor. Sanity threshold: 100 PiB. Anything above that is
+		// definitely "no real limit" — drop.
+		const memCap = float64(int64(1) << 60)
+		if limit >= memCap {
+			limit = 0
+		}
+		return source.Series{Kind: kind, Range: r, Points: pts, Limit: limit}, nil
 
 	case openapi.MetricKindReqRate:
 		pts, err := p.queryWithFallback(ctx, expand(reqRateSemconv, vars), expand(reqRateLegacy, vars), rng)
@@ -118,6 +130,29 @@ func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel sou
 	}
 
 	return source.Series{}, fmt.Errorf("prometheus: unsupported kind %q", kind)
+}
+
+// queryLimitInstant runs a one-shot instant query and sums the resulting
+// vector samples into a single scalar. Used for limit / capacity queries
+// where we only need a snapshot, not a series.
+func (p *Prometheus) queryLimitInstant(ctx context.Context, q string) (float64, error) {
+	val, _, err := p.api.Query(ctx, q, time.Now())
+	if err != nil {
+		return 0, fmt.Errorf("prometheus limit query: %w", err)
+	}
+	vec, ok := val.(model.Vector)
+	if !ok {
+		return 0, fmt.Errorf("prometheus limit: unexpected result type %T", val)
+	}
+	var total float64
+	for _, s := range vec {
+		v := float64(s.Value)
+		if !isFinite(v) || v <= 0 {
+			continue
+		}
+		total += v
+	}
+	return total, nil
 }
 
 // queryAggregated runs a single PromQL range query and aggregates all

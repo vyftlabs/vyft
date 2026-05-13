@@ -1024,6 +1024,7 @@ type MetricSeries struct {
 // MetricSeries0 defines model for .
 type MetricSeries0 struct {
 	Kind   MetricSeries0Kind `json:"kind"`
+	Limit  *float32          `json:"limit,omitempty"`
 	Points []RangePoint      `json:"points"`
 	Range  MetricRange       `json:"range"`
 }
@@ -1034,6 +1035,7 @@ type MetricSeries0Kind string
 // MetricSeries1 defines model for .
 type MetricSeries1 struct {
 	Kind   MetricSeries1Kind `json:"kind"`
+	Limit  *float32          `json:"limit,omitempty"`
 	Points []RangePoint      `json:"points"`
 	Range  MetricRange       `json:"range"`
 }

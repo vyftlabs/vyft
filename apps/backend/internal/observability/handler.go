@@ -208,19 +208,29 @@ func toMetricSeriesResponse(s source.Series) (openapi.GetResourceMetricSeries200
 	r := openapi.MetricRange(s.Range)
 	switch s.Kind {
 	case openapi.MetricKindCpu:
-		if err := ms.FromMetricSeries0(openapi.MetricSeries0{
+		out := openapi.MetricSeries0{
 			Kind:   openapi.MetricSeries0KindCpu,
 			Range:  r,
 			Points: source.ToOpenAPIRangePoints(s.Points),
-		}); err != nil {
+		}
+		if s.Limit > 0 {
+			l := float32(s.Limit)
+			out.Limit = &l
+		}
+		if err := ms.FromMetricSeries0(out); err != nil {
 			return openapi.GetResourceMetricSeries200JSONResponse{}, err
 		}
 	case openapi.MetricKindMemory:
-		if err := ms.FromMetricSeries1(openapi.MetricSeries1{
+		out := openapi.MetricSeries1{
 			Kind:   "memory",
 			Range:  r,
 			Points: source.ToOpenAPIRangePoints(s.Points),
-		}); err != nil {
+		}
+		if s.Limit > 0 {
+			l := float32(s.Limit)
+			out.Limit = &l
+		}
+		if err := ms.FromMetricSeries1(out); err != nil {
 			return openapi.GetResourceMetricSeries200JSONResponse{}, err
 		}
 	case openapi.MetricKindReqRate:

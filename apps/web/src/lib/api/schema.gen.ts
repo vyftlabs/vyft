@@ -900,11 +900,13 @@ export interface components {
             kind: "cpu";
             range: components["schemas"]["MetricRange"];
             points: components["schemas"]["RangePoint"][];
+            limit?: number;
         } | {
             /** @enum {string} */
             kind: "memory";
             range: components["schemas"]["MetricRange"];
             points: components["schemas"]["RangePoint"][];
+            limit?: number;
         } | {
             /** @enum {string} */
             kind: "reqRate";

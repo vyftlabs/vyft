@@ -179,13 +179,37 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
     );
   }
   const k = kind as Exclude<MetricKind, "latency">;
+  const limit =
+    series.kind === "cpu" || series.kind === "memory" ? series.limit : undefined;
+  const baseFormatter = KIND_FORMATTERS[k];
+  const formatter =
+    limit && limit > 0
+      ? (v: number) => formatPercentOfLimit(v, limit, baseFormatter)
+      : baseFormatter;
   return (
     <Sparkline
       title={KIND_LABELS[kind]}
       data={series.points as unknown as Record<string, unknown>[]}
       dataKey="value"
       unit=""
-      formatHeadline={KIND_FORMATTERS[k]}
+      formatHeadline={formatter}
     />
   );
+}
+
+// formatPercentOfLimit returns "<percent>%" as the primary value and the
+// raw measurement (via baseFormatter) as the trailing unit, e.g.
+// "47%  ·  473m". The Sparkline renders `value` big and `unit` small so
+// percent is the headline.
+function formatPercentOfLimit(
+  v: number,
+  limit: number,
+  baseFormatter: (v: number) => { value: string; unit: string },
+): { value: string; unit: string } {
+  const pct = (v / limit) * 100;
+  const raw = baseFormatter(v);
+  return {
+    value: `${fmtTrim(pct)}%`,
+    unit: `· ${raw.value}${raw.unit}`,
+  };
 }

@@ -23,12 +23,16 @@ type LatencyPoint struct {
 
 // Series is what a source returns from a single Query. Either Points or
 // Latency is populated based on Kind. Empty slices are valid (empty-data
-// state on the UI).
+// state on the UI). Limit is meaningful only for CPU + Memory and
+// represents the aggregated pod limit (millicores / bytes) at fetch
+// time; zero means "limit unknown / not set" and the UI falls back to
+// raw display.
 type Series struct {
 	Kind    openapi.MetricKind
 	Range   Range
 	Points  []Point
 	Latency []LatencyPoint
+	Limit   float64
 }
 
 // ToOpenAPIRangePoints converts the internal Point slice to the API

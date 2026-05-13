@@ -24,6 +24,15 @@ const (
 	cpuTmpl = `sum by (pod) (rate(container_cpu_usage_seconds_total{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""}[5m]))`
 
 	memoryTmpl = `sum by (pod) (container_memory_working_set_bytes{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""})`
+
+	// Limits (cAdvisor). quota/period yields cores (multiply by 1000 to
+	// get millicores). Pods without a CPU limit set report quota=-1 so
+	// callers must filter > 0 before exposing.
+	cpuLimitTmpl = `sum by (pod) (container_spec_cpu_quota{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""} / container_spec_cpu_period{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""})`
+
+	// Memory limit (bytes). Pods without a memory limit report a huge
+	// node-capacity value; callers should sanity-check before exposing.
+	memoryLimitTmpl = `sum by (pod) (container_spec_memory_limit_bytes{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""})`
 )
 
 // RED queries: semconv first (OTel HTTP server semantic conventions);

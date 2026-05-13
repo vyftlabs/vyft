@@ -72,11 +72,17 @@ export const MetricSeries = z
       kind: z.literal("cpu"),
       range: MetricRange,
       points: z.array(RangePoint),
+      // Pod CPU limit (millicores), aggregated across containers. Omitted
+      // when the workload has no limit set; UI falls back to raw display.
+      limit: z.number().optional(),
     }),
     z.object({
       kind: z.literal("memory"),
       range: MetricRange,
       points: z.array(RangePoint),
+      // Pod memory limit (bytes), aggregated across containers. Omitted
+      // when the workload has no limit set; UI falls back to raw display.
+      limit: z.number().optional(),
     }),
     z.object({
       kind: z.literal("reqRate"),
