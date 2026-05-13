@@ -48,8 +48,13 @@ const (
 	reqRateSemconv = `sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m]))`
 	reqRateLegacy  = `sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
 
-	errRateSemconv = `sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*",http_response_status_code=~"5.."}[1m])) / sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m]))`
-	errRateLegacy  = `sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*",status=~"5.."}[1m])) / sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
+	// Error rate uses `or sum(...) * 0` zero-fill: when no 5xx series
+	// exist at all, the numerator would normally be empty and the
+	// division would return nothing — operator sees "no data" even
+	// though the honest answer is 0% errors. The `or` falls back to a
+	// zero series shaped like the denominator so division yields 0.
+	errRateSemconv = `(sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*",http_response_status_code=~"5.."}[1m])) or sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m])) * 0) / sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m]))`
+	errRateLegacy  = `(sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*",status=~"5.."}[1m])) or sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m])) * 0) / sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
 )
 
 // latencyQuantile returns the histogram_quantile query for q in [0,1].

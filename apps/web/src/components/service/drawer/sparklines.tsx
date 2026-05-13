@@ -350,8 +350,13 @@ export function LatencySparkline({
                               tt_level && severityTextClass[tt_level],
                             )}
                           >
-                            {fmt(entry.value as number)}
-                            {unit}
+                            {(() => {
+                              const v = entry.value as number;
+                              const f = formatHeadline
+                                ? formatHeadline(v)
+                                : { value: fmt(v), unit };
+                              return `${f.value}${f.unit}`;
+                            })()}
                           </span>
                         </div>
                       );
