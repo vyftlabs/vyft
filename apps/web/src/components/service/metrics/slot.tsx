@@ -210,6 +210,6 @@ function formatPercentOfLimit(
   const raw = baseFormatter(v);
   return {
     value: `${fmtTrim(pct)}%`,
-    unit: `(${raw.value}${raw.unit})`,
+    unit: ` ${raw.value}${raw.unit}`,
   };
 }
