@@ -157,10 +157,7 @@ function Header({
           <p className="text-[10px] text-muted-foreground">{sub}</p>
         )}
       </div>
-      <div className="flex-1 min-h-0 relative">
-        {children}
-        <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-      </div>
+      <div className="flex-1 min-h-0 relative">{children}</div>
     </div>
   );
 }
