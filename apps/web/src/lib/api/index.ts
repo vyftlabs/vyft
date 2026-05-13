@@ -5,4 +5,5 @@ export * as projects from "./projects";
 export * as registries from "./registries";
 export * as resources from "./resources";
 export * as routes from "./routes";
+export * as sources from "./sources";
 export * as variables from "./variables";
