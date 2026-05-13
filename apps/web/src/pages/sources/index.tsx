@@ -3,11 +3,12 @@ import type { Source, SourceCreate, SourceKind } from "@vyft/spec";
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
+  CheckIcon,
   LoaderIcon,
   PencilIcon,
-  PlugZapIcon,
   PlusIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -124,17 +125,6 @@ function SourceRow({
   const Icon = preset?.icon;
   const remove = useMutation(api.sources.remove);
   const promote = useMutation(api.sources.promoteDefault);
-  const test = useMutation(api.sources.test);
-
-  const runTest = () => {
-    test.mutate(source.id, {
-      onSuccess: (r) => {
-        if (r.ok) toast.success(`${source.name}: reachable`);
-        else toast.error(`${source.name}: ${r.error ?? "unreachable"}`);
-      },
-      onError: (err: Error) => toast.error(err.message),
-    });
-  };
 
   return (
     <ListItem>
@@ -159,19 +149,6 @@ function SourceRow({
         </ListDescription>
       </ListContent>
       <ListAction className="opacity-0 group-hover/list-item:opacity-100 flex gap-1">
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={test.isPending}
-          onClick={runTest}
-        >
-          {test.isPending ? (
-            <LoaderIcon className="size-3.5 animate-spin" />
-          ) : (
-            <PlugZapIcon className="size-3.5" />
-          )}
-          Test
-        </Button>
         {!source.isDefault && (
           <Button
             size="xs"
@@ -275,9 +252,13 @@ function SourceDialog({
   const open = mode.type !== "closed";
   const editing = mode.type === "edit" ? mode.source : null;
   const [page, setPage] = useState<"picker" | SourceKind>("picker");
+  const [testResult, setTestResult] = useState<
+    { ok: boolean; message: string } | null
+  >(null);
   const create = useMutation(api.sources.create);
   const patch = useMutation(api.sources.patch);
-  const { register, handleSubmit, watch, reset } = useForm<FormValues>({
+  const test = useMutation(api.sources.test);
+  const { register, handleSubmit, watch, reset, getValues } = useForm<FormValues>({
     defaultValues: defaultsFor(editing ?? undefined),
   });
 
@@ -289,6 +270,7 @@ function SourceDialog({
       setPage("picker");
       reset(defaultsFor(undefined));
     }
+    setTestResult(null);
   }, [mode, reset]);
 
   const authType = watch("authType");
@@ -459,16 +441,58 @@ function SourceDialog({
               )}
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t mx-0 mb-0 rounded-none">
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting
-                  ? editing
-                    ? "Saving..."
-                    : "Adding..."
-                  : editing
-                    ? "Save"
-                    : "Add source"}
-              </Button>
+            <DialogFooter className="flex-col items-stretch px-6 py-4 border-t mx-0 mb-0 rounded-none gap-2 sm:flex-col sm:items-stretch">
+              {testResult && (
+                <p
+                  className={
+                    testResult.ok
+                      ? "inline-flex items-center gap-1 text-xs text-primary"
+                      : "inline-flex items-start gap-1 text-xs text-destructive"
+                  }
+                >
+                  {testResult.ok ? (
+                    <CheckIcon className="size-3.5 shrink-0 mt-0.5" />
+                  ) : (
+                    <XIcon className="size-3.5 shrink-0 mt-0.5" />
+                  )}
+                  <span className="break-all">{testResult.message}</span>
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={test.isPending || !selected}
+                  onClick={() => {
+                    if (!selected) return;
+                    const body = toCreateBody(selected.id, getValues());
+                    if (!body) return;
+                    setTestResult(null);
+                    test.mutate(body, {
+                      onSuccess: (r) =>
+                        setTestResult({
+                          ok: r.ok,
+                          message: r.ok
+                            ? "Reachable"
+                            : (r.error ?? "Unreachable"),
+                        }),
+                      onError: (err: Error) =>
+                        setTestResult({ ok: false, message: err.message }),
+                    });
+                  }}
+                >
+                  {test.isPending ? "Testing..." : "Test connection"}
+                </Button>
+                <Button type="submit" className="flex-1" disabled={submitting}>
+                  {submitting
+                    ? editing
+                      ? "Saving..."
+                      : "Adding..."
+                    : editing
+                      ? "Save"
+                      : "Add source"}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         )}

@@ -140,26 +140,23 @@ type TestResult struct {
 	Error string
 }
 
-// Test probes a source for reachability. For Prometheus, runs a trivial
-// `up` instant query — any 2xx response is a pass. For metrics-server,
-// pings the cluster pods endpoint with a low timeout. Returns
-// (TestResult{OK: false, Error: msg}, nil) on probe failure so the
+// Test probes the supplied (pending) source config for reachability —
+// not the DB row. For Prometheus, runs a trivial `up` instant query.
+// For metrics-server, lists 1 PodMetrics in the default namespace.
+// Returns TestResult{OK: false, Error: msg} on probe failure so the
 // caller can render the error without treating it as a server error.
-func (s *Service) Test(ctx context.Context, id uuid.UUID) (TestResult, error) {
-	row, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id))
+func (s *Service) Test(ctx context.Context, body openapi.SourceCreate) (TestResult, error) {
+	parsed, err := parseCreate(body)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return TestResult{}, apierr.NotFound("source not found")
-		}
-		return TestResult{}, apierr.Internal(err)
+		return TestResult{}, apierr.BadRequest(err.Error())
 	}
-	switch row.Kind {
+	switch parsed.kind {
 	case sqlc.SourceKindPrometheus:
-		return testPrometheus(ctx, row)
+		return testPrometheusConfig(ctx, parsed)
 	case sqlc.SourceKindMetricsServer:
 		return testMetricsServer(ctx, s.mcs)
 	}
-	return TestResult{}, apierr.Internal(fmt.Errorf("unknown source kind %q", row.Kind))
+	return TestResult{}, apierr.Internal(fmt.Errorf("unknown source kind %q", parsed.kind))
 }
 
 func (s *Service) PromoteDefault(ctx context.Context, id uuid.UUID) (sqlc.Source, error) {
@@ -367,19 +364,19 @@ func promConfigSafe(stored prometheus.StoredConfig) (openapi.PrometheusConfigSaf
 // unused so far; reserved for future helpers
 var _ pgtype.UUID
 
-func testPrometheus(ctx context.Context, row sqlc.Source) (TestResult, error) {
+// testPrometheusConfig builds an ephemeral Prom client from the parsed
+// request body (no DB lookup) and probes it.
+func testPrometheusConfig(ctx context.Context, p parsedCreate) (TestResult, error) {
 	var stored prometheus.StoredConfig
-	if err := json.Unmarshal(row.Config, &stored); err != nil {
+	if err := json.Unmarshal(p.configJSON, &stored); err != nil {
 		return TestResult{}, apierr.Internal(fmt.Errorf("decode config: %w", err))
 	}
-	src, err := stored.Build(uuid.UUID(row.ID.Bytes), row.Name, row.AuthEncrypted)
+	src, err := stored.Build(uuid.New(), p.name, p.authSecret)
 	if err != nil {
 		return TestResult{OK: false, Error: err.Error()}, nil
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	// Probe the cheapest metric name we know — any name will do; we only
-	// care that Prom is reachable and authorized.
 	if _, err := src.Probe(probeCtx, []string{"up"}); err != nil {
 		return TestResult{OK: false, Error: err.Error()}, nil
 	}

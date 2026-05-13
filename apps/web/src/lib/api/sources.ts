@@ -58,10 +58,8 @@ export const promoteDefault = mutationOptions({
 });
 
 export const test = mutationOptions({
-  mutationFn: async (id: string) => {
-    const { data } = await client.POST("/sources/{id}/test", {
-      params: { path: { id } },
-    });
+  mutationFn: async (body: SourceCreate) => {
+    const { data } = await client.POST("/sources/test", { body });
     return data!;
   },
 });

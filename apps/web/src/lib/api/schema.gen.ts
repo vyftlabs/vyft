@@ -433,7 +433,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sources/{id}/test": {
+    "/sources/test": {
         parameters: {
             query?: never;
             header?: never;
@@ -442,7 +442,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Probe a source to check reachability */
+        /** Probe pending source config for reachability */
         post: operations["testSource"];
         delete?: never;
         options?: never;
@@ -3918,12 +3918,14 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SourceCreate"];
+            };
+        };
         responses: {
             /** @description Probe result */
             200: {
@@ -3954,15 +3956,6 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

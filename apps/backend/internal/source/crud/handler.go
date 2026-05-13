@@ -82,7 +82,10 @@ func (h *Handler) PromoteSourceDefault(ctx context.Context, req openapi.PromoteS
 }
 
 func (h *Handler) TestSource(ctx context.Context, req openapi.TestSourceRequestObject) (openapi.TestSourceResponseObject, error) {
-	r, err := h.svc.Test(ctx, uuid.UUID(req.Id))
+	if req.Body == nil {
+		return nil, apierr.BadRequest("body required")
+	}
+	r, err := h.svc.Test(ctx, *req.Body)
 	if err != nil {
 		return nil, err
 	}

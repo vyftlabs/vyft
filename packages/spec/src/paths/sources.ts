@@ -3,6 +3,13 @@ import type { ZodOpenApiPathsObject } from "zod-openapi";
 import { collectionErrors, itemErrors } from "../models/common.ts";
 import { Source, SourceCreate } from "../models/source.ts";
 
+const SourceTestResult = z
+  .object({
+    ok: z.boolean(),
+    error: z.string().optional(),
+  })
+  .meta({ id: "SourceTestResult" });
+
 export const sourcePaths: ZodOpenApiPathsObject = {
   "/sources": {
     get: {
@@ -76,27 +83,20 @@ export const sourcePaths: ZodOpenApiPathsObject = {
       },
     },
   },
-  "/sources/{id}/test": {
+  "/sources/test": {
     post: {
       operationId: "testSource",
-      summary: "Probe a source to check reachability",
+      summary: "Probe pending source config for reachability",
       tags: ["Sources"],
-      requestParams: { path: z.object({ id: z.uuid() }) },
+      requestBody: {
+        content: { "application/json": { schema: SourceCreate } },
+      },
       responses: {
         200: {
           description: "Probe result",
-          content: {
-            "application/json": {
-              schema: z
-                .object({
-                  ok: z.boolean(),
-                  error: z.string().optional(),
-                })
-                .meta({ id: "SourceTestResult" }),
-            },
-          },
+          content: { "application/json": { schema: SourceTestResult } },
         },
-        ...itemErrors,
+        ...collectionErrors,
       },
     },
   },
