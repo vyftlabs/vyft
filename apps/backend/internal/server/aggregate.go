@@ -14,7 +14,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/registry"
 	"github.com/vyftlabs/vyft/apps/backend/internal/resource"
 	"github.com/vyftlabs/vyft/apps/backend/internal/route"
-	"github.com/vyftlabs/vyft/apps/backend/internal/source"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/crud"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/resolver"
 	"github.com/vyftlabs/vyft/apps/backend/internal/variable"
 )
@@ -30,7 +30,7 @@ type (
 	registryAPI      = registry.Handler
 	deploymentAPI    = deployment.Handler
 	observabilityAPI = observability.Handler
-	sourceAPI        = source.Handler
+	sourceAPI        = crud.Handler
 )
 
 type API struct {
@@ -73,6 +73,6 @@ func NewAPI(database *db.DB, rt deployment.Runtime, mcs metricsclient.Interface,
 		registryAPI:      registry.NewHandler(registry.New(database)),
 		deploymentAPI:    deployment.NewHandler(depSvc),
 		observabilityAPI: observability.NewHandler(observability.New(database, envSvc, res)),
-		sourceAPI:        source.NewHandler(),
+		sourceAPI:        crud.NewHandler(crud.NewService(database)),
 	}, depSvc
 }

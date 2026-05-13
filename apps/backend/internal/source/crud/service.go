@@ -1,0 +1,322 @@
+// Package crud serves the source CRUD endpoints. Lives in its own
+// package so it can import the prometheus subpkg without forming an
+// import cycle with the parent source interface package.
+package crud
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+
+	"github.com/vyftlabs/vyft/apps/backend/internal/db"
+	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
+	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
+	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/prometheus"
+)
+
+// Service owns source CRUD business logic. Stateless beyond the DB
+// handle.
+type Service struct{ db *db.DB }
+
+func NewService(d *db.DB) *Service { return &Service{db: d} }
+
+func (s *Service) List(ctx context.Context) ([]sqlc.Source, error) {
+	rows, err := s.db.Q.ListSources(ctx)
+	if err != nil {
+		return nil, apierr.Internal(err)
+	}
+	return rows, nil
+}
+
+func (s *Service) Create(ctx context.Context, body openapi.SourceCreate) (sqlc.Source, error) {
+	parsed, err := parseCreate(body)
+	if err != nil {
+		return sqlc.Source{}, apierr.BadRequest(err.Error())
+	}
+	if parsed.name == "" {
+		return sqlc.Source{}, apierr.BadRequest("name required")
+	}
+	count, err := s.db.Q.CountSourcesInDomain(ctx, sqlc.SourceDomain(parsed.domain))
+	if err != nil {
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	row, err := s.db.Q.CreateSource(ctx, sqlc.CreateSourceParams{
+		ID:            pgxid.PgUUID(uuid.New()),
+		Kind:          parsed.kind,
+		Domain:        sqlc.SourceDomain(parsed.domain),
+		Name:          parsed.name,
+		IsDefault:     count == 0,
+		Config:        parsed.configJSON,
+		AuthEncrypted: parsed.authSecret,
+	})
+	if err != nil {
+		if pgerr.IsUniqueViolation(err) {
+			return sqlc.Source{}, apierr.Conflict("source name already exists")
+		}
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	return row, nil
+}
+
+func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.SourceCreate) (sqlc.Source, error) {
+	existing, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.Source{}, apierr.NotFound("source not found")
+		}
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	parsed, err := parseCreate(body)
+	if err != nil {
+		return sqlc.Source{}, apierr.BadRequest(err.Error())
+	}
+	if parsed.kind != existing.Kind {
+		return sqlc.Source{}, apierr.BadRequest("kind cannot change; delete and recreate")
+	}
+	if sqlc.SourceDomain(parsed.domain) != existing.Domain {
+		return sqlc.Source{}, apierr.BadRequest("domain cannot change; delete and recreate")
+	}
+	if parsed.name == "" {
+		return sqlc.Source{}, apierr.BadRequest("name required")
+	}
+	row, err := s.db.Q.UpdateSource(ctx, sqlc.UpdateSourceParams{
+		ID:            pgxid.PgUUID(id),
+		Name:          parsed.name,
+		Config:        parsed.configJSON,
+		AuthEncrypted: parsed.authSecret,
+	})
+	if err != nil {
+		if pgerr.IsUniqueViolation(err) {
+			return sqlc.Source{}, apierr.Conflict("source name already exists")
+		}
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	return row, nil
+}
+
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id)); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierr.NotFound("source not found")
+		}
+		return apierr.Internal(err)
+	}
+	if err := s.db.Q.DeleteSource(ctx, pgxid.PgUUID(id)); err != nil {
+		return apierr.Internal(err)
+	}
+	return nil
+}
+
+func (s *Service) PromoteDefault(ctx context.Context, id uuid.UUID) (sqlc.Source, error) {
+	row, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.Source{}, apierr.NotFound("source not found")
+		}
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	if err := s.db.Q.SetDefaultSource(ctx, sqlc.SetDefaultSourceParams{
+		ID:     row.ID,
+		Domain: row.Domain,
+	}); err != nil {
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	out, err := s.db.Q.GetSource(ctx, row.ID)
+	if err != nil {
+		return sqlc.Source{}, apierr.Internal(err)
+	}
+	return out, nil
+}
+
+// parsedCreate is the post-validation flat view of a SourceCreate request
+// body. Secrets are extracted from the config blob so they can be stored
+// in auth_encrypted; non-secret config stays in jsonb.
+type parsedCreate struct {
+	kind       sqlc.SourceKind
+	domain     openapi.SourceDomain
+	name       string
+	configJSON []byte
+	authSecret []byte // nil for none / metrics-server
+}
+
+func parseCreate(body openapi.SourceCreate) (parsedCreate, error) {
+	raw, err := body.MarshalJSON()
+	if err != nil {
+		return parsedCreate{}, fmt.Errorf("decode body: %w", err)
+	}
+	var probe struct {
+		Kind openapi.SourceKind `json:"kind"`
+	}
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		return parsedCreate{}, fmt.Errorf("decode kind: %w", err)
+	}
+	switch probe.Kind {
+	case openapi.Prometheus:
+		v, err := body.AsSourceCreate0()
+		if err != nil {
+			return parsedCreate{}, fmt.Errorf("decode prometheus body: %w", err)
+		}
+		stored, secret, err := splitPrometheusConfig(v.Config)
+		if err != nil {
+			return parsedCreate{}, err
+		}
+		j, err := json.Marshal(stored)
+		if err != nil {
+			return parsedCreate{}, err
+		}
+		return parsedCreate{
+			kind:       sqlc.SourceKindPrometheus,
+			domain:     v.Domain,
+			name:       v.Name,
+			configJSON: j,
+			authSecret: secret,
+		}, nil
+	case openapi.MetricsServer:
+		v, err := body.AsSourceCreate1()
+		if err != nil {
+			return parsedCreate{}, fmt.Errorf("decode metrics-server body: %w", err)
+		}
+		return parsedCreate{
+			kind:       sqlc.SourceKindMetricsServer,
+			domain:     v.Domain,
+			name:       v.Name,
+			configJSON: []byte(`{}`),
+			authSecret: nil,
+		}, nil
+	}
+	return parsedCreate{}, fmt.Errorf("unsupported source kind %q", probe.Kind)
+}
+
+// splitPrometheusConfig pulls password/token out of the full auth struct
+// into a separate secret byte slice and returns the non-secret stored
+// shape. Passthrough plaintext for v1 (matches registries.password_encrypted).
+func splitPrometheusConfig(cfg openapi.PrometheusConfig) (prometheus.StoredConfig, []byte, error) {
+	auth := cfg.Auth
+	discriminator, err := authType(auth)
+	if err != nil {
+		return prometheus.StoredConfig{}, nil, err
+	}
+	stored := prometheus.StoredConfig{URL: cfg.Url, Auth: prometheus.StoredAuth{Type: discriminator}}
+	switch discriminator {
+	case prometheus.AuthNone:
+		return stored, nil, nil
+	case prometheus.AuthBasic:
+		basic, err := auth.AsSourceAuth1()
+		if err != nil {
+			return prometheus.StoredConfig{}, nil, fmt.Errorf("decode basic auth: %w", err)
+		}
+		stored.Auth.Username = basic.Username
+		return stored, []byte(basic.Password), nil
+	case prometheus.AuthBearer:
+		bearer, err := auth.AsSourceAuth2()
+		if err != nil {
+			return prometheus.StoredConfig{}, nil, fmt.Errorf("decode bearer auth: %w", err)
+		}
+		return stored, []byte(bearer.Token), nil
+	}
+	return prometheus.StoredConfig{}, nil, fmt.Errorf("unsupported auth type %q", discriminator)
+}
+
+func authType(auth openapi.SourceAuth) (prometheus.AuthType, error) {
+	raw, err := auth.MarshalJSON()
+	if err != nil {
+		return "", fmt.Errorf("decode auth: %w", err)
+	}
+	var probe struct {
+		Type prometheus.AuthType `json:"type"`
+	}
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		return "", fmt.Errorf("decode auth type: %w", err)
+	}
+	return probe.Type, nil
+}
+
+// toWire converts a sqlc.Source row into the openapi.Source union
+// response, stripping auth secrets along the way.
+func toWire(row sqlc.Source) (openapi.Source, error) {
+	var out openapi.Source
+	id := openapi_types.UUID(uuid.UUID(row.ID.Bytes))
+	domain := openapi.SourceDomain(row.Domain)
+	switch row.Kind {
+	case sqlc.SourceKindPrometheus:
+		var stored prometheus.StoredConfig
+		if err := json.Unmarshal(row.Config, &stored); err != nil {
+			return openapi.Source{}, fmt.Errorf("decode prometheus config: %w", err)
+		}
+		safe, err := promConfigSafe(stored)
+		if err != nil {
+			return openapi.Source{}, err
+		}
+		if err := out.FromSource0(openapi.Source0{
+			Id:        id,
+			CreatedAt: row.Created.Time,
+			UpdatedAt: row.Updated.Time,
+			Kind:      openapi.Source0Kind(openapi.Prometheus),
+			Domain:    domain,
+			Name:      row.Name,
+			IsDefault: row.IsDefault,
+			Config:    safe,
+		}); err != nil {
+			return openapi.Source{}, err
+		}
+	case sqlc.SourceKindMetricsServer:
+		if err := out.FromSource1(openapi.Source1{
+			Id:        id,
+			CreatedAt: row.Created.Time,
+			UpdatedAt: row.Updated.Time,
+			Kind:      openapi.Source1Kind(openapi.MetricsServer),
+			Domain:    domain,
+			Name:      row.Name,
+			IsDefault: row.IsDefault,
+			Config:    openapi.MetricsServerConfigOutput{},
+		}); err != nil {
+			return openapi.Source{}, err
+		}
+	default:
+		return openapi.Source{}, fmt.Errorf("unknown source kind %q", row.Kind)
+	}
+	return out, nil
+}
+
+func promConfigSafe(stored prometheus.StoredConfig) (openapi.PrometheusConfigSafe, error) {
+	var safe openapi.PrometheusConfigSafe
+	safe.Url = stored.URL
+	var authUnion openapi.SourceAuthSafe
+	switch stored.Auth.Type {
+	case prometheus.AuthNone, "":
+		if err := authUnion.FromSourceAuthSafe0(openapi.SourceAuthSafe0{
+			Type: openapi.SourceAuthSafe0Type("none"),
+		}); err != nil {
+			return openapi.PrometheusConfigSafe{}, err
+		}
+	case prometheus.AuthBasic:
+		if err := authUnion.FromSourceAuthSafe1(openapi.SourceAuthSafe1{
+			Type:     openapi.SourceAuthSafe1Type("basic"),
+			Username: stored.Auth.Username,
+		}); err != nil {
+			return openapi.PrometheusConfigSafe{}, err
+		}
+	case prometheus.AuthBearer:
+		if err := authUnion.FromSourceAuthSafe2(openapi.SourceAuthSafe2{
+			Type: openapi.SourceAuthSafe2Type("bearer"),
+		}); err != nil {
+			return openapi.PrometheusConfigSafe{}, err
+		}
+	default:
+		return openapi.PrometheusConfigSafe{}, fmt.Errorf("unknown auth type %q", stored.Auth.Type)
+	}
+	safe.Auth = authUnion
+	return safe, nil
+}
+
+// unused so far; reserved for future helpers
+var _ pgtype.UUID
