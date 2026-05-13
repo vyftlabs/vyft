@@ -41,6 +41,7 @@ import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
 import { getAppSpec } from "@/lib/resource";
 import { cn } from "@/lib/utils";
+import { LogsPanel } from "../logs/panel";
 import { MetricsGrid } from "../metrics/grid";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
@@ -58,12 +59,6 @@ function OverviewTab({
 }) {
   const { data: events = [] } = useQuery({
     ...api.observability.events(projectId, resourceId),
-    enabled: !!resourceId,
-    refetchInterval: 5000,
-  });
-
-  const { data: logs = [] } = useQuery({
-    ...api.observability.logs(projectId, resourceId, 50),
     enabled: !!resourceId,
     refetchInterval: 5000,
   });
@@ -87,7 +82,7 @@ function OverviewTab({
         <MetricsGrid projectId={projectId} resourceId={resourceId} />
       }
       timeline={timeline}
-      logs={logs}
+      logsArea={<LogsPanel projectId={projectId} resourceId={resourceId} />}
     />
   );
 }

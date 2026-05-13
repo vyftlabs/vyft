@@ -31,26 +31,6 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       },
     },
   },
-  "/projects/{projectId}/resources/{resourceId}/logs": {
-    get: {
-      operationId: "listResourceLogs",
-      summary: "Logs for resource",
-      tags: ["Observability"],
-      requestParams: {
-        path: ResourceScope,
-        query: z.object({
-          limit: z.coerce.number().int().min(1).max(1000).default(100),
-        }),
-      },
-      responses: {
-        200: {
-          description: "Log lines",
-          content: { "application/json": { schema: z.array(LogLine) } },
-        },
-        ...collectionErrors,
-      },
-    },
-  },
   "/projects/{projectId}/resources/{resourceId}/logs/capabilities": {
     get: {
       operationId: "getResourceLogsCapabilities",

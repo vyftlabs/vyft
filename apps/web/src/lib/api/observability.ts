@@ -1,5 +1,10 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { MetricKind, MetricRange, MetricSeries } from "@vyft/spec";
+import type {
+  LogLine,
+  MetricKind,
+  MetricRange,
+  MetricSeries,
+} from "@vyft/spec";
 import { client } from "./client";
 
 const ROOT = ["observability"] as const;
@@ -16,17 +21,90 @@ export const events = (projectId: string, resourceId: string) =>
     },
   });
 
-export const logs = (
-  projectId: string,
-  resourceId: string,
-  limit: number = 100,
-) =>
+export const logsCapabilities = (projectId: string, resourceId: string) =>
   queryOptions({
-    queryKey: [...ROOT, "logs", projectId, resourceId, limit],
+    queryKey: [...ROOT, "logsCapabilities", projectId, resourceId],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data } = await client.GET(
-        "/projects/{projectId}/resources/{resourceId}/logs",
-        { params: { path: { projectId, resourceId }, query: { limit } } },
+        "/projects/{projectId}/resources/{resourceId}/logs/capabilities",
+        { params: { path: { projectId, resourceId } } },
+      );
+      return data!;
+    },
+  });
+
+const MAX_TAIL_LINES = 2000;
+
+// mergeTailLines appends new lines to the ring and caps at
+// MAX_TAIL_LINES. De-dups by timestamp+message to handle the
+// inclusive-bound case where the same line could surface on adjacent
+// polls.
+function mergeTailLines(prev: LogLine[], next: LogLine[]): LogLine[] {
+  if (!prev?.length) return next.slice(-MAX_TAIL_LINES);
+  if (!next?.length) return prev;
+  const seen = new Set(prev.map((l) => l.timestamp + "|" + l.message));
+  const dedup = next.filter((l) => !seen.has(l.timestamp + "|" + l.message));
+  return [...prev, ...dedup].slice(-MAX_TAIL_LINES);
+}
+
+export const logsTail = (projectId: string, resourceId: string) =>
+  queryOptions({
+    queryKey: [...ROOT, "logsTail", projectId, resourceId],
+    structuralSharing: (oldData, newData) => {
+      const prev = (oldData as LogLine[] | undefined) ?? [];
+      const next = (newData as LogLine[] | undefined) ?? [];
+      return mergeTailLines(prev, next);
+    },
+    queryFn: async (ctx) => {
+      // Walk the existing cache to pull lastSeen for incremental polling.
+      const cached = ctx.client?.getQueryData<LogLine[]>([
+        ...ROOT,
+        "logsTail",
+        projectId,
+        resourceId,
+      ]);
+      const lastSeen =
+        cached && cached.length > 0
+          ? cached[cached.length - 1]?.timestamp
+          : undefined;
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/logs/tail",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: lastSeen ? { sincePollAt: lastSeen } : {},
+          },
+        },
+      );
+      return data ?? [];
+    },
+  });
+
+export const logsSearch = (
+  projectId: string,
+  resourceId: string,
+  range: MetricRange = "15m",
+  query: string = "",
+) =>
+  queryOptions({
+    queryKey: [
+      ...ROOT,
+      "logsSearch",
+      projectId,
+      resourceId,
+      range,
+      query,
+    ],
+    queryFn: async () => {
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/logs/search",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: query ? { range, query } : { range },
+          },
+        },
       );
       return data ?? [];
     },

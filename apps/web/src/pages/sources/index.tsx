@@ -1,5 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { Source, SourceCreate, SourceKind } from "@vyft/spec";
+import type {
+  Source,
+  SourceCreate,
+  SourceDomain,
+  SourceKind,
+} from "@vyft/spec";
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
@@ -52,15 +57,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import { sourcePresets } from "@/lib/source-presets";
 
+type DialogMode =
+  | { type: "closed" }
+  | { type: "create"; domain: SourceDomain }
+  | { type: "edit"; source: Source };
+
 export default function SourcesPage() {
   const { data: sources, isLoading } = useQuery(api.sources.list);
-  const [dialogMode, setDialogMode] = useState<
-    { type: "closed" } | { type: "create" } | { type: "edit"; source: Source }
-  >({ type: "closed" });
+  const [dialogMode, setDialogMode] = useState<DialogMode>({ type: "closed" });
 
-  const metricsSources = (sources ?? []).filter(
-    (s: Source) => s.domain === "metrics",
-  );
+  const byDomain = (d: SourceDomain) =>
+    (sources ?? []).filter((s: Source) => s.domain === d);
 
   return (
     <div className="space-y-6">
@@ -73,44 +80,73 @@ export default function SourcesPage() {
         </div>
       </div>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Metrics</h2>
-          <Button
-            size="sm"
-            onClick={() => setDialogMode({ type: "create" })}
-            disabled={isLoading}
-          >
-            <PlusIcon />
-            Add metrics source
-          </Button>
-        </div>
+      <Section
+        domain="metrics"
+        label="Metrics"
+        emptyText="No metrics source configured. Add one to enable the metrics panels in the service view."
+        sources={byDomain("metrics")}
+        loading={isLoading}
+        onAdd={() => setDialogMode({ type: "create", domain: "metrics" })}
+        onEdit={(s) => setDialogMode({ type: "edit", source: s })}
+      />
 
-        {isLoading ? (
-          <Skeleton className="h-[62px] w-full rounded-md" />
-        ) : metricsSources.length === 0 ? (
-          <ListEmpty>
-            No metrics source configured. Add one to enable the metrics panels
-            in the service view.
-          </ListEmpty>
-        ) : (
-          <List>
-            {metricsSources.map((src: Source) => (
-              <SourceRow
-                key={src.id}
-                source={src}
-                onEdit={() => setDialogMode({ type: "edit", source: src })}
-              />
-            ))}
-          </List>
-        )}
-      </section>
+      <Section
+        domain="logs"
+        label="Logs"
+        emptyText="No logs source configured. Add one to enable the logs panel in the service view."
+        sources={byDomain("logs")}
+        loading={isLoading}
+        onAdd={() => setDialogMode({ type: "create", domain: "logs" })}
+        onEdit={(s) => setDialogMode({ type: "edit", source: s })}
+      />
 
       <SourceDialog
         mode={dialogMode}
         onClose={() => setDialogMode({ type: "closed" })}
       />
     </div>
+  );
+}
+
+function Section({
+  domain,
+  label,
+  emptyText,
+  sources,
+  loading,
+  onAdd,
+  onEdit,
+}: {
+  domain: SourceDomain;
+  label: string;
+  emptyText: string;
+  sources: Source[];
+  loading: boolean;
+  onAdd: () => void;
+  onEdit: (s: Source) => void;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">{label}</h2>
+        <Button size="sm" onClick={onAdd} disabled={loading}>
+          <PlusIcon />
+          Add {domain} source
+        </Button>
+      </div>
+
+      {loading ? (
+        <Skeleton className="h-[62px] w-full rounded-md" />
+      ) : sources.length === 0 ? (
+        <ListEmpty>{emptyText}</ListEmpty>
+      ) : (
+        <List>
+          {sources.map((src) => (
+            <SourceRow key={src.id} source={src} onEdit={() => onEdit(src)} />
+          ))}
+        </List>
+      )}
+    </section>
   );
 }
 
@@ -202,11 +238,6 @@ type FormValues = {
   token: string;
 };
 
-type DialogMode =
-  | { type: "closed" }
-  | { type: "create" }
-  | { type: "edit"; source: Source };
-
 function defaultsFor(source: Source | undefined): FormValues {
   if (!source) {
     return {
@@ -218,7 +249,7 @@ function defaultsFor(source: Source | undefined): FormValues {
       token: "",
     };
   }
-  if (source.kind === "prometheus") {
+  if (source.kind === "prometheus" || source.kind === "loki") {
     const auth = source.config.auth;
     return {
       name: source.name,
@@ -241,6 +272,11 @@ function defaultsFor(source: Source | undefined): FormValues {
     token: "",
   };
 }
+
+// Kinds that need a URL + auth picker (parallel domain pattern: one
+// "external HTTP backend" + one "in-cluster always-on" per domain).
+const URL_KINDS: SourceKind[] = ["prometheus", "loki"];
+const NO_CONFIG_KINDS: SourceKind[] = ["metricsServer", "kubeLogs"];
 
 function SourceDialog({
   mode,
@@ -309,33 +345,43 @@ function SourceDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? undefined : close())}>
       <DialogContent className="p-0 gap-0 overflow-hidden">
-        {page === "picker" && (
-          <Command className="rounded-none border-0">
-            <CommandInput placeholder="Search sources..." />
-            <CommandList>
-              <CommandEmpty>No source found.</CommandEmpty>
-              <CommandGroup heading="Metrics">
-                {sourcePresets.map((preset) => {
-                  const PIcon = preset.icon;
-                  return (
-                    <CommandItem
-                      key={preset.id}
-                      onSelect={() => setPage(preset.id)}
-                    >
-                      <PIcon className="text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p>{preset.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {preset.blurb}
-                        </p>
-                      </div>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        )}
+        {page === "picker" &&
+          mode.type === "create" &&
+          (() => {
+            const filtered = sourcePresets.filter(
+              (p) => p.domain === mode.domain,
+            );
+            const heading = mode.domain === "metrics" ? "Metrics" : "Logs";
+            return (
+              <Command className="rounded-none border-0">
+                <CommandInput
+                  placeholder={`Search ${mode.domain} sources...`}
+                />
+                <CommandList>
+                  <CommandEmpty>No source found.</CommandEmpty>
+                  <CommandGroup heading={heading}>
+                    {filtered.map((preset) => {
+                      const PIcon = preset.icon;
+                      return (
+                        <CommandItem
+                          key={preset.id}
+                          onSelect={() => setPage(preset.id)}
+                        >
+                          <PIcon className="text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p>{preset.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {preset.blurb}
+                            </p>
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            );
+          })()}
 
         {selected && (
           <form onSubmit={onSubmit} className="flex flex-col">
@@ -363,20 +409,18 @@ function SourceDialog({
                 <FieldLabel>Name</FieldLabel>
                 <Input
                   {...register("name", { required: true })}
-                  placeholder={
-                    selected.id === "prometheus" ? "prom-prod" : "metrics-server"
-                  }
+                  placeholder={namePlaceholder(selected.id)}
                   autoFocus
                 />
               </Field>
 
-              {selected.id === "prometheus" && (
+              {URL_KINDS.includes(selected.id) && (
                 <>
                   <Field>
                     <FieldLabel>URL</FieldLabel>
                     <Input
                       {...register("url", { required: true })}
-                      placeholder="https://prom.example.com"
+                      placeholder={urlPlaceholder(selected.id)}
                       className="font-mono"
                     />
                   </Field>
@@ -411,9 +455,7 @@ function SourceDialog({
                       <Field>
                         <FieldLabel>Password</FieldLabel>
                         <Input
-                          {...register("password", {
-                            required: !editing,
-                          })}
+                          {...register("password", { required: !editing })}
                           type="password"
                           placeholder={editing ? "(unchanged)" : ""}
                         />
@@ -433,9 +475,9 @@ function SourceDialog({
                 </>
               )}
 
-              {selected.id === "metricsServer" && (
+              {NO_CONFIG_KINDS.includes(selected.id) && (
                 <p className="text-xs text-muted-foreground">
-                  metrics-server runs inside the cluster — no URL or auth
+                  {selected.name} runs inside the cluster — no URL or auth
                   needed.
                 </p>
               )}
@@ -501,32 +543,49 @@ function SourceDialog({
   );
 }
 
-function toCreateBody(kind: SourceKind, data: FormValues): SourceCreate | null {
-  if (kind === "metricsServer") {
-    return {
-      kind: "metricsServer",
-      name: data.name.trim(),
-      domain: "metrics",
-      config: {},
-    };
+function namePlaceholder(kind: SourceKind): string {
+  switch (kind) {
+    case "prometheus": return "prom-prod";
+    case "metricsServer": return "metrics-server";
+    case "loki": return "loki-prod";
+    case "kubeLogs": return "kubernetes";
   }
-  const auth =
-    data.authType === "basic"
-      ? {
-          type: "basic" as const,
-          username: data.username.trim(),
-          password: data.password,
-        }
-      : data.authType === "bearer"
-        ? { type: "bearer" as const, token: data.token }
-        : { type: "none" as const };
-  return {
-    kind: "prometheus",
-    name: data.name.trim(),
-    domain: "metrics",
-    config: {
-      url: data.url.trim(),
-      auth,
-    },
-  };
+}
+
+function urlPlaceholder(kind: SourceKind): string {
+  switch (kind) {
+    case "prometheus": return "https://prom.example.com";
+    case "loki": return "https://loki.example.com";
+    default: return "";
+  }
+}
+
+function toCreateBody(kind: SourceKind, data: FormValues): SourceCreate | null {
+  const name = data.name.trim();
+  switch (kind) {
+    case "metricsServer":
+      return { kind, name, domain: "metrics", config: {} };
+    case "kubeLogs":
+      return { kind, name, domain: "logs", config: {} };
+    case "prometheus":
+    case "loki": {
+      const auth =
+        data.authType === "basic"
+          ? {
+              type: "basic" as const,
+              username: data.username.trim(),
+              password: data.password,
+            }
+          : data.authType === "bearer"
+            ? { type: "bearer" as const, token: data.token }
+            : { type: "none" as const };
+      const domain: SourceDomain = kind === "prometheus" ? "metrics" : "logs";
+      return {
+        kind,
+        name,
+        domain,
+        config: { url: data.url.trim(), auth },
+      };
+    }
+  }
 }

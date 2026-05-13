@@ -197,7 +197,7 @@ function ServicesCanvas() {
               api.observability.events(projectId, r.id),
             );
             queryClient.prefetchQuery(
-              api.observability.logs(projectId, r.id, 50),
+              api.observability.logsCapabilities(projectId, r.id),
             );
             queryClient.prefetchQuery(
               api.observability.metricsCapabilities(projectId, r.id),

@@ -312,23 +312,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/resources/{resourceId}/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Logs for resource */
-        get: operations["listResourceLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/projects/{projectId}/resources/{resourceId}/logs/capabilities": {
         parameters: {
             query?: never;
@@ -915,6 +898,14 @@ export interface components {
             involvedName: string;
             count: number;
         };
+        LogsCapabilities: {
+            sourceKind: components["schemas"]["SourceKind"] | null;
+            detected: components["schemas"]["LogCapability"][];
+        };
+        /** @enum {string} */
+        SourceKind: "prometheus" | "metricsServer" | "loki" | "kubeLogs";
+        /** @enum {string} */
+        LogCapability: "tail" | "search" | "level";
         LogLine: {
             /** Format: date-time */
             timestamp: string;
@@ -925,14 +916,6 @@ export interface components {
         };
         /** @enum {string} */
         LogLevel: "error" | "warn" | "info" | "debug" | "unknown";
-        LogsCapabilities: {
-            sourceKind: components["schemas"]["SourceKind"] | null;
-            detected: components["schemas"]["LogCapability"][];
-        };
-        /** @enum {string} */
-        SourceKind: "prometheus" | "metricsServer" | "loki" | "kubeLogs";
-        /** @enum {string} */
-        LogCapability: "tail" | "search" | "level";
         MetricsCapabilities: {
             sourceKind: components["schemas"]["SourceKind"] | null;
             detected: components["schemas"]["MetricKind"][];
@@ -3393,67 +3376,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceEvent"][];
-                };
-            };
-            /** @description Bad request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    listResourceLogs: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                projectId: string;
-                resourceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Log lines */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LogLine"][];
                 };
             };
             /** @description Bad request */

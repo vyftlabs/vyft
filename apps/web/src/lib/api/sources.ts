@@ -5,12 +5,14 @@ import { client } from "./client";
 
 const ROOT = ["sources"] as const;
 
-// Mutations invalidate both the source list and the per-resource metrics
-// capabilities query — a new/changed source can flip detected kinds.
+// Mutations invalidate both the source list and the per-resource
+// capability queries — a new/changed source can flip detected kinds for
+// either domain.
 const invalidateAll = () =>
   Promise.all([
     qc.invalidateQueries({ queryKey: ROOT }),
     qc.invalidateQueries({ queryKey: ["observability", "metricsCapabilities"] }),
+    qc.invalidateQueries({ queryKey: ["observability", "logsCapabilities"] }),
   ]);
 
 export const list = queryOptions({

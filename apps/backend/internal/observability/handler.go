@@ -43,10 +43,6 @@ func (h *Handler) ListResourceEvents(_ context.Context, _ openapi.ListResourceEv
 	return openapi.ListResourceEvents200JSONResponse{}, nil
 }
 
-func (h *Handler) ListResourceLogs(_ context.Context, _ openapi.ListResourceLogsRequestObject) (openapi.ListResourceLogsResponseObject, error) {
-	return openapi.ListResourceLogs200JSONResponse{}, nil
-}
-
 func (h *Handler) GetResourceLogsCapabilities(ctx context.Context, _ openapi.GetResourceLogsCapabilitiesRequestObject) (openapi.GetResourceLogsCapabilitiesResponseObject, error) {
 	lc, err := h.svc.res.ResolveLogs(ctx)
 	if err != nil {

@@ -1803,11 +1803,6 @@ type ListDeploymentsParams struct {
 	Offset      *int    `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
-// ListResourceLogsParams defines parameters for ListResourceLogs.
-type ListResourceLogsParams struct {
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
 // SearchResourceLogsParams defines parameters for SearchResourceLogs.
 type SearchResourceLogsParams struct {
 	Range *MetricRange `form:"range,omitempty" json:"range,omitempty"`
@@ -3023,9 +3018,6 @@ type ServerInterface interface {
 	// Kubernetes events for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/events)
 	ListResourceEvents(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
-	// Logs for resource
-	// (GET /projects/{projectId}/resources/{resourceId}/logs)
-	ListResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params ListResourceLogsParams)
 	// Detected log capabilities for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/logs/capabilities)
 	GetResourceLogsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
@@ -3696,57 +3688,6 @@ func (siw *ServerInterfaceWrapper) ListResourceEvents(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListResourceEvents(w, r, projectId, resourceId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListResourceLogs operation middleware
-func (siw *ServerInterfaceWrapper) ListResourceLogs(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "projectId" -------------
-	var projectId openapi_types.UUID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "resourceId" -------------
-	var resourceId openapi_types.UUID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListResourceLogsParams
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListResourceLogs(w, r, projectId, resourceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4855,7 +4796,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.GetResource)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.UpdateResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/events", wrapper.ListResourceEvents)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs", wrapper.ListResourceLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/capabilities", wrapper.GetResourceLogsCapabilities)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/search", wrapper.SearchResourceLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/tail", wrapper.TailResourceLogs)
@@ -6403,86 +6343,6 @@ func (response ListResourceEvents403JSONResponse) VisitListResourceEventsRespons
 type ListResourceEvents409JSONResponse Error
 
 func (response ListResourceEvents409JSONResponse) VisitListResourceEventsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListResourceLogsRequestObject struct {
-	ProjectId  openapi_types.UUID `json:"projectId"`
-	ResourceId openapi_types.UUID `json:"resourceId"`
-	Params     ListResourceLogsParams
-}
-
-type ListResourceLogsResponseObject interface {
-	VisitListResourceLogsResponse(w http.ResponseWriter) error
-}
-
-type ListResourceLogs200JSONResponse []LogLine
-
-func (response ListResourceLogs200JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListResourceLogs400JSONResponse Error
-
-func (response ListResourceLogs400JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListResourceLogs401JSONResponse Error
-
-func (response ListResourceLogs401JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListResourceLogs403JSONResponse Error
-
-func (response ListResourceLogs403JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListResourceLogs409JSONResponse Error
-
-func (response ListResourceLogs409JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9062,9 +8922,6 @@ type StrictServerInterface interface {
 	// Kubernetes events for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/events)
 	ListResourceEvents(ctx context.Context, request ListResourceEventsRequestObject) (ListResourceEventsResponseObject, error)
-	// Logs for resource
-	// (GET /projects/{projectId}/resources/{resourceId}/logs)
-	ListResourceLogs(ctx context.Context, request ListResourceLogsRequestObject) (ListResourceLogsResponseObject, error)
 	// Detected log capabilities for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/logs/capabilities)
 	GetResourceLogsCapabilities(ctx context.Context, request GetResourceLogsCapabilitiesRequestObject) (GetResourceLogsCapabilitiesResponseObject, error)
@@ -9710,34 +9567,6 @@ func (sh *strictHandler) ListResourceEvents(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListResourceEventsResponseObject); ok {
 		if err := validResponse.VisitListResourceEventsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListResourceLogs operation middleware
-func (sh *strictHandler) ListResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params ListResourceLogsParams) {
-	var request ListResourceLogsRequestObject
-
-	request.ProjectId = projectId
-	request.ResourceId = resourceId
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListResourceLogs(ctx, request.(ListResourceLogsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListResourceLogs")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListResourceLogsResponseObject); ok {
-		if err := validResponse.VisitListResourceLogsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

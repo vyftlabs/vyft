@@ -47,27 +47,21 @@ export interface LatencyChartData {
   unit?: string;
 }
 
-export interface LogLine {
-  timestamp: string;
-  level: string;
-  message: string;
-}
-
 export type DetailView = "events" | "logs" | "metrics" | null;
 
 export interface OverviewProps {
   metricsArea?: React.ReactNode;
   timeline?: TimelineEntry[];
-  logs?: LogLine[];
+  logsArea?: React.ReactNode;
 }
 
 export function Overview({
   metricsArea,
   timeline = [],
-  logs,
+  logsArea,
 }: OverviewProps) {
   const showTimeline = timeline !== undefined;
-  const showLogs = logs !== undefined;
+  const showLogs = logsArea !== undefined;
   return (
     <div className="flex flex-col gap-5 h-full">
       {metricsArea && (
@@ -105,67 +99,13 @@ export function Overview({
               </div>
             </div>
           )}
-          {showLogs && (
-            <div className="min-h-0 flex flex-col">
-              <div className="mb-2 shrink-0">
-                <p className="text-xs font-medium">Logs</p>
-              </div>
-              <div className="flex-1 min-h-0 relative">
-                {logs && logs.length > 0 ? (
-                  <ScrollArea className="h-full -mr-4">
-                    <div className="pr-4">
-                      <LogsPreview logs={logs} />
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                    No logs yet
-                  </div>
-                )}
-                <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-              </div>
-            </div>
-          )}
+          {showLogs && logsArea}
         </div>
       )}
     </div>
   );
 }
 
-const logLevelClass: Record<string, string> = {
-  error: "text-severity-critical-text",
-  warn: "text-severity-warning-text",
-  info: "text-foreground",
-  debug: "text-muted-foreground",
-};
-
-function LogsPreview({ logs }: { logs: LogLine[] }) {
-  return (
-    <div className="font-mono text-[11px] leading-relaxed space-y-px">
-      {logs.map((log) => (
-        <div
-          key={`${log.timestamp}-${log.message}-${log.level}`}
-          className="flex gap-2 px-1 hover:bg-muted/50 rounded-sm"
-        >
-          <span className="text-muted-foreground shrink-0">
-            {new Date(log.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              hour12: false,
-            })}
-          </span>
-          <span
-            className={cn("shrink-0 w-10 uppercase", logLevelClass[log.level])}
-          >
-            {log.level}
-          </span>
-          <span className="text-foreground truncate">{log.message}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // --- Drawer shell ---
 
