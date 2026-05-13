@@ -1,6 +1,7 @@
 import {
   BoxIcon,
   ContainerIcon,
+  DatabaseIcon,
   KeyRoundIcon,
   SettingsIcon,
   WorkflowIcon,
@@ -95,6 +96,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <ContainerIcon />
                   <span>Registries</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Sources"
+                  render={<Link to="/settings/sources" />}
+                >
+                  <DatabaseIcon />
+                  <span>Sources</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

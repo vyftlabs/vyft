@@ -6,6 +6,7 @@ import Services from "./pages/projects/services/index";
 import ProjectSettings from "./pages/projects/settings/index";
 import SharedVariables from "./pages/projects/variables/index";
 import Registries from "./pages/registries/index";
+import Sources from "./pages/sources/index";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="/" element={<Projects />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/registries" element={<Registries />} />
+            <Route path="/settings/sources" element={<Sources />} />
           </Route>
           <Route path="/projects/:project">
             <Route index element={<Navigate to="services" replace />} />

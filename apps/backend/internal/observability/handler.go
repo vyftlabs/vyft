@@ -106,11 +106,25 @@ func (h *Handler) GetResourceMetricsCapabilities(ctx context.Context, _ openapi.
 		}
 	}
 
-	sk := openapi.SourceKind(mc.Kind())
+	sk := toAPISourceKind(mc.Kind())
 	return openapi.GetResourceMetricsCapabilities200JSONResponse{
 		SourceKind: &sk,
 		Detected:   detected,
 	}, nil
+}
+
+// toAPISourceKind translates a Go-internal kind constant (snake_case,
+// matches the DB enum) to the camelCase value the OpenAPI spec emits.
+// Wire format must use camelCase so the web client's MetricsCeiling map
+// resolves correctly.
+func toAPISourceKind(internal string) openapi.SourceKind {
+	switch internal {
+	case "metrics_server":
+		return openapi.MetricsServer
+	case "prometheus":
+		return openapi.Prometheus
+	}
+	return openapi.SourceKind(internal)
 }
 
 func (h *Handler) GetResourceMetricSeries(ctx context.Context, req openapi.GetResourceMetricSeriesRequestObject) (openapi.GetResourceMetricSeriesResponseObject, error) {
@@ -257,7 +271,7 @@ func (r unreachable503Resp) VisitGetResourceMetricsCapabilitiesResponse(w http.R
 
 func unreachable503(kind string) openapi.GetResourceMetricsCapabilitiesResponseObject {
 	return unreachable503Resp{body: unreachable503Body{
-		SourceKind: openapi.SourceKind(kind),
+		SourceKind: toAPISourceKind(kind),
 		Error:      "unreachable",
 	}}
 }

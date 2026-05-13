@@ -45,11 +45,11 @@ export function MetricSlot({
   capabilities?: MetricsCapabilities;
   capabilitiesError?: boolean;
 }) {
-  const ceilingHas =
-    !!capabilities?.sourceKind &&
-    MetricsCeiling[capabilities.sourceKind].includes(kind);
+  const sk = capabilities?.sourceKind ?? null;
+  const ceiling = sk ? (MetricsCeiling[sk] ?? []) : [];
+  const ceilingHas = !!sk && ceiling.includes(kind);
   const detected = !!capabilities?.detected.includes(kind);
-  const enabled = !!capabilities?.sourceKind && ceilingHas && detected;
+  const enabled = !!sk && ceilingHas && detected;
 
   const kindQuery = useQuery({
     ...api.observability.metricsByKind(projectId, resourceId, kind, range),
