@@ -71,7 +71,7 @@ func (l *Loki) Probe(ctx context.Context) error {
 
 func (l *Loki) Tail(ctx context.Context, sel source.ResourceSelector, from time.Time, limit int) ([]source.LogLine, error) {
 	if from.IsZero() {
-		from = time.Now().Add(-10 * time.Second)
+		from = time.Now().Add(-15 * time.Minute)
 	}
 	return l.queryRange(ctx, sel, "", from, time.Now(), limit)
 }

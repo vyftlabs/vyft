@@ -60,7 +60,10 @@ func (k *KubeLogs) Tail(ctx context.Context, sel source.ResourceSelector, from t
 		return nil, apierr.ServiceUnavailable("kube clientset unavailable on backend")
 	}
 	if from.IsZero() {
-		from = time.Now().Add(-30 * time.Second)
+		// First call (no operator-supplied sincePollAt). Pull enough
+		// history that the operator lands on a non-empty panel — nginx
+		// startup messages can be minutes old by the time a drawer opens.
+		from = time.Now().Add(-15 * time.Minute)
 	}
 	pods, err := k.cs.CoreV1().Pods(sel.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: sel.PodLabelSelector(),
