@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DataSourceKind } from "./data-source.ts";
 
 export const ServiceEvent = z
   .object({
@@ -50,8 +51,65 @@ export const MetricsOverview = z
     description: "`cpu` values are millicores. `memory` values are bytes.",
   });
 
+export const MetricKind = z
+  .enum(["cpu", "memory", "reqRate", "errRate", "latency"])
+  .meta({ id: "MetricKind" });
+
+export const MetricRange = z
+  .enum(["15m", "1h", "6h", "24h"])
+  .meta({ id: "MetricRange" });
+
+export const MetricsCapabilities = z
+  .object({
+    dataSourceKind: DataSourceKind.nullable(),
+    detected: z.array(MetricKind),
+  })
+  .meta({ id: "MetricsCapabilities" });
+
+export const MetricSeries = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("cpu"),
+      range: MetricRange,
+      points: z.array(RangePoint),
+    }),
+    z.object({
+      kind: z.literal("memory"),
+      range: MetricRange,
+      points: z.array(RangePoint),
+    }),
+    z.object({
+      kind: z.literal("reqRate"),
+      range: MetricRange,
+      points: z.array(RangePoint),
+    }),
+    z.object({
+      kind: z.literal("errRate"),
+      range: MetricRange,
+      points: z.array(RangePoint),
+    }),
+    z.object({
+      kind: z.literal("latency"),
+      range: MetricRange,
+      points: z.array(LatencyPoint),
+    }),
+  ])
+  .meta({ id: "MetricSeries" });
+
+export const MetricsCeiling: Record<
+  z.infer<typeof DataSourceKind>,
+  z.infer<typeof MetricKind>[]
+> = {
+  prometheus: ["cpu", "memory", "reqRate", "errRate", "latency"],
+  metricsServer: ["cpu", "memory"],
+};
+
 export type ServiceEvent = z.infer<typeof ServiceEvent>;
 export type LogLine = z.infer<typeof LogLine>;
 export type RangePoint = z.infer<typeof RangePoint>;
 export type LatencyPoint = z.infer<typeof LatencyPoint>;
 export type MetricsOverview = z.infer<typeof MetricsOverview>;
+export type MetricKind = z.infer<typeof MetricKind>;
+export type MetricRange = z.infer<typeof MetricRange>;
+export type MetricsCapabilities = z.infer<typeof MetricsCapabilities>;
+export type MetricSeries = z.infer<typeof MetricSeries>;

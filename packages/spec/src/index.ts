@@ -3,6 +3,7 @@
 // Document
 export { document } from "./document.ts";
 export * from "./models/common.ts";
+export * from "./models/data-source.ts";
 export * from "./models/deployment.ts";
 export * from "./models/environment.ts";
 export * from "./models/observability.ts";
