@@ -37,10 +37,16 @@ export function Sparkline({
   dataKey,
   unit,
   threshold,
-}: SparklineData) {
+  formatHeadline,
+}: SparklineData & {
+  formatHeadline?: (v: number) => { value: string; unit: string };
+}) {
   const values = data.map((d) => (d[dataKey] as number) ?? 0);
   const current = values.length > 0 ? (values[values.length - 1] ?? 0) : 0;
   const level = severity(current, threshold);
+  const headline = formatHeadline
+    ? formatHeadline(current)
+    : { value: fmt(current), unit };
 
   const warningKey = `${dataKey}_w`;
   const criticalKey = `${dataKey}_c`;
@@ -64,14 +70,14 @@ export function Sparkline({
           level && severityTextClass[level],
         )}
       >
-        {fmt(current)}
+        {headline.value}
         <span
           className={cn(
             "text-xs ml-0.5",
             level ? severityTextClass[level] : "text-muted-foreground",
           )}
         >
-          {unit}
+          {headline.unit}
         </span>
       </p>
       <div className="h-10 mt-1" style={{ minWidth: 0, minHeight: 0 }}>
@@ -179,12 +185,18 @@ export function LatencySparkline({
   data,
   keys,
   unit = "ms",
-}: LatencyChartData) {
+  formatHeadline,
+}: LatencyChartData & {
+  formatHeadline?: (v: number) => { value: string; unit: string };
+}) {
   const sloKey = keys.find((k) => k.label === "P95") ?? keys[0];
   if (!sloKey) return null;
   const sloValues = data.map((d) => (d[sloKey.dataKey] as number) ?? 0);
   const headline = percentile(sloValues, 95);
   const headlineLevel = severity(headline, sloKey.threshold);
+  const headlineFmt = formatHeadline
+    ? formatHeadline(headline)
+    : { value: fmt(headline), unit };
   const secondaryValues = keys
     .filter((k) => k !== sloKey)
     .map((k) => ({
@@ -218,7 +230,7 @@ export function LatencySparkline({
           headlineLevel && severityTextClass[headlineLevel],
         )}
       >
-        {fmt(headline)}
+        {headlineFmt.value}
         <span
           className={cn(
             "text-xs ml-0.5",
@@ -227,7 +239,7 @@ export function LatencySparkline({
               : "text-muted-foreground",
           )}
         >
-          {unit}
+          {headlineFmt.unit}
         </span>
       </p>
       <p className="text-xs text-muted-foreground font-mono mt-0.5">

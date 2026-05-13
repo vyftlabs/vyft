@@ -8,11 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
@@ -24,10 +27,17 @@ import (
 )
 
 // Service owns source CRUD business logic. Stateless beyond the DB
-// handle.
-type Service struct{ db *db.DB }
+// handle. mcs is optional — nil when the kube metrics client could not
+// be built (test endpoint reports unreachable for metrics-server in that
+// case).
+type Service struct {
+	db  *db.DB
+	mcs metricsclient.Interface
+}
 
-func NewService(d *db.DB) *Service { return &Service{db: d} }
+func NewService(d *db.DB, mcs metricsclient.Interface) *Service {
+	return &Service{db: d, mcs: mcs}
+}
 
 func (s *Service) List(ctx context.Context) ([]sqlc.Source, error) {
 	rows, err := s.db.Q.ListSources(ctx)
@@ -88,11 +98,19 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.SourceC
 	if parsed.name == "" {
 		return sqlc.Source{}, apierr.BadRequest("name required")
 	}
+	// Preserve existing auth bytes when PATCH body sends an empty secret —
+	// the UI shows password/token as "(unchanged)" placeholder and leaves
+	// the field blank to mean "keep what's stored". Replace only when the
+	// operator types something new.
+	authBytes := parsed.authSecret
+	if len(authBytes) == 0 {
+		authBytes = existing.AuthEncrypted
+	}
 	row, err := s.db.Q.UpdateSource(ctx, sqlc.UpdateSourceParams{
 		ID:            pgxid.PgUUID(id),
 		Name:          parsed.name,
 		Config:        parsed.configJSON,
-		AuthEncrypted: parsed.authSecret,
+		AuthEncrypted: authBytes,
 	})
 	if err != nil {
 		if pgerr.IsUniqueViolation(err) {
@@ -114,6 +132,34 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		return apierr.Internal(err)
 	}
 	return nil
+}
+
+// TestResult is the outcome of probing a source for reachability.
+type TestResult struct {
+	OK    bool
+	Error string
+}
+
+// Test probes a source for reachability. For Prometheus, runs a trivial
+// `up` instant query — any 2xx response is a pass. For metrics-server,
+// pings the cluster pods endpoint with a low timeout. Returns
+// (TestResult{OK: false, Error: msg}, nil) on probe failure so the
+// caller can render the error without treating it as a server error.
+func (s *Service) Test(ctx context.Context, id uuid.UUID) (TestResult, error) {
+	row, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TestResult{}, apierr.NotFound("source not found")
+		}
+		return TestResult{}, apierr.Internal(err)
+	}
+	switch row.Kind {
+	case sqlc.SourceKindPrometheus:
+		return testPrometheus(ctx, row)
+	case sqlc.SourceKindMetricsServer:
+		return testMetricsServer(ctx, s.mcs)
+	}
+	return TestResult{}, apierr.Internal(fmt.Errorf("unknown source kind %q", row.Kind))
 }
 
 func (s *Service) PromoteDefault(ctx context.Context, id uuid.UUID) (sqlc.Source, error) {
@@ -320,3 +366,34 @@ func promConfigSafe(stored prometheus.StoredConfig) (openapi.PrometheusConfigSaf
 
 // unused so far; reserved for future helpers
 var _ pgtype.UUID
+
+func testPrometheus(ctx context.Context, row sqlc.Source) (TestResult, error) {
+	var stored prometheus.StoredConfig
+	if err := json.Unmarshal(row.Config, &stored); err != nil {
+		return TestResult{}, apierr.Internal(fmt.Errorf("decode config: %w", err))
+	}
+	src, err := stored.Build(uuid.UUID(row.ID.Bytes), row.Name, row.AuthEncrypted)
+	if err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// Probe the cheapest metric name we know — any name will do; we only
+	// care that Prom is reachable and authorized.
+	if _, err := src.Probe(probeCtx, []string{"up"}); err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	return TestResult{OK: true}, nil
+}
+
+func testMetricsServer(ctx context.Context, mcs metricsclient.Interface) (TestResult, error) {
+	if mcs == nil {
+		return TestResult{OK: false, Error: "metrics-server client not available on backend"}, nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if _, err := mcs.MetricsV1beta1().PodMetricses("default").List(probeCtx, metav1.ListOptions{Limit: 1}); err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	return TestResult{OK: true}, nil
+}

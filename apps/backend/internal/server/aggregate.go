@@ -73,6 +73,6 @@ func NewAPI(database *db.DB, rt deployment.Runtime, mcs metricsclient.Interface,
 		registryAPI:      registry.NewHandler(registry.New(database)),
 		deploymentAPI:    deployment.NewHandler(depSvc),
 		observabilityAPI: observability.NewHandler(observability.New(database, envSvc, res)),
-		sourceAPI:        crud.NewHandler(crud.NewService(database)),
+		sourceAPI:        crud.NewHandler(crud.NewService(database, mcs)),
 	}, depSvc
 }

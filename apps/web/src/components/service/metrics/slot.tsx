@@ -20,15 +20,67 @@ const KIND_LABELS: Record<MetricKind, string> = {
   latency: "Latency",
 };
 
-const KIND_UNITS: Record<MetricKind, string> = {
-  cpu: "m",
-  memory: "B",
-  reqRate: "/s",
-  errRate: "%",
-  latency: "ms",
-};
-
 const POLL_INTERVAL_MS = 15_000;
+
+// formatBytes auto-scales bytes → KiB / MiB / GiB / TiB. Spec says
+// memory uses base-2 units.
+function formatBytes(b: number): { value: string; unit: string } {
+  if (!Number.isFinite(b)) return { value: "—", unit: "B" };
+  const abs = Math.abs(b);
+  const units: [number, string][] = [
+    [1024 ** 4, "TiB"],
+    [1024 ** 3, "GiB"],
+    [1024 ** 2, "MiB"],
+    [1024, "KiB"],
+  ];
+  for (const [div, unit] of units) {
+    if (abs >= div) return { value: fmtTrim(b / div), unit };
+  }
+  return { value: Math.round(b).toString(), unit: "B" };
+}
+
+// formatMillicores stays in millicores below 1000m; auto-scales to cores
+// at or above 1000m.
+function formatMillicores(m: number): { value: string; unit: string } {
+  if (!Number.isFinite(m)) return { value: "—", unit: "m" };
+  if (Math.abs(m) >= 1000) return { value: fmtTrim(m / 1000), unit: "cores" };
+  return { value: Math.round(m).toString(), unit: "m" };
+}
+
+// formatSeconds auto-scales between µs / ms / s.
+function formatSeconds(s: number): { value: string; unit: string } {
+  if (!Number.isFinite(s)) return { value: "—", unit: "ms" };
+  const abs = Math.abs(s);
+  if (abs >= 1) return { value: fmtTrim(s), unit: "s" };
+  if (abs >= 0.001) return { value: fmtTrim(s * 1000), unit: "ms" };
+  return { value: fmtTrim(s * 1_000_000), unit: "µs" };
+}
+
+function formatRate(v: number): { value: string; unit: string } {
+  return { value: fmtTrim(v), unit: "/s" };
+}
+
+function formatPercent(v: number): { value: string; unit: string } {
+  return { value: fmtTrim(v), unit: "%" };
+}
+
+function fmtTrim(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 100) return Math.round(v).toString();
+  if (abs >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
+
+const KIND_FORMATTERS: Record<
+  Exclude<MetricKind, "latency">,
+  (v: number) => { value: string; unit: string }
+> = {
+  cpu: formatMillicores,
+  memory: formatBytes,
+  reqRate: formatRate,
+  errRate: formatPercent,
+};
 
 export function MetricSlot({
   projectId,
@@ -107,11 +159,12 @@ export function MetricSlot({
 }
 
 function pointsLen(series: MetricSeries): number {
-  return series.kind === "latency" ? series.points.length : series.points.length;
+  return series.points.length;
 }
 
 function renderLive(kind: MetricKind, series: MetricSeries) {
   if (series.kind === "latency") {
+    // Backend sends seconds; auto-scale headline based on p95.
     return (
       <LatencySparkline
         data={series.points as unknown as Record<string, unknown>[]}
@@ -120,16 +173,19 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
           { dataKey: "p95", label: "P95" },
           { dataKey: "p50", label: "P50" },
         ]}
-        unit="ms"
+        unit="s"
+        formatHeadline={formatSeconds}
       />
     );
   }
+  const k = kind as Exclude<MetricKind, "latency">;
   return (
     <Sparkline
       title={KIND_LABELS[kind]}
       data={series.points as unknown as Record<string, unknown>[]}
       dataKey="value"
-      unit={KIND_UNITS[kind]}
+      unit=""
+      formatHeadline={KIND_FORMATTERS[k]}
     />
   );
 }

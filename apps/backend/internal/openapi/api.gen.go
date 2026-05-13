@@ -1557,6 +1557,12 @@ type SourceDomain string
 // SourceKind defines model for SourceKind.
 type SourceKind string
 
+// SourceTestResult defines model for SourceTestResult.
+type SourceTestResult struct {
+	Error *string `json:"error,omitempty"`
+	Ok    bool    `json:"ok"`
+}
+
 // Variable defines model for Variable.
 type Variable struct {
 	CreatedAt  time.Time           `json:"createdAt"`
@@ -2784,6 +2790,9 @@ type ServerInterface interface {
 	// Promote this source to default for its domain
 	// (PUT /sources/{id}/default)
 	PromoteSourceDefault(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Probe a source to check reachability
+	// (POST /sources/{id}/test)
+	TestSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -4233,6 +4242,32 @@ func (siw *ServerInterfaceWrapper) PromoteSourceDefault(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// TestSource operation middleware
+func (siw *ServerInterfaceWrapper) TestSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TestSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -4398,6 +4433,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/sources/{id}", wrapper.DeleteSource)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/sources/{id}", wrapper.UpdateSource)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/sources/{id}/default", wrapper.PromoteSourceDefault)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/sources/{id}/test", wrapper.TestSource)
 
 	return m
 }
@@ -8281,6 +8317,98 @@ func (response PromoteSourceDefault409JSONResponse) VisitPromoteSourceDefaultRes
 	return err
 }
 
+type TestSourceRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type TestSourceResponseObject interface {
+	VisitTestSourceResponse(w http.ResponseWriter) error
+}
+
+type TestSource200JSONResponse SourceTestResult
+
+func (response TestSource200JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestSource400JSONResponse Error
+
+func (response TestSource400JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestSource401JSONResponse Error
+
+func (response TestSource401JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestSource403JSONResponse Error
+
+func (response TestSource403JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestSource404JSONResponse Error
+
+func (response TestSource404JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestSource409JSONResponse Error
+
+func (response TestSource409JSONResponse) VisitTestSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List projects
@@ -8418,6 +8546,9 @@ type StrictServerInterface interface {
 	// Promote this source to default for its domain
 	// (PUT /sources/{id}/default)
 	PromoteSourceDefault(ctx context.Context, request PromoteSourceDefaultRequestObject) (PromoteSourceDefaultResponseObject, error)
+	// Probe a source to check reachability
+	// (POST /sources/{id}/test)
+	TestSource(ctx context.Context, request TestSourceRequestObject) (TestSourceResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -9781,6 +9912,32 @@ func (sh *strictHandler) PromoteSourceDefault(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PromoteSourceDefaultResponseObject); ok {
 		if err := validResponse.VisitPromoteSourceDefaultResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TestSource operation middleware
+func (sh *strictHandler) TestSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request TestSourceRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TestSource(ctx, request.(TestSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TestSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TestSourceResponseObject); ok {
+		if err := validResponse.VisitTestSourceResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

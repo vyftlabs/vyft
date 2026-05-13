@@ -56,3 +56,12 @@ export const promoteDefault = mutationOptions({
   },
   onSuccess: invalidateAll,
 });
+
+export const test = mutationOptions({
+  mutationFn: async (id: string) => {
+    const { data } = await client.POST("/sources/{id}/test", {
+      params: { path: { id } },
+    });
+    return data!;
+  },
+});

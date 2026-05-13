@@ -4,10 +4,12 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   LoaderIcon,
+  PencilIcon,
+  PlugZapIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -51,7 +53,9 @@ import { sourcePresets } from "@/lib/source-presets";
 
 export default function SourcesPage() {
   const { data: sources, isLoading } = useQuery(api.sources.list);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<
+    { type: "closed" } | { type: "create" } | { type: "edit"; source: Source }
+  >({ type: "closed" });
 
   const metricsSources = (sources ?? []).filter(
     (s: Source) => s.domain === "metrics",
@@ -73,7 +77,7 @@ export default function SourcesPage() {
           <h2 className="text-sm font-medium">Metrics</h2>
           <Button
             size="sm"
-            onClick={() => setDialogOpen(true)}
+            onClick={() => setDialogMode({ type: "create" })}
             disabled={isLoading}
           >
             <PlusIcon />
@@ -91,22 +95,46 @@ export default function SourcesPage() {
         ) : (
           <List>
             {metricsSources.map((src: Source) => (
-              <SourceRow key={src.id} source={src} />
+              <SourceRow
+                key={src.id}
+                source={src}
+                onEdit={() => setDialogMode({ type: "edit", source: src })}
+              />
             ))}
           </List>
         )}
       </section>
 
-      <AddSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <SourceDialog
+        mode={dialogMode}
+        onClose={() => setDialogMode({ type: "closed" })}
+      />
     </div>
   );
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({
+  source,
+  onEdit,
+}: {
+  source: Source;
+  onEdit: () => void;
+}) {
   const preset = sourcePresets.find((p) => p.id === source.kind);
   const Icon = preset?.icon;
   const remove = useMutation(api.sources.remove);
   const promote = useMutation(api.sources.promoteDefault);
+  const test = useMutation(api.sources.test);
+
+  const runTest = () => {
+    test.mutate(source.id, {
+      onSuccess: (r) => {
+        if (r.ok) toast.success(`${source.name}: reachable`);
+        else toast.error(`${source.name}: ${r.error ?? "unreachable"}`);
+      },
+      onError: (err: Error) => toast.error(err.message),
+    });
+  };
 
   return (
     <ListItem>
@@ -131,6 +159,19 @@ function SourceRow({ source }: { source: Source }) {
         </ListDescription>
       </ListContent>
       <ListAction className="opacity-0 group-hover/list-item:opacity-100 flex gap-1">
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={test.isPending}
+          onClick={runTest}
+        >
+          {test.isPending ? (
+            <LoaderIcon className="size-3.5 animate-spin" />
+          ) : (
+            <PlugZapIcon className="size-3.5" />
+          )}
+          Test
+        </Button>
         {!source.isDefault && (
           <Button
             size="xs"
@@ -145,6 +186,14 @@ function SourceRow({ source }: { source: Source }) {
             Make default
           </Button>
         )}
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={onEdit}
+        >
+          <PencilIcon className="size-3.5" />
+        </Button>
         <Button
           size="icon-sm"
           variant="ghost"
@@ -176,25 +225,72 @@ type FormValues = {
   token: string;
 };
 
-function AddSourceDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [page, setPage] = useState<"picker" | SourceKind>("picker");
-  const create = useMutation(api.sources.create);
-  const { register, handleSubmit, watch, reset } = useForm<FormValues>({
-    defaultValues: {
+type DialogMode =
+  | { type: "closed" }
+  | { type: "create" }
+  | { type: "edit"; source: Source };
+
+function defaultsFor(source: Source | undefined): FormValues {
+  if (!source) {
+    return {
       name: "",
       url: "",
       authType: "none",
       username: "",
       password: "",
       token: "",
-    },
+    };
+  }
+  if (source.kind === "prometheus") {
+    const auth = source.config.auth;
+    return {
+      name: source.name,
+      url: source.config.url,
+      authType: auth.type,
+      username: auth.type === "basic" ? auth.username : "",
+      // Secret values never come back from the server. Operator re-enters
+      // password/token if they want to rotate; if blank, backend keeps
+      // the existing auth bytes (matches registries behaviour).
+      password: "",
+      token: "",
+    };
+  }
+  return {
+    name: source.name,
+    url: "",
+    authType: "none",
+    username: "",
+    password: "",
+    token: "",
+  };
+}
+
+function SourceDialog({
+  mode,
+  onClose,
+}: {
+  mode: DialogMode;
+  onClose: () => void;
+}) {
+  const open = mode.type !== "closed";
+  const editing = mode.type === "edit" ? mode.source : null;
+  const [page, setPage] = useState<"picker" | SourceKind>("picker");
+  const create = useMutation(api.sources.create);
+  const patch = useMutation(api.sources.patch);
+  const { register, handleSubmit, watch, reset } = useForm<FormValues>({
+    defaultValues: defaultsFor(editing ?? undefined),
   });
+
+  useEffect(() => {
+    if (mode.type === "edit") {
+      setPage(mode.source.kind);
+      reset(defaultsFor(mode.source));
+    } else if (mode.type === "create") {
+      setPage("picker");
+      reset(defaultsFor(undefined));
+    }
+  }, [mode, reset]);
+
   const authType = watch("authType");
 
   const selected =
@@ -202,25 +298,34 @@ function AddSourceDialog({
 
   const close = () => {
     setPage("picker");
-    reset();
-    onOpenChange(false);
+    reset(defaultsFor(undefined));
+    onClose();
   };
+
+  const submitting = create.isPending || patch.isPending;
 
   const onSubmit = handleSubmit((data) => {
     if (!selected) return;
     const body = toCreateBody(selected.id, data);
     if (!body) return;
-    create.mutate(body, {
-      onSuccess: () => close(),
-      onError: (err: Error) => toast.error(err.message),
-    });
+    if (editing) {
+      patch.mutate(
+        { id: editing.id, body },
+        {
+          onSuccess: () => close(),
+          onError: (err: Error) => toast.error(err.message),
+        },
+      );
+    } else {
+      create.mutate(body, {
+        onSuccess: () => close(),
+        onError: (err: Error) => toast.error(err.message),
+      });
+    }
   });
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => (v ? onOpenChange(true) : close())}
-    >
+    <Dialog open={open} onOpenChange={(v) => (v ? undefined : close())}>
       <DialogContent className="p-0 gap-0 overflow-hidden">
         {page === "picker" && (
           <Command className="rounded-none border-0">
@@ -253,18 +358,22 @@ function AddSourceDialog({
         {selected && (
           <form onSubmit={onSubmit} className="flex flex-col">
             <DialogHeader className="px-6 pt-4 pb-0 flex-row items-center gap-3 space-y-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => {
-                  setPage("picker");
-                  reset();
-                }}
-              >
-                <ArrowLeftIcon className="size-4" />
-              </Button>
-              <DialogTitle>{selected.name}</DialogTitle>
+              {!editing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setPage("picker");
+                    reset(defaultsFor(undefined));
+                  }}
+                >
+                  <ArrowLeftIcon className="size-4" />
+                </Button>
+              )}
+              <DialogTitle>
+                {editing ? `Edit ${editing.name}` : selected.name}
+              </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-3 px-6 py-4">
@@ -320,8 +429,11 @@ function AddSourceDialog({
                       <Field>
                         <FieldLabel>Password</FieldLabel>
                         <Input
-                          {...register("password", { required: true })}
+                          {...register("password", {
+                            required: !editing,
+                          })}
                           type="password"
+                          placeholder={editing ? "(unchanged)" : ""}
                         />
                       </Field>
                     </>
@@ -330,8 +442,9 @@ function AddSourceDialog({
                     <Field>
                       <FieldLabel>Token</FieldLabel>
                       <Input
-                        {...register("token", { required: true })}
+                        {...register("token", { required: !editing })}
                         type="password"
+                        placeholder={editing ? "(unchanged)" : ""}
                       />
                     </Field>
                   )}
@@ -347,12 +460,14 @@ function AddSourceDialog({
             </div>
 
             <DialogFooter className="px-6 py-4 border-t mx-0 mb-0 rounded-none">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={create.isPending}
-              >
-                {create.isPending ? "Adding..." : "Add source"}
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting
+                  ? editing
+                    ? "Saving..."
+                    : "Adding..."
+                  : editing
+                    ? "Save"
+                    : "Add source"}
               </Button>
             </DialogFooter>
           </form>

@@ -80,3 +80,15 @@ func (h *Handler) PromoteSourceDefault(ctx context.Context, req openapi.PromoteS
 	}
 	return openapi.PromoteSourceDefault200JSONResponse(wire), nil
 }
+
+func (h *Handler) TestSource(ctx context.Context, req openapi.TestSourceRequestObject) (openapi.TestSourceResponseObject, error) {
+	r, err := h.svc.Test(ctx, uuid.UUID(req.Id))
+	if err != nil {
+		return nil, err
+	}
+	body := openapi.TestSource200JSONResponse{Ok: r.OK}
+	if r.Error != "" {
+		body.Error = &r.Error
+	}
+	return body, nil
+}

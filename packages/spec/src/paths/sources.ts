@@ -76,4 +76,28 @@ export const sourcePaths: ZodOpenApiPathsObject = {
       },
     },
   },
+  "/sources/{id}/test": {
+    post: {
+      operationId: "testSource",
+      summary: "Probe a source to check reachability",
+      tags: ["Sources"],
+      requestParams: { path: z.object({ id: z.uuid() }) },
+      responses: {
+        200: {
+          description: "Probe result",
+          content: {
+            "application/json": {
+              schema: z
+                .object({
+                  ok: z.boolean(),
+                  error: z.string().optional(),
+                })
+                .meta({ id: "SourceTestResult" }),
+            },
+          },
+        },
+        ...itemErrors,
+      },
+    },
+  },
 };
