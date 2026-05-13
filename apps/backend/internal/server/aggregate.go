@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	"k8s.io/client-go/kubernetes"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
@@ -54,7 +55,7 @@ var _ openapi.StrictServerInterface = (*API)(nil)
 // caller can fire boot recovery before serving requests. mcs may be nil
 // when the kube metrics client could not be built; the metrics-server
 // source kind silently degrades in that case.
-func NewAPI(database *db.DB, rt deployment.Runtime, mcs metricsclient.Interface, cleanup func(ctx context.Context, slug string)) (*API, *deployment.Service) {
+func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, cleanup func(ctx context.Context, slug string)) (*API, *deployment.Service) {
 	envSvc := environment.New(database)
 	depSvc := deployment.New(database, envSvc, rt)
 	projectSvc := project.New(database)
@@ -63,7 +64,7 @@ func NewAPI(database *db.DB, rt deployment.Runtime, mcs metricsclient.Interface,
 			cleanup(ctx, slug)
 		})
 	}
-	res := resolver.New(database, mcs)
+	res := resolver.New(database, cs, mcs)
 	return &API{
 		projectAPI:       project.NewHandler(projectSvc),
 		environmentAPI:   environment.NewHandler(envSvc),

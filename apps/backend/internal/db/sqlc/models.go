@@ -101,6 +101,7 @@ type SourceDomain string
 
 const (
 	SourceDomainMetrics SourceDomain = "metrics"
+	SourceDomainLogs    SourceDomain = "logs"
 )
 
 func (e *SourceDomain) Scan(src interface{}) error {
@@ -143,6 +144,8 @@ type SourceKind string
 const (
 	SourceKindPrometheus    SourceKind = "prometheus"
 	SourceKindMetricsServer SourceKind = "metrics_server"
+	SourceKindLoki          SourceKind = "loki"
+	SourceKindKubeLogs      SourceKind = "kube_logs"
 )
 
 func (e *SourceKind) Scan(src interface{}) error {

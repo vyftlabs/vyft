@@ -1,7 +1,7 @@
-// Package resolver builds typed source.Source values from the
-// `source_defaults` + `sources` rows that flag the active backend for a
-// domain. Lives in its own package to avoid an import cycle between
-// `source` and its impl sub-packages.
+// Package resolver builds typed source.Source values from the sources
+// row flagged as the active default for a domain. Lives in its own
+// package to avoid an import cycle between `source` and its impl
+// sub-packages.
 package resolver
 
 import (
@@ -12,30 +12,36 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"k8s.io/client-go/kubernetes"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/kubelogs"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/loki"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/metricsserver"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/prometheus"
 )
 
-// Domain is the per-vertical key in the source_defaults table. v1 only
-// has "metrics"; logs and traces land later.
+// Domain is the per-vertical key in the sources table.
 type Domain string
 
-const DomainMetrics Domain = "metrics"
+const (
+	DomainMetrics Domain = "metrics"
+	DomainLogs    Domain = "logs"
+)
 
 // Resolver builds a typed Source from the DB row flagged as the default
 // for a given domain. Reads DB every call — no caching v1.
 type Resolver struct {
 	db  *db.DB
+	cs  kubernetes.Interface
 	mcs metricsclient.Interface
 }
 
-func New(d *db.DB, mcs metricsclient.Interface) *Resolver {
-	return &Resolver{db: d, mcs: mcs}
+func New(d *db.DB, cs kubernetes.Interface, mcs metricsclient.Interface) *Resolver {
+	return &Resolver{db: d, cs: cs, mcs: mcs}
 }
 
 // Resolve returns the active source for a domain (the row flagged
@@ -66,6 +72,19 @@ func (r *Resolver) ResolveMetrics(ctx context.Context) (source.MetricsCapable, e
 	return mc, nil
 }
 
+// ResolveLogs is the logs-domain analog of ResolveMetrics.
+func (r *Resolver) ResolveLogs(ctx context.Context) (source.LogsCapable, error) {
+	s, err := r.Resolve(ctx, DomainLogs)
+	if err != nil || s == nil {
+		return nil, err
+	}
+	lc, ok := s.(source.LogsCapable)
+	if !ok {
+		return nil, fmt.Errorf("resolver: source kind %q is not logs-capable", s.Kind())
+	}
+	return lc, nil
+}
+
 func (r *Resolver) build(row sqlc.Source) (source.Source, error) {
 	id := uuid.UUID(row.ID.Bytes)
 	switch row.Kind {
@@ -79,6 +98,14 @@ func (r *Resolver) build(row sqlc.Source) (source.Source, error) {
 		return cfg.Build(id, row.Name, row.AuthEncrypted)
 	case sqlc.SourceKindMetricsServer:
 		return metricsserver.New(id, row.Name, r.mcs), nil
+	case sqlc.SourceKindLoki:
+		var cfg loki.StoredConfig
+		if err := json.Unmarshal(row.Config, &cfg); err != nil {
+			return nil, fmt.Errorf("resolver: loki config: %w", err)
+		}
+		return cfg.Build(id, row.Name, row.AuthEncrypted)
+	case sqlc.SourceKindKubeLogs:
+		return kubelogs.New(id, row.Name, r.cs), nil
 	}
 	return nil, fmt.Errorf("resolver: unknown source kind %q", row.Kind)
 }

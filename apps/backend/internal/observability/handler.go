@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -46,19 +47,145 @@ func (h *Handler) ListResourceLogs(_ context.Context, _ openapi.ListResourceLogs
 	return openapi.ListResourceLogs200JSONResponse{}, nil
 }
 
-func (h *Handler) GetResourceLogsCapabilities(_ context.Context, _ openapi.GetResourceLogsCapabilitiesRequestObject) (openapi.GetResourceLogsCapabilitiesResponseObject, error) {
+func (h *Handler) GetResourceLogsCapabilities(ctx context.Context, _ openapi.GetResourceLogsCapabilitiesRequestObject) (openapi.GetResourceLogsCapabilitiesResponseObject, error) {
+	lc, err := h.svc.res.ResolveLogs(ctx)
+	if err != nil {
+		return nil, apierr.Internal(err)
+	}
+	if lc == nil {
+		return openapi.GetResourceLogsCapabilities200JSONResponse{
+			SourceKind: nil,
+			Detected:   []openapi.LogCapability{},
+		}, nil
+	}
+	if err := lc.Probe(ctx); err != nil {
+		return logsUnreachable503(lc.Kind()), nil
+	}
+	sk := toAPISourceKind(lc.Kind())
 	return openapi.GetResourceLogsCapabilities200JSONResponse{
-		SourceKind: nil,
-		Detected:   []openapi.LogCapability{},
+		SourceKind: &sk,
+		Detected:   lc.Supports(),
 	}, nil
 }
 
-func (h *Handler) TailResourceLogs(_ context.Context, _ openapi.TailResourceLogsRequestObject) (openapi.TailResourceLogsResponseObject, error) {
-	return openapi.TailResourceLogs200JSONResponse{}, nil
+func (h *Handler) TailResourceLogs(ctx context.Context, req openapi.TailResourceLogsRequestObject) (openapi.TailResourceLogsResponseObject, error) {
+	lc, err := h.svc.res.ResolveLogs(ctx)
+	if err != nil {
+		return nil, apierr.Internal(err)
+	}
+	if lc == nil {
+		return nil, apierr.NotFound("no logs source configured")
+	}
+	sel, err := h.svc.buildSelector(ctx, uuid.UUID(req.ResourceId))
+	if err != nil {
+		return nil, err
+	}
+	var from time.Time
+	if req.Params.SincePollAt != nil {
+		from = *req.Params.SincePollAt
+	}
+	limit := 500
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	lines, err := lc.Tail(ctx, sel, from, limit)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.TailResourceLogs200JSONResponse(toWireLines(lines)), nil
 }
 
-func (h *Handler) SearchResourceLogs(_ context.Context, _ openapi.SearchResourceLogsRequestObject) (openapi.SearchResourceLogsResponseObject, error) {
-	return openapi.SearchResourceLogs200JSONResponse{}, nil
+func (h *Handler) SearchResourceLogs(ctx context.Context, req openapi.SearchResourceLogsRequestObject) (openapi.SearchResourceLogsResponseObject, error) {
+	lc, err := h.svc.res.ResolveLogs(ctx)
+	if err != nil {
+		return nil, apierr.Internal(err)
+	}
+	if lc == nil {
+		return nil, apierr.NotFound("no logs source configured")
+	}
+	if !supportsLog(lc, openapi.Search) {
+		return nil, apierr.BadRequest(fmt.Sprintf("source %q doesn't support search", lc.Kind()))
+	}
+	sel, err := h.svc.buildSelector(ctx, uuid.UUID(req.ResourceId))
+	if err != nil {
+		return nil, err
+	}
+	rangeStr := ""
+	if req.Params.Range != nil {
+		rangeStr = string(*req.Params.Range)
+	}
+	r, err := source.ParseRange(rangeStr)
+	if err != nil {
+		return nil, apierr.BadRequest(err.Error())
+	}
+	q := ""
+	if req.Params.Query != nil {
+		q = *req.Params.Query
+	}
+	limit := 200
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+	lines, err := lc.Search(ctx, sel, q, r, limit)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.SearchResourceLogs200JSONResponse(toWireLines(lines)), nil
+}
+
+func supportsLog(lc source.LogsCapable, want openapi.LogCapability) bool {
+	for _, c := range lc.Supports() {
+		if c == want {
+			return true
+		}
+	}
+	return false
+}
+
+func toWireLines(lines []source.LogLine) []openapi.LogLine {
+	out := make([]openapi.LogLine, len(lines))
+	for i, l := range lines {
+		var pod, container *string
+		if l.Pod != "" {
+			p := l.Pod
+			pod = &p
+		}
+		if l.Container != "" {
+			c := l.Container
+			container = &c
+		}
+		out[i] = openapi.LogLine{
+			Timestamp: l.Time,
+			Level:     l.Level,
+			Message:   l.Message,
+			Pod:       pod,
+			Container: container,
+		}
+	}
+	return out
+}
+
+// logsUnreachable503 mirrors the metrics capabilities unreachable shape
+// — a 503 response with the source kind in the body so the UI can show
+// the right disabled-state without losing context.
+type logsUnreachable503Body struct {
+	SourceKind openapi.SourceKind `json:"sourceKind"`
+	Error      string             `json:"error"`
+}
+
+type logsUnreachable503Resp struct{ body logsUnreachable503Body }
+
+func (r logsUnreachable503Resp) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	return json.NewEncoder(w).Encode(r.body)
+}
+
+func logsUnreachable503(kind string) openapi.GetResourceLogsCapabilitiesResponseObject {
+	return logsUnreachable503Resp{body: logsUnreachable503Body{
+		SourceKind: toAPISourceKind(kind),
+		Error:      "unreachable",
+	}}
 }
 
 func (h *Handler) GetResourceMetricsCapabilities(ctx context.Context, _ openapi.GetResourceMetricsCapabilitiesRequestObject) (openapi.GetResourceMetricsCapabilitiesResponseObject, error) {
