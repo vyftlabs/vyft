@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	vdb "github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/deployment"
@@ -41,8 +42,8 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
-	rt, projectClusterCleanup := buildRuntime(config)
-	server, depSvc := New(config, pool, rt, projectClusterCleanup)
+	rt, mcs, projectClusterCleanup := buildRuntime(config)
+	server, depSvc := New(config, pool, rt, mcs, projectClusterCleanup)
 
 	// Boot recovery: re-fire goroutines for any deployment row stuck in
 	// pending/applying (process crashed mid-apply).
@@ -86,10 +87,10 @@ func Run(ctx context.Context) error {
 // can call it on Delete.
 type projectClusterCleanup func(ctx context.Context, slug string)
 
-func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cleanup projectClusterCleanup) (*http.Server, *deployment.Service) {
+func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, mcs metricsclient.Interface, cleanup projectClusterCleanup) (*http.Server, *deployment.Service) {
 	database := vdb.New(pool)
 
-	api, depSvc := NewAPI(database, rt, cleanup)
+	api, depSvc := NewAPI(database, rt, mcs, cleanup)
 	strict := openapi.NewStrictHandler(api, nil)
 	apiHandler := openapi.HandlerWithOptions(strict, openapi.StdHTTPServerOptions{
 		ErrorHandlerFunc: writeError,
@@ -111,21 +112,27 @@ func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cleanup proje
 
 // buildRuntime picks a Runtime based on config. KUBECONFIG path → use it.
 // In-cluster config available → use that. Neither → StubRuntime (dev/test).
-func buildRuntime(cfg Config) (deployment.Runtime, projectClusterCleanup) {
+// Also builds the metrics-server client; nil when unavailable.
+func buildRuntime(cfg Config) (deployment.Runtime, metricsclient.Interface, projectClusterCleanup) {
 	restCfg, err := loadKubeConfig(cfg.KubeconfigPath)
 	if err != nil {
 		slog.Warn("k8s runtime unavailable, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil
+		return deployment.NewStubRuntime(), nil, nil
 	}
 	cs, err := kubernetes.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("kubernetes client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil
+		return deployment.NewStubRuntime(), nil, nil
 	}
 	dyn, err := dynamic.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("dynamic client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil
+		return deployment.NewStubRuntime(), nil, nil
+	}
+	mcs, err := metricsclient.NewForConfig(restCfg)
+	if err != nil {
+		slog.Warn("metrics client init failed; metrics-server source kind unavailable", "error", err)
+		mcs = nil
 	}
 	rt := k8srt.New(cs, dyn)
 	cleanup := func(ctx context.Context, slug string) {
@@ -133,7 +140,7 @@ func buildRuntime(cfg Config) (deployment.Runtime, projectClusterCleanup) {
 			slog.Warn("project ns cleanup failed", "slug", slug, "error", err)
 		}
 	}
-	return rt, cleanup
+	return rt, mcs, cleanup
 }
 
 func loadKubeConfig(path string) (*rest.Config, error) {

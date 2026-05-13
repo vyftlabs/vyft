@@ -6,6 +6,15 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 )
 
+// Prober runs a single combined existence check for a set of metric
+// names. Optional — sources whose detection is static (e.g. metrics-
+// server) don't implement it. Returns map[name]bool: true means at least
+// one series exists for that name. Implementations should perform a
+// single round-trip.
+type Prober interface {
+	Probe(ctx context.Context, metricNames []string) (map[string]bool, error)
+}
+
 // MetricsCapable is implemented by sources that can serve the metrics
 // domain. The capabilities handler probes each kind in Supports() against
 // ProbeMetricNames() to decide what's actually queryable.

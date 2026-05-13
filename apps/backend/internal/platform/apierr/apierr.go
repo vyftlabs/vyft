@@ -61,6 +61,10 @@ func NotImplementedErr() *APIError {
 	return &APIError{Status: http.StatusNotImplemented, Code: CodeInternal, Message: "not implemented"}
 }
 
+func ServiceUnavailable(msg string) *APIError {
+	return &APIError{Status: http.StatusServiceUnavailable, Code: CodeInternal, Message: msg}
+}
+
 // Wrap is idempotent: if err is already an *APIError, returns it unchanged.
 // Otherwise wraps in Internal. Use at service boundaries where err might be
 // raw pg or might already be apierr-typed from a helper.

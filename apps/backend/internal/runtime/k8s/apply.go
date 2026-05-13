@@ -23,7 +23,7 @@ func New(cs kubernetes.Interface, dyn dynamic.Interface) *Runtime {
 
 // Apply: ensureNamespace → Build → applyAll → pruneByLabel.
 func (r *Runtime) Apply(ctx context.Context, p deployment.Project, env string, s deployment.State) error {
-	ns := namespaceFor(p.Slug, env)
+	ns := NamespaceFor(p.Slug, env)
 	if err := ensureNamespace(ctx, r.cs, ns, p, env); err != nil {
 		return err
 	}

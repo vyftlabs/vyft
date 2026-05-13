@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 
+	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
+
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/deployment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
@@ -13,6 +15,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/resource"
 	"github.com/vyftlabs/vyft/apps/backend/internal/route"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/resolver"
 	"github.com/vyftlabs/vyft/apps/backend/internal/variable"
 )
 
@@ -48,8 +51,10 @@ var _ openapi.StrictServerInterface = (*API)(nil)
 
 // NewAPI requires every handler — forgotten init = compile error, not
 // runtime panic. Returns the deployment service alongside the API so the
-// caller can fire boot recovery before serving requests.
-func NewAPI(database *db.DB, rt deployment.Runtime, cleanup func(ctx context.Context, slug string)) (*API, *deployment.Service) {
+// caller can fire boot recovery before serving requests. mcs may be nil
+// when the kube metrics client could not be built; the metrics-server
+// source kind silently degrades in that case.
+func NewAPI(database *db.DB, rt deployment.Runtime, mcs metricsclient.Interface, cleanup func(ctx context.Context, slug string)) (*API, *deployment.Service) {
 	envSvc := environment.New(database)
 	depSvc := deployment.New(database, envSvc, rt)
 	projectSvc := project.New(database)
@@ -58,6 +63,7 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cleanup func(ctx context.Con
 			cleanup(ctx, slug)
 		})
 	}
+	res := resolver.New(database, mcs)
 	return &API{
 		projectAPI:       project.NewHandler(projectSvc),
 		environmentAPI:   environment.NewHandler(envSvc),
@@ -66,7 +72,7 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cleanup func(ctx context.Con
 		variableAPI:      variable.NewHandler(variable.New(database, envSvc)),
 		registryAPI:      registry.NewHandler(registry.New(database)),
 		deploymentAPI:    deployment.NewHandler(depSvc),
-		observabilityAPI: observability.NewHandler(observability.New()),
+		observabilityAPI: observability.NewHandler(observability.New(database, envSvc, res)),
 		sourceAPI:        source.NewHandler(),
 	}, depSvc
 }

@@ -20,9 +20,9 @@ const (
 	FieldManager     = "vyft"
 )
 
-// namespaceFor returns the deterministic namespace name for a project+env.
+// NamespaceFor returns the deterministic namespace name for a project+env.
 // Slug is immutable so the name is stable for the life of the project.
-func namespaceFor(slug, env string) string {
+func NamespaceFor(slug, env string) string {
 	return fmt.Sprintf("vyft-%s-%s", slug, env)
 }
 
