@@ -7,7 +7,6 @@ Acceptance:
 - Source wrappers:
   - `sources.list()` queryOptions.
   - `sources.create / patch / remove` mutationOptions.
-  - `sourceDefaults.metrics.get()` queryOptions.
-  - `sourceDefaults.metrics.set(sourceId)` mutationOptions.
+  - `sources.promoteDefault(id)` mutationOptions (hits `PUT /sources/{id}/default`).
 - Ring-buffer helper: when response is length-1 (metrics-server), merge new point onto previous query data, cap at N samples (~960 = 4h @ 15s). Implemented via react-query `select` or `dataUpdater`.
 - Any source mutation invalidates the metrics capabilities query.
