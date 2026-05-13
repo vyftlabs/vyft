@@ -67,8 +67,14 @@ func (p *Prometheus) ProbeMetricNames(kind openapi.MetricKind) []string {
 
 func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel source.ResourceSelector, r source.Range) (source.Series, error) {
 	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
-	end := time.Now().UTC()
-	rng := promv1.Range{Start: end.Add(-r.Duration()), End: end, Step: r.Step()}
+	// Truncate end to the step boundary so independent per-kind queries
+	// that fire within the same step interval return the same wall-clock
+	// timestamps. Without this, each kind's start/end drifts by
+	// milliseconds and the chart's X-axis values don't line up across
+	// panels.
+	step := r.Step()
+	end := time.Now().UTC().Truncate(step)
+	rng := promv1.Range{Start: end.Add(-r.Duration()), End: end, Step: step}
 
 	switch kind {
 	case openapi.MetricKindCpu:

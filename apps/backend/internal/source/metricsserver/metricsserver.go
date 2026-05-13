@@ -76,7 +76,9 @@ func (m *MetricsServer) Query(ctx context.Context, kind openapi.MetricKind, sel 
 		}
 	}
 
-	point := source.Point{Time: time.Now().UTC()}
+	// Snap timestamp to the step boundary so per-kind fetches that fire
+	// at slightly different wall-clock moments share an X-axis position.
+	point := source.Point{Time: time.Now().UTC().Truncate(r.Step())}
 	switch kind {
 	case openapi.MetricKindCpu:
 		point.Value = float64(totalMilli)
