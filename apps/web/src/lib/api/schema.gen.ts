@@ -416,17 +416,16 @@ export interface paths {
         patch: operations["updateSource"];
         trace?: never;
     };
-    "/source-defaults/metrics": {
+    "/sources/{id}/default": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get the metrics-domain default source */
-        get: operations["getMetricsSourceDefault"];
-        /** Set the metrics-domain default source */
-        put: operations["setMetricsSourceDefault"];
+        get?: never;
+        /** Promote this source to default for its domain */
+        put: operations["promoteSourceDefault"];
         post?: never;
         delete?: never;
         options?: never;
@@ -628,15 +627,19 @@ export interface components {
         MetricRange: "15m" | "1h" | "6h" | "24h";
         SourceCreate: {
             name: string;
+            domain: components["schemas"]["SourceDomain"];
             /** @enum {string} */
             kind: "prometheus";
             config: components["schemas"]["PrometheusConfig"];
         } | {
             name: string;
+            domain: components["schemas"]["SourceDomain"];
             /** @enum {string} */
             kind: "metricsServer";
             config: components["schemas"]["MetricsServerConfig"];
         };
+        /** @enum {string} */
+        SourceDomain: "metrics";
         PrometheusConfig: {
             /** Format: uri */
             url: string;
@@ -656,10 +659,6 @@ export interface components {
             token: string;
         };
         MetricsServerConfig: Record<string, never>;
-        SetSourceDefault: {
-            /** Format: uuid */
-            sourceId: string;
-        };
         Project: {
             /** Format: uuid */
             id: string;
@@ -913,6 +912,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             name: string;
+            domain: components["schemas"]["SourceDomain"];
+            isDefault: boolean;
             /** @enum {string} */
             kind: "prometheus";
             config: components["schemas"]["PrometheusConfigSafe"];
@@ -924,6 +925,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             name: string;
+            domain: components["schemas"]["SourceDomain"];
+            isDefault: boolean;
             /** @enum {string} */
             kind: "metricsServer";
             config: components["schemas"]["MetricsServerConfigOutput"];
@@ -3823,76 +3826,18 @@ export interface operations {
             };
         };
     };
-    getMetricsSourceDefault: {
+    promoteSourceDefault: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Active metrics source, or null when unset */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Source"] | null;
-                };
-            };
-            /** @description Bad request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    setMetricsSourceDefault: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["SetSourceDefault"];
-            };
-        };
-        responses: {
-            /** @description Updated default */
+            /** @description Promoted */
             200: {
                 headers: {
                     [name: string]: unknown;

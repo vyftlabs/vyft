@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ZodOpenApiPathsObject } from "zod-openapi";
 import { collectionErrors, itemErrors } from "../models/common.ts";
-import { SetSourceDefault, Source, SourceCreate } from "../models/source.ts";
+import { Source, SourceCreate } from "../models/source.ts";
 
 export const sourcePaths: ZodOpenApiPathsObject = {
   "/sources": {
@@ -61,29 +61,15 @@ export const sourcePaths: ZodOpenApiPathsObject = {
       },
     },
   },
-  "/source-defaults/metrics": {
-    get: {
-      operationId: "getMetricsSourceDefault",
-      summary: "Get the metrics-domain default source",
-      tags: ["Sources"],
-      responses: {
-        200: {
-          description: "Active metrics source, or null when unset",
-          content: { "application/json": { schema: Source.nullable() } },
-        },
-        ...collectionErrors,
-      },
-    },
+  "/sources/{id}/default": {
     put: {
-      operationId: "setMetricsSourceDefault",
-      summary: "Set the metrics-domain default source",
+      operationId: "promoteSourceDefault",
+      summary: "Promote this source to default for its domain",
       tags: ["Sources"],
-      requestBody: {
-        content: { "application/json": { schema: SetSourceDefault } },
-      },
+      requestParams: { path: z.object({ id: z.uuid() }) },
       responses: {
         200: {
-          description: "Updated default",
+          description: "Promoted",
           content: { "application/json": { schema: Source } },
         },
         ...itemErrors,

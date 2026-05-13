@@ -38,10 +38,11 @@ func New(d *db.DB, mcs metricsclient.Interface) *Resolver {
 	return &Resolver{db: d, mcs: mcs}
 }
 
-// Resolve returns the active source for a domain, or (nil, nil) when no
-// default is configured. Errors only on DB/decode failure.
+// Resolve returns the active source for a domain (the row flagged
+// is_default=true), or (nil, nil) when none is configured. Errors only on
+// DB/decode failure.
 func (r *Resolver) Resolve(ctx context.Context, domain Domain) (source.Source, error) {
-	row, err := r.db.Q.GetSourceDefault(ctx, sqlc.SourceDomain(domain))
+	row, err := r.db.Q.GetDefaultSource(ctx, sqlc.SourceDomain(domain))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil

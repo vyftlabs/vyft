@@ -1,5 +1,5 @@
-// Package source stubs the data-source endpoints. Real implementation lands
-// in stories 0050 (db) + 0100 (CRUD handlers).
+// Package source stubs the source endpoints. Real implementation lands in
+// story 0100 (CRUD handlers).
 package source
 
 import (
@@ -29,10 +29,6 @@ func (h *Handler) DeleteSource(_ context.Context, _ openapi.DeleteSourceRequestO
 	return openapi.DeleteSource204Response{}, nil
 }
 
-func (h *Handler) GetMetricsSourceDefault(_ context.Context, _ openapi.GetMetricsSourceDefaultRequestObject) (openapi.GetMetricsSourceDefaultResponseObject, error) {
-	return openapi.GetMetricsSourceDefault200JSONResponse{}, nil
-}
-
-func (h *Handler) SetMetricsSourceDefault(_ context.Context, _ openapi.SetMetricsSourceDefaultRequestObject) (openapi.SetMetricsSourceDefaultResponseObject, error) {
+func (h *Handler) PromoteSourceDefault(_ context.Context, _ openapi.PromoteSourceDefaultRequestObject) (openapi.PromoteSourceDefaultResponseObject, error) {
 	return nil, errors.New("not implemented")
 }

@@ -5,6 +5,10 @@ export const SourceKind = z
   .enum(["prometheus", "metricsServer"])
   .meta({ id: "SourceKind" });
 
+export const SourceDomain = z
+  .enum(["metrics"])
+  .meta({ id: "SourceDomain" });
+
 const SourceName = z.string().min(1).max(100);
 
 export const SourceAuth = z
@@ -55,11 +59,15 @@ export const Source = z
   .discriminatedUnion("kind", [
     BaseFields.extend({
       name: SourceName,
+      domain: SourceDomain,
+      isDefault: z.boolean(),
       kind: z.literal("prometheus"),
       config: PrometheusConfigSafe,
     }),
     BaseFields.extend({
       name: SourceName,
+      domain: SourceDomain,
+      isDefault: z.boolean(),
       kind: z.literal("metricsServer"),
       config: MetricsServerConfig,
     }),
@@ -70,30 +78,21 @@ export const SourceCreate = z
   .discriminatedUnion("kind", [
     z.object({
       name: SourceName,
+      domain: SourceDomain,
       kind: z.literal("prometheus"),
       config: PrometheusConfig,
     }),
     z.object({
       name: SourceName,
+      domain: SourceDomain,
       kind: z.literal("metricsServer"),
       config: MetricsServerConfig,
     }),
   ])
   .meta({ id: "SourceCreate" });
 
-export const SourceDefaults = z
-  .object({
-    metrics: z.uuid().nullable(),
-  })
-  .meta({ id: "SourceDefaults" });
-
-export const SetSourceDefault = z
-  .object({
-    sourceId: z.uuid(),
-  })
-  .meta({ id: "SetSourceDefault" });
-
 export type SourceKind = z.infer<typeof SourceKind>;
+export type SourceDomain = z.infer<typeof SourceDomain>;
 export type SourceAuth = z.infer<typeof SourceAuth>;
 export type SourceAuthSafe = z.infer<typeof SourceAuthSafe>;
 export type PrometheusConfig = z.infer<typeof PrometheusConfig>;
@@ -101,5 +100,3 @@ export type PrometheusConfigSafe = z.infer<typeof PrometheusConfigSafe>;
 export type MetricsServerConfig = z.infer<typeof MetricsServerConfig>;
 export type Source = z.infer<typeof Source>;
 export type SourceCreate = z.infer<typeof SourceCreate>;
-export type SourceDefaults = z.infer<typeof SourceDefaults>;
-export type SetSourceDefault = z.infer<typeof SetSourceDefault>;

@@ -298,17 +298,13 @@ type Route struct {
 type Source struct {
 	ID            pgtype.UUID        `json:"id"`
 	Kind          SourceKind         `json:"kind"`
+	Domain        SourceDomain       `json:"domain"`
 	Name          string             `json:"name"`
+	IsDefault     bool               `json:"is_default"`
 	Config        []byte             `json:"config"`
 	AuthEncrypted []byte             `json:"auth_encrypted"`
 	Created       pgtype.Timestamptz `json:"created"`
 	Updated       pgtype.Timestamptz `json:"updated"`
-}
-
-type SourceDefault struct {
-	Domain   SourceDomain       `json:"domain"`
-	SourceID pgtype.UUID        `json:"source_id"`
-	Updated  pgtype.Timestamptz `json:"updated"`
 }
 
 type Variable struct {

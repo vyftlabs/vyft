@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	CountSourcesInDomain(ctx context.Context, domain SourceDomain) (int64, error)
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) (Deployment, error)
 	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error)
 	CreatePlainVariable(ctx context.Context, arg CreatePlainVariableParams) (Variable, error)
@@ -29,10 +30,10 @@ type Querier interface {
 	DeleteResourceVariable(ctx context.Context, arg DeleteResourceVariableParams) error
 	DeleteRoute(ctx context.Context, id pgtype.UUID) error
 	DeleteSource(ctx context.Context, id pgtype.UUID) error
-	DeleteSourceDefault(ctx context.Context, domain SourceDomain) error
 	DeleteVariable(ctx context.Context, id pgtype.UUID) error
 	// The unique partial index guarantees at most one row per (project, env).
 	GetActiveDeployment(ctx context.Context, arg GetActiveDeploymentParams) (Deployment, error)
+	GetDefaultSource(ctx context.Context, domain SourceDomain) (Source, error)
 	GetDeployment(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	GetEnvironment(ctx context.Context, id pgtype.UUID) (Environment, error)
 	GetEnvironmentBySlug(ctx context.Context, arg GetEnvironmentBySlugParams) (Environment, error)
@@ -45,7 +46,6 @@ type Querier interface {
 	GetResourceByName(ctx context.Context, arg GetResourceByNameParams) (Resource, error)
 	GetRoute(ctx context.Context, id pgtype.UUID) (Route, error)
 	GetSource(ctx context.Context, id pgtype.UUID) (Source, error)
-	GetSourceDefault(ctx context.Context, domain SourceDomain) (Source, error)
 	GetVariable(ctx context.Context, id pgtype.UUID) (Variable, error)
 	// Boot recovery: re-fire goroutines for deployments stuck in pending/applying.
 	ListActiveDeployments(ctx context.Context) ([]Deployment, error)
@@ -64,12 +64,15 @@ type Querier interface {
 	ListRoutesByResource(ctx context.Context, resourceID pgtype.UUID) ([]Route, error)
 	ListRoutesByResourceEnv(ctx context.Context, arg ListRoutesByResourceEnvParams) ([]Route, error)
 	ListSources(ctx context.Context) ([]Source, error)
+	ListSourcesByDomain(ctx context.Context, domain SourceDomain) ([]Source, error)
 	ListVariablesByProject(ctx context.Context, projectID pgtype.UUID) ([]Variable, error)
 	ListVariablesByProjectEnv(ctx context.Context, arg ListVariablesByProjectEnvParams) ([]Variable, error)
 	LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error)
 	MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error)
-	SetSourceDefault(ctx context.Context, arg SetSourceDefaultParams) error
+	// Atomically flips is_default for one row in the domain and clears it on
+	// the rest. The single statement is one SQL transaction.
+	SetDefaultSource(ctx context.Context, arg SetDefaultSourceParams) error
 	UpdateDeploymentStatus(ctx context.Context, arg UpdateDeploymentStatusParams) (Deployment, error)
 	UpdatePlainVariableValue(ctx context.Context, arg UpdatePlainVariableValueParams) (Variable, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)

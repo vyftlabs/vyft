@@ -706,6 +706,21 @@ func (e SourceCreate1Kind) Valid() bool {
 	}
 }
 
+// Defines values for SourceDomain.
+const (
+	Metrics SourceDomain = "metrics"
+)
+
+// Valid indicates whether the value is a known member of the SourceDomain enum.
+func (e SourceDomain) Valid() bool {
+	switch e {
+	case Metrics:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SourceKind.
 const (
 	MetricsServer SourceKind = "metricsServer"
@@ -1412,11 +1427,6 @@ type ServiceEvent struct {
 // ServiceEventType defines model for ServiceEvent.Type.
 type ServiceEventType string
 
-// SetSourceDefault defines model for SetSourceDefault.
-type SetSourceDefault struct {
-	SourceId openapi_types.UUID `json:"sourceId"`
-}
-
 // Source defines model for Source.
 type Source struct {
 	union json.RawMessage
@@ -1426,7 +1436,9 @@ type Source struct {
 type Source0 struct {
 	Config    PrometheusConfigSafe `json:"config"`
 	CreatedAt time.Time            `json:"createdAt"`
+	Domain    SourceDomain         `json:"domain"`
 	Id        openapi_types.UUID   `json:"id"`
+	IsDefault bool                 `json:"isDefault"`
 	Kind      Source0Kind          `json:"kind"`
 	Name      string               `json:"name"`
 	UpdatedAt time.Time            `json:"updatedAt"`
@@ -1439,7 +1451,9 @@ type Source0Kind string
 type Source1 struct {
 	Config    MetricsServerConfigOutput `json:"config"`
 	CreatedAt time.Time                 `json:"createdAt"`
+	Domain    SourceDomain              `json:"domain"`
 	Id        openapi_types.UUID        `json:"id"`
+	IsDefault bool                      `json:"isDefault"`
 	Kind      Source1Kind               `json:"kind"`
 	Name      string                    `json:"name"`
 	UpdatedAt time.Time                 `json:"updatedAt"`
@@ -1518,6 +1532,7 @@ type SourceCreate struct {
 // SourceCreate0 defines model for .
 type SourceCreate0 struct {
 	Config PrometheusConfig  `json:"config"`
+	Domain SourceDomain      `json:"domain"`
 	Kind   SourceCreate0Kind `json:"kind"`
 	Name   string            `json:"name"`
 }
@@ -1528,12 +1543,16 @@ type SourceCreate0Kind string
 // SourceCreate1 defines model for .
 type SourceCreate1 struct {
 	Config MetricsServerConfig `json:"config"`
+	Domain SourceDomain        `json:"domain"`
 	Kind   SourceCreate1Kind   `json:"kind"`
 	Name   string              `json:"name"`
 }
 
 // SourceCreate1Kind defines model for SourceCreate.1.Kind.
 type SourceCreate1Kind string
+
+// SourceDomain defines model for SourceDomain.
+type SourceDomain string
 
 // SourceKind defines model for SourceKind.
 type SourceKind string
@@ -1632,9 +1651,6 @@ type UpdateVariableJSONRequestBody = VariableUpdate
 
 // CreateRegistryJSONRequestBody defines body for CreateRegistry for application/json ContentType.
 type CreateRegistryJSONRequestBody = RegistryCreate
-
-// SetMetricsSourceDefaultJSONRequestBody defines body for SetMetricsSourceDefault for application/json ContentType.
-type SetMetricsSourceDefaultJSONRequestBody = SetSourceDefault
 
 // CreateSourceJSONRequestBody defines body for CreateSource for application/json ContentType.
 type CreateSourceJSONRequestBody = SourceCreate
@@ -2753,12 +2769,6 @@ type ServerInterface interface {
 	// Delete registry
 	// (DELETE /registries/{id})
 	DeleteRegistry(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
-	// Get the metrics-domain default source
-	// (GET /source-defaults/metrics)
-	GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request)
-	// Set the metrics-domain default source
-	// (PUT /source-defaults/metrics)
-	SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request)
 	// List sources
 	// (GET /sources)
 	ListSources(w http.ResponseWriter, r *http.Request)
@@ -2771,6 +2781,9 @@ type ServerInterface interface {
 	// Update source
 	// (PATCH /sources/{id})
 	UpdateSource(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// Promote this source to default for its domain
+	// (PUT /sources/{id}/default)
+	PromoteSourceDefault(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -4114,34 +4127,6 @@ func (siw *ServerInterfaceWrapper) DeleteRegistry(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// GetMetricsSourceDefault operation middleware
-func (siw *ServerInterfaceWrapper) GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetMetricsSourceDefault(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// SetMetricsSourceDefault operation middleware
-func (siw *ServerInterfaceWrapper) SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SetMetricsSourceDefault(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // ListSources operation middleware
 func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Request) {
 
@@ -4213,6 +4198,32 @@ func (siw *ServerInterfaceWrapper) UpdateSource(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PromoteSourceDefault operation middleware
+func (siw *ServerInterfaceWrapper) PromoteSourceDefault(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PromoteSourceDefault(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4382,12 +4393,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/registries", wrapper.ListRegistries)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/registries", wrapper.CreateRegistry)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/registries/{id}", wrapper.DeleteRegistry)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/source-defaults/metrics", wrapper.GetMetricsSourceDefault)
-	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/source-defaults/metrics", wrapper.SetMetricsSourceDefault)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/sources", wrapper.ListSources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/sources", wrapper.CreateSource)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/sources/{id}", wrapper.DeleteSource)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/sources/{id}", wrapper.UpdateSource)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/sources/{id}/default", wrapper.PromoteSourceDefault)
 
 	return m
 }
@@ -7821,183 +7831,6 @@ func (response DeleteRegistry409JSONResponse) VisitDeleteRegistryResponse(w http
 	return err
 }
 
-type GetMetricsSourceDefaultRequestObject struct {
-}
-
-type GetMetricsSourceDefaultResponseObject interface {
-	VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error
-}
-
-type GetMetricsSourceDefault200JSONResponse Source
-
-func (response GetMetricsSourceDefault200JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetMetricsSourceDefault400JSONResponse Error
-
-func (response GetMetricsSourceDefault400JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetMetricsSourceDefault401JSONResponse Error
-
-func (response GetMetricsSourceDefault401JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetMetricsSourceDefault403JSONResponse Error
-
-func (response GetMetricsSourceDefault403JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetMetricsSourceDefault409JSONResponse Error
-
-func (response GetMetricsSourceDefault409JSONResponse) VisitGetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefaultRequestObject struct {
-	Body *SetMetricsSourceDefaultJSONRequestBody
-}
-
-type SetMetricsSourceDefaultResponseObject interface {
-	VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error
-}
-
-type SetMetricsSourceDefault200JSONResponse Source
-
-func (t SetMetricsSourceDefault200JSONResponse) MarshalJSON() ([]byte, error) {
-	return Source(t).MarshalJSON()
-}
-
-func (t *SetMetricsSourceDefault200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*Source)(t).UnmarshalJSON(b)
-}
-
-func (response SetMetricsSourceDefault200JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefault400JSONResponse Error
-
-func (response SetMetricsSourceDefault400JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefault401JSONResponse Error
-
-func (response SetMetricsSourceDefault401JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefault403JSONResponse Error
-
-func (response SetMetricsSourceDefault403JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefault404JSONResponse Error
-
-func (response SetMetricsSourceDefault404JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SetMetricsSourceDefault409JSONResponse Error
-
-func (response SetMetricsSourceDefault409JSONResponse) VisitSetMetricsSourceDefaultResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type ListSourcesRequestObject struct {
 }
 
@@ -8348,6 +8181,106 @@ func (response UpdateSource409JSONResponse) VisitUpdateSourceResponse(w http.Res
 	return err
 }
 
+type PromoteSourceDefaultRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type PromoteSourceDefaultResponseObject interface {
+	VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error
+}
+
+type PromoteSourceDefault200JSONResponse Source
+
+func (t PromoteSourceDefault200JSONResponse) MarshalJSON() ([]byte, error) {
+	return Source(t).MarshalJSON()
+}
+
+func (t *PromoteSourceDefault200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*Source)(t).UnmarshalJSON(b)
+}
+
+func (response PromoteSourceDefault200JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PromoteSourceDefault400JSONResponse Error
+
+func (response PromoteSourceDefault400JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PromoteSourceDefault401JSONResponse Error
+
+func (response PromoteSourceDefault401JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PromoteSourceDefault403JSONResponse Error
+
+func (response PromoteSourceDefault403JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PromoteSourceDefault404JSONResponse Error
+
+func (response PromoteSourceDefault404JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PromoteSourceDefault409JSONResponse Error
+
+func (response PromoteSourceDefault409JSONResponse) VisitPromoteSourceDefaultResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List projects
@@ -8470,12 +8403,6 @@ type StrictServerInterface interface {
 	// Delete registry
 	// (DELETE /registries/{id})
 	DeleteRegistry(ctx context.Context, request DeleteRegistryRequestObject) (DeleteRegistryResponseObject, error)
-	// Get the metrics-domain default source
-	// (GET /source-defaults/metrics)
-	GetMetricsSourceDefault(ctx context.Context, request GetMetricsSourceDefaultRequestObject) (GetMetricsSourceDefaultResponseObject, error)
-	// Set the metrics-domain default source
-	// (PUT /source-defaults/metrics)
-	SetMetricsSourceDefault(ctx context.Context, request SetMetricsSourceDefaultRequestObject) (SetMetricsSourceDefaultResponseObject, error)
 	// List sources
 	// (GET /sources)
 	ListSources(ctx context.Context, request ListSourcesRequestObject) (ListSourcesResponseObject, error)
@@ -8488,6 +8415,9 @@ type StrictServerInterface interface {
 	// Update source
 	// (PATCH /sources/{id})
 	UpdateSource(ctx context.Context, request UpdateSourceRequestObject) (UpdateSourceResponseObject, error)
+	// Promote this source to default for its domain
+	// (PUT /sources/{id}/default)
+	PromoteSourceDefault(ctx context.Context, request PromoteSourceDefaultRequestObject) (PromoteSourceDefaultResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -9712,64 +9642,6 @@ func (sh *strictHandler) DeleteRegistry(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-// GetMetricsSourceDefault operation middleware
-func (sh *strictHandler) GetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
-	var request GetMetricsSourceDefaultRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetMetricsSourceDefault(ctx, request.(GetMetricsSourceDefaultRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetMetricsSourceDefault")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetMetricsSourceDefaultResponseObject); ok {
-		if err := validResponse.VisitGetMetricsSourceDefaultResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// SetMetricsSourceDefault operation middleware
-func (sh *strictHandler) SetMetricsSourceDefault(w http.ResponseWriter, r *http.Request) {
-	var request SetMetricsSourceDefaultRequestObject
-
-	var body SetMetricsSourceDefaultJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.SetMetricsSourceDefault(ctx, request.(SetMetricsSourceDefaultRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SetMetricsSourceDefault")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(SetMetricsSourceDefaultResponseObject); ok {
-		if err := validResponse.VisitSetMetricsSourceDefaultResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // ListSources operation middleware
 func (sh *strictHandler) ListSources(w http.ResponseWriter, r *http.Request) {
 	var request ListSourcesRequestObject
@@ -9883,6 +9755,32 @@ func (sh *strictHandler) UpdateSource(w http.ResponseWriter, r *http.Request, id
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateSourceResponseObject); ok {
 		if err := validResponse.VisitUpdateSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PromoteSourceDefault operation middleware
+func (sh *strictHandler) PromoteSourceDefault(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request PromoteSourceDefaultRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PromoteSourceDefault(ctx, request.(PromoteSourceDefaultRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PromoteSourceDefault")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PromoteSourceDefaultResponseObject); ok {
+		if err := validResponse.VisitPromoteSourceDefaultResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

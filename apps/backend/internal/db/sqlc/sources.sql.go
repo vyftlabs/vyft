@@ -11,25 +11,40 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSourcesInDomain = `-- name: CountSourcesInDomain :one
+SELECT COUNT(*) FROM sources WHERE domain = $1
+`
+
+func (q *Queries) CountSourcesInDomain(ctx context.Context, domain SourceDomain) (int64, error) {
+	row := q.db.QueryRow(ctx, countSourcesInDomain, domain)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSource = `-- name: CreateSource :one
-INSERT INTO sources (id, kind, name, config, auth_encrypted)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, kind, name, config, auth_encrypted, created, updated
+INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated
 `
 
 type CreateSourceParams struct {
-	ID            pgtype.UUID `json:"id"`
-	Kind          SourceKind  `json:"kind"`
-	Name          string      `json:"name"`
-	Config        []byte      `json:"config"`
-	AuthEncrypted []byte      `json:"auth_encrypted"`
+	ID            pgtype.UUID  `json:"id"`
+	Kind          SourceKind   `json:"kind"`
+	Domain        SourceDomain `json:"domain"`
+	Name          string       `json:"name"`
+	IsDefault     bool         `json:"is_default"`
+	Config        []byte       `json:"config"`
+	AuthEncrypted []byte       `json:"auth_encrypted"`
 }
 
 func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Source, error) {
 	row := q.db.QueryRow(ctx, createSource,
 		arg.ID,
 		arg.Kind,
+		arg.Domain,
 		arg.Name,
+		arg.IsDefault,
 		arg.Config,
 		arg.AuthEncrypted,
 	)
@@ -37,7 +52,9 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.Domain,
 		&i.Name,
+		&i.IsDefault,
 		&i.Config,
 		&i.AuthEncrypted,
 		&i.Created,
@@ -55,26 +72,19 @@ func (q *Queries) DeleteSource(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
-const deleteSourceDefault = `-- name: DeleteSourceDefault :exec
-DELETE FROM source_defaults WHERE domain = $1
+const getDefaultSource = `-- name: GetDefaultSource :one
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated FROM sources WHERE domain = $1 AND is_default = true
 `
 
-func (q *Queries) DeleteSourceDefault(ctx context.Context, domain SourceDomain) error {
-	_, err := q.db.Exec(ctx, deleteSourceDefault, domain)
-	return err
-}
-
-const getSource = `-- name: GetSource :one
-SELECT id, kind, name, config, auth_encrypted, created, updated FROM sources WHERE id = $1
-`
-
-func (q *Queries) GetSource(ctx context.Context, id pgtype.UUID) (Source, error) {
-	row := q.db.QueryRow(ctx, getSource, id)
+func (q *Queries) GetDefaultSource(ctx context.Context, domain SourceDomain) (Source, error) {
+	row := q.db.QueryRow(ctx, getDefaultSource, domain)
 	var i Source
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.Domain,
 		&i.Name,
+		&i.IsDefault,
 		&i.Config,
 		&i.AuthEncrypted,
 		&i.Created,
@@ -83,20 +93,19 @@ func (q *Queries) GetSource(ctx context.Context, id pgtype.UUID) (Source, error)
 	return i, err
 }
 
-const getSourceDefault = `-- name: GetSourceDefault :one
-SELECT s.id, s.kind, s.name, s.config, s.auth_encrypted, s.created, s.updated
-  FROM source_defaults d
-  JOIN sources s ON s.id = d.source_id
- WHERE d.domain = $1
+const getSource = `-- name: GetSource :one
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated FROM sources WHERE id = $1
 `
 
-func (q *Queries) GetSourceDefault(ctx context.Context, domain SourceDomain) (Source, error) {
-	row := q.db.QueryRow(ctx, getSourceDefault, domain)
+func (q *Queries) GetSource(ctx context.Context, id pgtype.UUID) (Source, error) {
+	row := q.db.QueryRow(ctx, getSource, id)
 	var i Source
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.Domain,
 		&i.Name,
+		&i.IsDefault,
 		&i.Config,
 		&i.AuthEncrypted,
 		&i.Created,
@@ -106,7 +115,7 @@ func (q *Queries) GetSourceDefault(ctx context.Context, domain SourceDomain) (So
 }
 
 const listSources = `-- name: ListSources :many
-SELECT id, kind, name, config, auth_encrypted, created, updated FROM sources ORDER BY name
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated FROM sources ORDER BY name
 `
 
 func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
@@ -121,7 +130,9 @@ func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Kind,
+			&i.Domain,
 			&i.Name,
+			&i.IsDefault,
 			&i.Config,
 			&i.AuthEncrypted,
 			&i.Created,
@@ -137,21 +148,55 @@ func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
 	return items, nil
 }
 
-const setSourceDefault = `-- name: SetSourceDefault :exec
-INSERT INTO source_defaults (domain, source_id)
-VALUES ($1, $2)
-ON CONFLICT (domain) DO UPDATE
-   SET source_id = EXCLUDED.source_id,
-       updated = NOW()
+const listSourcesByDomain = `-- name: ListSourcesByDomain :many
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated FROM sources WHERE domain = $1 ORDER BY name
 `
 
-type SetSourceDefaultParams struct {
-	Domain   SourceDomain `json:"domain"`
-	SourceID pgtype.UUID  `json:"source_id"`
+func (q *Queries) ListSourcesByDomain(ctx context.Context, domain SourceDomain) ([]Source, error) {
+	rows, err := q.db.Query(ctx, listSourcesByDomain, domain)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Source
+	for rows.Next() {
+		var i Source
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Domain,
+			&i.Name,
+			&i.IsDefault,
+			&i.Config,
+			&i.AuthEncrypted,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) SetSourceDefault(ctx context.Context, arg SetSourceDefaultParams) error {
-	_, err := q.db.Exec(ctx, setSourceDefault, arg.Domain, arg.SourceID)
+const setDefaultSource = `-- name: SetDefaultSource :exec
+UPDATE sources
+   SET is_default = (id = $1)
+ WHERE domain = $2
+`
+
+type SetDefaultSourceParams struct {
+	ID     pgtype.UUID  `json:"id"`
+	Domain SourceDomain `json:"domain"`
+}
+
+// Atomically flips is_default for one row in the domain and clears it on
+// the rest. The single statement is one SQL transaction.
+func (q *Queries) SetDefaultSource(ctx context.Context, arg SetDefaultSourceParams) error {
+	_, err := q.db.Exec(ctx, setDefaultSource, arg.ID, arg.Domain)
 	return err
 }
 
@@ -159,7 +204,7 @@ const updateSource = `-- name: UpdateSource :one
 UPDATE sources
    SET name = $2, config = $3, auth_encrypted = $4
  WHERE id = $1
-RETURNING id, kind, name, config, auth_encrypted, created, updated
+RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated
 `
 
 type UpdateSourceParams struct {
@@ -180,7 +225,9 @@ func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (Sou
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.Domain,
 		&i.Name,
+		&i.IsDefault,
 		&i.Config,
 		&i.AuthEncrypted,
 		&i.Created,
