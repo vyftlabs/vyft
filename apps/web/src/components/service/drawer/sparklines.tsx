@@ -47,8 +47,13 @@ export function Sparkline({
   unit,
   threshold,
   formatHeadline,
+  tooltipExtra,
 }: SparklineData & {
   formatHeadline?: (v: number) => { value: string; unit: string };
+  // Optional per-row content rendered under the value in the tooltip.
+  // Receives the hovered point's ISO timestamp. Used for the per-pod
+  // breakdown on CPU + Memory.
+  tooltipExtra?: (time: string) => React.ReactNode;
 }) {
   const values = data.map((d) => (d[dataKey] as number) ?? 0);
   const current = values.length > 0 ? (values[values.length - 1] ?? 0) : 0;
@@ -132,7 +137,7 @@ export function Sparkline({
                 return (
                   <div
                     className={cn(
-                      "rounded-md bg-popover px-2 py-1 text-xs font-mono shadow-md ring-1 ring-foreground/10",
+                      "rounded-md bg-popover px-2 py-1 text-xs font-mono shadow-md ring-1 ring-foreground/10 space-y-0.5",
                       s && severityTextClass[s],
                     )}
                   >
@@ -140,6 +145,11 @@ export function Sparkline({
                       {formatted.value}
                       {formatted.unit}
                     </div>
+                    {ts && tooltipExtra && (
+                      <div className="text-foreground">
+                        {tooltipExtra(ts)}
+                      </div>
+                    )}
                     {ts && (
                       <div className="text-[10px] text-muted-foreground">
                         {fmtTime(ts)}

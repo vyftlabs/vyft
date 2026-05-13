@@ -926,12 +926,20 @@ export interface components {
             range: components["schemas"]["MetricRange"];
             points: components["schemas"]["RangePoint"][];
             limit?: number;
+            byPod?: {
+                pod: string;
+                points: components["schemas"]["RangePoint"][];
+            }[];
         } | {
             /** @enum {string} */
             kind: "memory";
             range: components["schemas"]["MetricRange"];
             points: components["schemas"]["RangePoint"][];
             limit?: number;
+            byPod?: {
+                pod: string;
+                points: components["schemas"]["RangePoint"][];
+            }[];
         } | {
             /** @enum {string} */
             kind: "reqRate";

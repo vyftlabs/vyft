@@ -70,6 +70,11 @@ export const MetricsCapabilities = z
   })
   .meta({ id: "MetricsCapabilities" });
 
+const PodSeries = z.object({
+  pod: z.string(),
+  points: z.array(RangePoint),
+});
+
 export const MetricSeries = z
   .discriminatedUnion("kind", [
     z.object({
@@ -79,14 +84,17 @@ export const MetricSeries = z
       // Pod CPU limit (millicores), aggregated across containers. Omitted
       // when the workload has no limit set; UI falls back to raw display.
       limit: z.number().optional(),
+      // Per-pod breakdown used by the tooltip to surface noisy-neighbor
+      // and historical (terminated) pods. Omitted by sources that can't
+      // produce it (metrics-server). Sum across byPod equals `points`.
+      byPod: z.array(PodSeries).optional(),
     }),
     z.object({
       kind: z.literal("memory"),
       range: MetricRange,
       points: z.array(RangePoint),
-      // Pod memory limit (bytes), aggregated across containers. Omitted
-      // when the workload has no limit set; UI falls back to raw display.
       limit: z.number().optional(),
+      byPod: z.array(PodSeries).optional(),
     }),
     z.object({
       kind: z.literal("reqRate"),

@@ -181,11 +181,17 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
   const k = kind as Exclude<MetricKind, "latency">;
   const limit =
     series.kind === "cpu" || series.kind === "memory" ? series.limit : undefined;
+  const byPod =
+    series.kind === "cpu" || series.kind === "memory" ? series.byPod : undefined;
   const baseFormatter = KIND_FORMATTERS[k];
   const formatter =
     limit && limit > 0
       ? (v: number) => formatPercentOfLimit(v, limit, baseFormatter)
       : baseFormatter;
+  const tooltipExtra =
+    byPod && byPod.length > 0
+      ? (time: string) => <PodBreakdown byPod={byPod} time={time} format={baseFormatter} />
+      : undefined;
   return (
     <Sparkline
       title={KIND_LABELS[kind]}
@@ -193,8 +199,69 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
       dataKey="value"
       unit=""
       formatHeadline={formatter}
+      tooltipExtra={tooltipExtra}
     />
   );
+}
+
+// PodBreakdown lists each pod's value at the hovered timestamp. Falls
+// back to the nearest sample within the pod's timeline (chart cursor
+// may land between scrape ticks). Pods with no data near the cursor
+// time are skipped.
+function PodBreakdown({
+  byPod,
+  time,
+  format,
+}: {
+  byPod: Array<{ pod: string; points: Array<{ time: string; value: number }> }>;
+  time: string;
+  format: (v: number) => { value: string; unit: string };
+}) {
+  const target = new Date(time).getTime();
+  const rows = byPod
+    .map((p) => ({ pod: p.pod, point: nearestPoint(p.points, target) }))
+    .filter((r) => r.point !== null);
+  if (rows.length === 0) return null;
+  return (
+    <div className="space-y-0.5">
+      {rows.map((r) => {
+        const f = format(r.point!.value);
+        return (
+          <div
+            key={r.pod}
+            className="flex items-baseline justify-between gap-3 text-[10px]"
+          >
+            <span className="text-muted-foreground truncate">{r.pod}</span>
+            <span>
+              {f.value}
+              {f.unit}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function nearestPoint(
+  points: Array<{ time: string; value: number }>,
+  targetMs: number,
+): { time: string; value: number } | null {
+  if (points.length === 0) return null;
+  let best = points[0]!;
+  let bestDiff = Math.abs(new Date(best.time).getTime() - targetMs);
+  // Tolerate up to one step-interval drift. Beyond that the pod isn't
+  // really "at" this cursor time — skip.
+  const maxDriftMs = 60 * 1000;
+  for (const p of points) {
+    const diff = Math.abs(new Date(p.time).getTime() - targetMs);
+    if (diff < bestDiff) {
+      best = p;
+      bestDiff = diff;
+    }
+  }
+  if (bestDiff > maxDriftMs) return null;
+  return best;
 }
 
 // formatPercentOfLimit returns "<percent>%" as the primary value and the

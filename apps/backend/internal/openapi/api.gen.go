@@ -1172,6 +1172,10 @@ type MetricSeries struct {
 
 // MetricSeries0 defines model for .
 type MetricSeries0 struct {
+	ByPod *[]struct {
+		Pod    string       `json:"pod"`
+		Points []RangePoint `json:"points"`
+	} `json:"byPod,omitempty"`
 	Kind   MetricSeries0Kind `json:"kind"`
 	Limit  *float32          `json:"limit,omitempty"`
 	Points []RangePoint      `json:"points"`
@@ -1183,6 +1187,10 @@ type MetricSeries0Kind string
 
 // MetricSeries1 defines model for .
 type MetricSeries1 struct {
+	ByPod *[]struct {
+		Pod    string       `json:"pod"`
+		Points []RangePoint `json:"points"`
+	} `json:"byPod,omitempty"`
 	Kind   MetricSeries1Kind `json:"kind"`
 	Limit  *float32          `json:"limit,omitempty"`
 	Points []RangePoint      `json:"points"`

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,27 +79,30 @@ func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel sou
 
 	switch kind {
 	case openapi.MetricKindCpu:
-		pts, err := p.queryAggregated(ctx, expand(cpuTmpl, vars), rng)
+		pts, byPod, err := p.queryWithBreakdown(ctx, expand(cpuTmpl, vars), rng)
 		if err != nil {
 			return source.Series{}, err
 		}
 		// PromQL rate() of container_cpu_usage_seconds_total yields cores
 		// (cpu-seconds / second). Wire format is millicores, matching
 		// metrics-server's MilliValue().
-		for i := range pts {
-			pts[i].Value *= 1000
+		scalePoints(pts, 1000)
+		for i := range byPod {
+			scalePoints(byPod[i].Points, 1000)
 		}
+		stripResourcePrefix(byPod, sel.ResourceName)
 		limit, err := p.queryLimitInstant(ctx, expand(cpuLimitTmpl, vars))
 		if err == nil && limit > 0 {
 			limit *= 1000 // cores → millicores to match Points scale
 		}
-		return source.Series{Kind: kind, Range: r, Points: pts, Limit: limit}, nil
+		return source.Series{Kind: kind, Range: r, Points: pts, ByPod: byPod, Limit: limit}, nil
 
 	case openapi.MetricKindMemory:
-		pts, err := p.queryAggregated(ctx, expand(memoryTmpl, vars), rng)
+		pts, byPod, err := p.queryWithBreakdown(ctx, expand(memoryTmpl, vars), rng)
 		if err != nil {
 			return source.Series{}, err
 		}
+		stripResourcePrefix(byPod, sel.ResourceName)
 		limit, _ := p.queryLimitInstant(ctx, expand(memoryLimitTmpl, vars))
 		// Pods without a memory limit get a node-capacity value from
 		// cAdvisor. Sanity threshold: 100 PiB. Anything above that is
@@ -107,7 +111,7 @@ func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel sou
 		if limit >= memCap {
 			limit = 0
 		}
-		return source.Series{Kind: kind, Range: r, Points: pts, Limit: limit}, nil
+		return source.Series{Kind: kind, Range: r, Points: pts, ByPod: byPod, Limit: limit}, nil
 
 	case openapi.MetricKindReqRate:
 		pts, err := p.queryWithFallback(ctx, expand(reqRateSemconv, vars), expand(reqRateLegacy, vars), rng)
@@ -159,6 +163,58 @@ func (p *Prometheus) queryLimitInstant(ctx context.Context, q string) (float64, 
 		total += v
 	}
 	return total, nil
+}
+
+// queryWithBreakdown runs a `sum by (pod)` style range query and
+// returns both the aggregate timeline (summed across pods at each
+// timestamp) and the per-pod breakdown. Used by CPU + Memory.
+func (p *Prometheus) queryWithBreakdown(ctx context.Context, q string, rng promv1.Range) ([]source.Point, []source.PodSeries, error) {
+	val, _, err := p.api.QueryRange(ctx, q, rng)
+	if err != nil {
+		return nil, nil, fmt.Errorf("prometheus query: %w", err)
+	}
+	matrix, ok := val.(model.Matrix)
+	if !ok {
+		return nil, nil, fmt.Errorf("prometheus: unexpected result type %T", val)
+	}
+	byPod := make([]source.PodSeries, 0, len(matrix))
+	for _, ss := range matrix {
+		pod := string(ss.Metric["pod"])
+		if pod == "" {
+			continue
+		}
+		pts := make([]source.Point, 0, len(ss.Values))
+		for _, sp := range ss.Values {
+			f := float64(sp.Value)
+			if !isFinite(f) {
+				continue
+			}
+			pts = append(pts, source.Point{
+				Time:  time.UnixMilli(int64(sp.Timestamp)).UTC(),
+				Value: f,
+			})
+		}
+		byPod = append(byPod, source.PodSeries{Pod: pod, Points: pts})
+	}
+	return sumByTime(matrix), byPod, nil
+}
+
+func scalePoints(pts []source.Point, k float64) {
+	for i := range pts {
+		pts[i].Value *= k
+	}
+}
+
+// stripResourcePrefix drops the redundant "<resource>-" leading
+// substring from each pod name (e.g., "nginx-69b6f5fc87-gpq5n" →
+// "69b6f5fc87-gpq5n"). The drawer already shows the resource name in
+// the surrounding chrome; the per-pod tooltip only needs the unique
+// suffix.
+func stripResourcePrefix(byPod []source.PodSeries, resource string) {
+	prefix := resource + "-"
+	for i := range byPod {
+		byPod[i].Pod = strings.TrimPrefix(byPod[i].Pod, prefix)
+	}
 }
 
 // queryAggregated runs a single PromQL range query and aggregates all

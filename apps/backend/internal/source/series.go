@@ -21,18 +21,28 @@ type LatencyPoint struct {
 	P99  float64
 }
 
+// PodSeries carries one pod's timeline for a kind that supports
+// per-pod breakdown (CPU + Memory today). Sum across ByPod equals the
+// aggregate Points.
+type PodSeries struct {
+	Pod    string
+	Points []Point
+}
+
 // Series is what a source returns from a single Query. Either Points or
 // Latency is populated based on Kind. Empty slices are valid (empty-data
 // state on the UI). Limit is meaningful only for CPU + Memory and
 // represents the aggregated pod limit (millicores / bytes) at fetch
 // time; zero means "limit unknown / not set" and the UI falls back to
-// raw display.
+// raw display. ByPod is the per-pod breakdown for CPU + Memory; nil
+// when the source can't produce it (metrics-server).
 type Series struct {
 	Kind    openapi.MetricKind
 	Range   Range
 	Points  []Point
 	Latency []LatencyPoint
 	Limit   float64
+	ByPod   []PodSeries
 }
 
 // ToOpenAPIRangePoints converts the internal Point slice to the API
