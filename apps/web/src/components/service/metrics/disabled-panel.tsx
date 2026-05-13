@@ -16,6 +16,8 @@ const KIND_LABELS: Record<string, string> = {
 const SOURCE_LABELS: Record<SourceKind, string> = {
   prometheus: "Prometheus",
   metricsServer: "metrics-server",
+  loki: "Loki",
+  kubeLogs: "Kubernetes",
 };
 
 function message(

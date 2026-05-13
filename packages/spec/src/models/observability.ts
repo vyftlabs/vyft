@@ -14,13 +14,30 @@ export const ServiceEvent = z
   })
   .meta({ id: "ServiceEvent" });
 
+export const LogLevel = z
+  .enum(["error", "warn", "info", "debug", "unknown"])
+  .meta({ id: "LogLevel" });
+
 export const LogLine = z
   .object({
     timestamp: z.iso.datetime(),
-    level: z.string(),
+    level: LogLevel,
     message: z.string(),
+    pod: z.string().optional(),
+    container: z.string().optional(),
   })
   .meta({ id: "LogLine" });
+
+export const LogCapability = z
+  .enum(["tail", "search", "level"])
+  .meta({ id: "LogCapability" });
+
+export const LogsCapabilities = z
+  .object({
+    sourceKind: SourceKind.nullable(),
+    detected: z.array(LogCapability),
+  })
+  .meta({ id: "LogsCapabilities" });
 
 export const RangePoint = z
   .object({
@@ -89,16 +106,25 @@ export const MetricSeries = z
   ])
   .meta({ id: "MetricSeries" });
 
-export const MetricsCeiling: Record<
-  z.infer<typeof SourceKind>,
-  z.infer<typeof MetricKind>[]
+export const MetricsCeiling: Partial<
+  Record<z.infer<typeof SourceKind>, z.infer<typeof MetricKind>[]>
 > = {
   prometheus: ["cpu", "memory", "reqRate", "errRate", "latency"],
   metricsServer: ["cpu", "memory"],
 };
 
+export const LogsCeiling: Partial<
+  Record<z.infer<typeof SourceKind>, z.infer<typeof LogCapability>[]>
+> = {
+  loki: ["tail", "search", "level"],
+  kubeLogs: ["tail", "level"],
+};
+
 export type ServiceEvent = z.infer<typeof ServiceEvent>;
+export type LogLevel = z.infer<typeof LogLevel>;
 export type LogLine = z.infer<typeof LogLine>;
+export type LogCapability = z.infer<typeof LogCapability>;
+export type LogsCapabilities = z.infer<typeof LogsCapabilities>;
 export type RangePoint = z.infer<typeof RangePoint>;
 export type LatencyPoint = z.infer<typeof LatencyPoint>;
 export type MetricKind = z.infer<typeof MetricKind>;

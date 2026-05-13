@@ -46,6 +46,21 @@ func (h *Handler) ListResourceLogs(_ context.Context, _ openapi.ListResourceLogs
 	return openapi.ListResourceLogs200JSONResponse{}, nil
 }
 
+func (h *Handler) GetResourceLogsCapabilities(_ context.Context, _ openapi.GetResourceLogsCapabilitiesRequestObject) (openapi.GetResourceLogsCapabilitiesResponseObject, error) {
+	return openapi.GetResourceLogsCapabilities200JSONResponse{
+		SourceKind: nil,
+		Detected:   []openapi.LogCapability{},
+	}, nil
+}
+
+func (h *Handler) TailResourceLogs(_ context.Context, _ openapi.TailResourceLogsRequestObject) (openapi.TailResourceLogsResponseObject, error) {
+	return openapi.TailResourceLogs200JSONResponse{}, nil
+}
+
+func (h *Handler) SearchResourceLogs(_ context.Context, _ openapi.SearchResourceLogsRequestObject) (openapi.SearchResourceLogsResponseObject, error) {
+	return openapi.SearchResourceLogs200JSONResponse{}, nil
+}
+
 func (h *Handler) GetResourceMetricsCapabilities(ctx context.Context, _ openapi.GetResourceMetricsCapabilitiesRequestObject) (openapi.GetResourceMetricsCapabilitiesResponseObject, error) {
 	mc, err := h.svc.res.ResolveMetrics(ctx)
 	if err != nil {

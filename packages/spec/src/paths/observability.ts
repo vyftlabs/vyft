@@ -7,6 +7,7 @@ import {
 } from "../models/common.ts";
 import {
   LogLine,
+  LogsCapabilities,
   MetricKind,
   MetricRange,
   MetricSeries,
@@ -44,6 +45,64 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       responses: {
         200: {
           description: "Log lines",
+          content: { "application/json": { schema: z.array(LogLine) } },
+        },
+        ...collectionErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/logs/capabilities": {
+    get: {
+      operationId: "getResourceLogsCapabilities",
+      summary: "Detected log capabilities for resource",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope },
+      responses: {
+        200: {
+          description: "Capabilities",
+          content: { "application/json": { schema: LogsCapabilities } },
+        },
+        ...collectionErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/logs/tail": {
+    get: {
+      operationId: "tailResourceLogs",
+      summary: "Poll-tail recent log lines",
+      tags: ["Observability"],
+      requestParams: {
+        path: ResourceScope,
+        query: z.object({
+          sincePollAt: z.iso.datetime().optional(),
+          limit: z.coerce.number().int().min(1).max(1000).default(500),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Lines",
+          content: { "application/json": { schema: z.array(LogLine) } },
+        },
+        ...collectionErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/logs/search": {
+    get: {
+      operationId: "searchResourceLogs",
+      summary: "Range search for log lines",
+      tags: ["Observability"],
+      requestParams: {
+        path: ResourceScope,
+        query: z.object({
+          range: MetricRange.default("15m"),
+          query: z.string().max(500).optional(),
+          limit: z.coerce.number().int().min(1).max(1000).default(200),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Lines",
           content: { "application/json": { schema: z.array(LogLine) } },
         },
         ...collectionErrors,

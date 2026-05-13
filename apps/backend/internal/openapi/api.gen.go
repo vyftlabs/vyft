@@ -238,6 +238,54 @@ func (e ImportedResourceVariableKind) Valid() bool {
 	}
 }
 
+// Defines values for LogCapability.
+const (
+	Level  LogCapability = "level"
+	Search LogCapability = "search"
+	Tail   LogCapability = "tail"
+)
+
+// Valid indicates whether the value is a known member of the LogCapability enum.
+func (e LogCapability) Valid() bool {
+	switch e {
+	case Level:
+		return true
+	case Search:
+		return true
+	case Tail:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LogLevel.
+const (
+	LogLevelDebug   LogLevel = "debug"
+	LogLevelError   LogLevel = "error"
+	LogLevelInfo    LogLevel = "info"
+	LogLevelUnknown LogLevel = "unknown"
+	LogLevelWarn    LogLevel = "warn"
+)
+
+// Valid indicates whether the value is a known member of the LogLevel enum.
+func (e LogLevel) Valid() bool {
+	switch e {
+	case LogLevelDebug:
+		return true
+	case LogLevelError:
+		return true
+	case LogLevelInfo:
+		return true
+	case LogLevelUnknown:
+		return true
+	case LogLevelWarn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MetricKind.
 const (
 	MetricKindCpu     MetricKind = "cpu"
@@ -586,6 +634,36 @@ func (e Source1Kind) Valid() bool {
 	}
 }
 
+// Defines values for Source2Kind.
+const (
+	Source2KindLoki Source2Kind = "loki"
+)
+
+// Valid indicates whether the value is a known member of the Source2Kind enum.
+func (e Source2Kind) Valid() bool {
+	switch e {
+	case Source2KindLoki:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Source3Kind.
+const (
+	Source3KindKubeLogs Source3Kind = "kubeLogs"
+)
+
+// Valid indicates whether the value is a known member of the Source3Kind enum.
+func (e Source3Kind) Valid() bool {
+	switch e {
+	case Source3KindKubeLogs:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SourceAuth0Type.
 const (
 	SourceAuth0TypeNone SourceAuth0Type = "none"
@@ -706,14 +784,47 @@ func (e SourceCreate1Kind) Valid() bool {
 	}
 }
 
+// Defines values for SourceCreate2Kind.
+const (
+	SourceCreate2KindLoki SourceCreate2Kind = "loki"
+)
+
+// Valid indicates whether the value is a known member of the SourceCreate2Kind enum.
+func (e SourceCreate2Kind) Valid() bool {
+	switch e {
+	case SourceCreate2KindLoki:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceCreate3Kind.
+const (
+	SourceCreate3KindKubeLogs SourceCreate3Kind = "kubeLogs"
+)
+
+// Valid indicates whether the value is a known member of the SourceCreate3Kind enum.
+func (e SourceCreate3Kind) Valid() bool {
+	switch e {
+	case SourceCreate3KindKubeLogs:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SourceDomain.
 const (
+	Logs    SourceDomain = "logs"
 	Metrics SourceDomain = "metrics"
 )
 
 // Valid indicates whether the value is a known member of the SourceDomain enum.
 func (e SourceDomain) Valid() bool {
 	switch e {
+	case Logs:
+		return true
 	case Metrics:
 		return true
 	default:
@@ -723,6 +834,8 @@ func (e SourceDomain) Valid() bool {
 
 // Defines values for SourceKind.
 const (
+	KubeLogs      SourceKind = "kubeLogs"
+	Loki          SourceKind = "loki"
 	MetricsServer SourceKind = "metricsServer"
 	Prometheus    SourceKind = "prometheus"
 )
@@ -730,6 +843,10 @@ const (
 // Valid indicates whether the value is a known member of the SourceKind enum.
 func (e SourceKind) Valid() bool {
 	switch e {
+	case KubeLogs:
+		return true
+	case Loki:
+		return true
 	case MetricsServer:
 		return true
 	case Prometheus:
@@ -995,6 +1112,12 @@ type ImportedResourceVariable struct {
 // ImportedResourceVariableKind defines model for ImportedResourceVariable.Kind.
 type ImportedResourceVariableKind string
 
+// KubeLogsConfig defines model for KubeLogsConfig.
+type KubeLogsConfig = map[string]interface{}
+
+// KubeLogsConfigOutput defines model for KubeLogsConfigOutput.
+type KubeLogsConfigOutput = map[string]interface{}
+
 // LatencyPoint defines model for LatencyPoint.
 type LatencyPoint struct {
 	P50  float32   `json:"p50"`
@@ -1003,11 +1126,37 @@ type LatencyPoint struct {
 	Time time.Time `json:"time"`
 }
 
+// LogCapability defines model for LogCapability.
+type LogCapability string
+
+// LogLevel defines model for LogLevel.
+type LogLevel string
+
 // LogLine defines model for LogLine.
 type LogLine struct {
-	Level     string    `json:"level"`
+	Container *string   `json:"container,omitempty"`
+	Level     LogLevel  `json:"level"`
 	Message   string    `json:"message"`
+	Pod       *string   `json:"pod,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// LogsCapabilities defines model for LogsCapabilities.
+type LogsCapabilities struct {
+	Detected   []LogCapability `json:"detected"`
+	SourceKind *SourceKind     `json:"sourceKind"`
+}
+
+// LokiConfig defines model for LokiConfig.
+type LokiConfig struct {
+	Auth SourceAuth `json:"auth"`
+	Url  string     `json:"url"`
+}
+
+// LokiConfigSafe defines model for LokiConfigSafe.
+type LokiConfigSafe struct {
+	Auth SourceAuthSafe `json:"auth"`
+	Url  string         `json:"url"`
 }
 
 // MetricKind defines model for MetricKind.
@@ -1455,6 +1604,36 @@ type Source1 struct {
 // Source1Kind defines model for Source.1.Kind.
 type Source1Kind string
 
+// Source2 defines model for .
+type Source2 struct {
+	Config    LokiConfigSafe     `json:"config"`
+	CreatedAt time.Time          `json:"createdAt"`
+	Domain    SourceDomain       `json:"domain"`
+	Id        openapi_types.UUID `json:"id"`
+	IsDefault bool               `json:"isDefault"`
+	Kind      Source2Kind        `json:"kind"`
+	Name      string             `json:"name"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+}
+
+// Source2Kind defines model for Source.2.Kind.
+type Source2Kind string
+
+// Source3 defines model for .
+type Source3 struct {
+	Config    KubeLogsConfigOutput `json:"config"`
+	CreatedAt time.Time            `json:"createdAt"`
+	Domain    SourceDomain         `json:"domain"`
+	Id        openapi_types.UUID   `json:"id"`
+	IsDefault bool                 `json:"isDefault"`
+	Kind      Source3Kind          `json:"kind"`
+	Name      string               `json:"name"`
+	UpdatedAt time.Time            `json:"updatedAt"`
+}
+
+// Source3Kind defines model for Source.3.Kind.
+type Source3Kind string
+
 // SourceAuth defines model for SourceAuth.
 type SourceAuth struct {
 	union json.RawMessage
@@ -1544,6 +1723,28 @@ type SourceCreate1 struct {
 // SourceCreate1Kind defines model for SourceCreate.1.Kind.
 type SourceCreate1Kind string
 
+// SourceCreate2 defines model for .
+type SourceCreate2 struct {
+	Config LokiConfig        `json:"config"`
+	Domain SourceDomain      `json:"domain"`
+	Kind   SourceCreate2Kind `json:"kind"`
+	Name   string            `json:"name"`
+}
+
+// SourceCreate2Kind defines model for SourceCreate.2.Kind.
+type SourceCreate2Kind string
+
+// SourceCreate3 defines model for .
+type SourceCreate3 struct {
+	Config KubeLogsConfig    `json:"config"`
+	Domain SourceDomain      `json:"domain"`
+	Kind   SourceCreate3Kind `json:"kind"`
+	Name   string            `json:"name"`
+}
+
+// SourceCreate3Kind defines model for SourceCreate.3.Kind.
+type SourceCreate3Kind string
+
 // SourceDomain defines model for SourceDomain.
 type SourceDomain string
 
@@ -1605,6 +1806,19 @@ type ListDeploymentsParams struct {
 // ListResourceLogsParams defines parameters for ListResourceLogs.
 type ListResourceLogsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// SearchResourceLogsParams defines parameters for SearchResourceLogs.
+type SearchResourceLogsParams struct {
+	Range *MetricRange `form:"range,omitempty" json:"range,omitempty"`
+	Query *string      `form:"query,omitempty" json:"query,omitempty"`
+	Limit *int         `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// TailResourceLogsParams defines parameters for TailResourceLogs.
+type TailResourceLogsParams struct {
+	SincePollAt *time.Time `form:"sincePollAt,omitempty" json:"sincePollAt,omitempty"`
+	Limit       *int       `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // GetResourceMetricSeriesParams defines parameters for GetResourceMetricSeries.
@@ -2401,6 +2615,58 @@ func (t *Source) MergeSource1(v Source1) error {
 	return err
 }
 
+// AsSource2 returns the union data inside the Source as a Source2
+func (t Source) AsSource2() (Source2, error) {
+	var body Source2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSource2 overwrites any union data inside the Source as the provided Source2
+func (t *Source) FromSource2(v Source2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSource2 performs a merge with any union data inside the Source, using the provided Source2
+func (t *Source) MergeSource2(v Source2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSource3 returns the union data inside the Source as a Source3
+func (t Source) AsSource3() (Source3, error) {
+	var body Source3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSource3 overwrites any union data inside the Source as the provided Source3
+func (t *Source) FromSource3(v Source3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSource3 performs a merge with any union data inside the Source, using the provided Source3
+func (t *Source) MergeSource3(v Source3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t Source) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -2639,6 +2905,58 @@ func (t *SourceCreate) MergeSourceCreate1(v SourceCreate1) error {
 	return err
 }
 
+// AsSourceCreate2 returns the union data inside the SourceCreate as a SourceCreate2
+func (t SourceCreate) AsSourceCreate2() (SourceCreate2, error) {
+	var body SourceCreate2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceCreate2 overwrites any union data inside the SourceCreate as the provided SourceCreate2
+func (t *SourceCreate) FromSourceCreate2(v SourceCreate2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceCreate2 performs a merge with any union data inside the SourceCreate, using the provided SourceCreate2
+func (t *SourceCreate) MergeSourceCreate2(v SourceCreate2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSourceCreate3 returns the union data inside the SourceCreate as a SourceCreate3
+func (t SourceCreate) AsSourceCreate3() (SourceCreate3, error) {
+	var body SourceCreate3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSourceCreate3 overwrites any union data inside the SourceCreate as the provided SourceCreate3
+func (t *SourceCreate) FromSourceCreate3(v SourceCreate3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSourceCreate3 performs a merge with any union data inside the SourceCreate, using the provided SourceCreate3
+func (t *SourceCreate) MergeSourceCreate3(v SourceCreate3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t SourceCreate) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -2708,6 +3026,15 @@ type ServerInterface interface {
 	// Logs for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/logs)
 	ListResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params ListResourceLogsParams)
+	// Detected log capabilities for resource
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/capabilities)
+	GetResourceLogsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
+	// Range search for log lines
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/search)
+	SearchResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params SearchResourceLogsParams)
+	// Poll-tail recent log lines
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/tail)
+	TailResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params TailResourceLogsParams)
 	// Detected metric kinds for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/capabilities)
 	GetResourceMetricsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
@@ -3420,6 +3747,182 @@ func (siw *ServerInterfaceWrapper) ListResourceLogs(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListResourceLogs(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceLogsCapabilities operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceLogsCapabilities(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceLogsCapabilities(w, r, projectId, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchResourceLogs operation middleware
+func (siw *ServerInterfaceWrapper) SearchResourceLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchResourceLogsParams
+
+	// ------------- Optional query parameter "range" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "range", r.URL.Query(), &params.Range, runtime.BindQueryParameterOptions{Type: "", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "range"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "range", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "query" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "query", r.URL.Query(), &params.Query, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "query"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchResourceLogs(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TailResourceLogs operation middleware
+func (siw *ServerInterfaceWrapper) TailResourceLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TailResourceLogsParams
+
+	// ------------- Optional query parameter "sincePollAt" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sincePollAt", r.URL.Query(), &params.SincePollAt, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sincePollAt"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sincePollAt", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TailResourceLogs(w, r, projectId, resourceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4353,6 +4856,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.UpdateResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/events", wrapper.ListResourceEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs", wrapper.ListResourceLogs)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/capabilities", wrapper.GetResourceLogsCapabilities)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/search", wrapper.SearchResourceLogs)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/tail", wrapper.TailResourceLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/capabilities", wrapper.GetResourceMetricsCapabilities)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/{kind}", wrapper.GetResourceMetricSeries)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables", wrapper.ListResourceVariables)
@@ -5977,6 +6483,245 @@ func (response ListResourceLogs403JSONResponse) VisitListResourceLogsResponse(w 
 type ListResourceLogs409JSONResponse Error
 
 func (response ListResourceLogs409JSONResponse) VisitListResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceLogsCapabilitiesRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+}
+
+type GetResourceLogsCapabilitiesResponseObject interface {
+	VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error
+}
+
+type GetResourceLogsCapabilities200JSONResponse LogsCapabilities
+
+func (response GetResourceLogsCapabilities200JSONResponse) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceLogsCapabilities400JSONResponse Error
+
+func (response GetResourceLogsCapabilities400JSONResponse) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceLogsCapabilities401JSONResponse Error
+
+func (response GetResourceLogsCapabilities401JSONResponse) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceLogsCapabilities403JSONResponse Error
+
+func (response GetResourceLogsCapabilities403JSONResponse) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceLogsCapabilities409JSONResponse Error
+
+func (response GetResourceLogsCapabilities409JSONResponse) VisitGetResourceLogsCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceLogsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     SearchResourceLogsParams
+}
+
+type SearchResourceLogsResponseObject interface {
+	VisitSearchResourceLogsResponse(w http.ResponseWriter) error
+}
+
+type SearchResourceLogs200JSONResponse []LogLine
+
+func (response SearchResourceLogs200JSONResponse) VisitSearchResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceLogs400JSONResponse Error
+
+func (response SearchResourceLogs400JSONResponse) VisitSearchResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceLogs401JSONResponse Error
+
+func (response SearchResourceLogs401JSONResponse) VisitSearchResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceLogs403JSONResponse Error
+
+func (response SearchResourceLogs403JSONResponse) VisitSearchResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceLogs409JSONResponse Error
+
+func (response SearchResourceLogs409JSONResponse) VisitSearchResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TailResourceLogsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     TailResourceLogsParams
+}
+
+type TailResourceLogsResponseObject interface {
+	VisitTailResourceLogsResponse(w http.ResponseWriter) error
+}
+
+type TailResourceLogs200JSONResponse []LogLine
+
+func (response TailResourceLogs200JSONResponse) VisitTailResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TailResourceLogs400JSONResponse Error
+
+func (response TailResourceLogs400JSONResponse) VisitTailResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TailResourceLogs401JSONResponse Error
+
+func (response TailResourceLogs401JSONResponse) VisitTailResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TailResourceLogs403JSONResponse Error
+
+func (response TailResourceLogs403JSONResponse) VisitTailResourceLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TailResourceLogs409JSONResponse Error
+
+func (response TailResourceLogs409JSONResponse) VisitTailResourceLogsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8320,6 +9065,15 @@ type StrictServerInterface interface {
 	// Logs for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/logs)
 	ListResourceLogs(ctx context.Context, request ListResourceLogsRequestObject) (ListResourceLogsResponseObject, error)
+	// Detected log capabilities for resource
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/capabilities)
+	GetResourceLogsCapabilities(ctx context.Context, request GetResourceLogsCapabilitiesRequestObject) (GetResourceLogsCapabilitiesResponseObject, error)
+	// Range search for log lines
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/search)
+	SearchResourceLogs(ctx context.Context, request SearchResourceLogsRequestObject) (SearchResourceLogsResponseObject, error)
+	// Poll-tail recent log lines
+	// (GET /projects/{projectId}/resources/{resourceId}/logs/tail)
+	TailResourceLogs(ctx context.Context, request TailResourceLogsRequestObject) (TailResourceLogsResponseObject, error)
 	// Detected metric kinds for resource
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/capabilities)
 	GetResourceMetricsCapabilities(ctx context.Context, request GetResourceMetricsCapabilitiesRequestObject) (GetResourceMetricsCapabilitiesResponseObject, error)
@@ -8984,6 +9738,89 @@ func (sh *strictHandler) ListResourceLogs(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListResourceLogsResponseObject); ok {
 		if err := validResponse.VisitListResourceLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceLogsCapabilities operation middleware
+func (sh *strictHandler) GetResourceLogsCapabilities(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID) {
+	var request GetResourceLogsCapabilitiesRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceLogsCapabilities(ctx, request.(GetResourceLogsCapabilitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceLogsCapabilities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceLogsCapabilitiesResponseObject); ok {
+		if err := validResponse.VisitGetResourceLogsCapabilitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchResourceLogs operation middleware
+func (sh *strictHandler) SearchResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params SearchResourceLogsParams) {
+	var request SearchResourceLogsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchResourceLogs(ctx, request.(SearchResourceLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchResourceLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchResourceLogsResponseObject); ok {
+		if err := validResponse.VisitSearchResourceLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TailResourceLogs operation middleware
+func (sh *strictHandler) TailResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params TailResourceLogsParams) {
+	var request TailResourceLogsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TailResourceLogs(ctx, request.(TailResourceLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TailResourceLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TailResourceLogsResponseObject); ok {
+		if err := validResponse.VisitTailResourceLogsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

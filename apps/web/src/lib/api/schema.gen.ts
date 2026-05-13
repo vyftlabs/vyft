@@ -329,6 +329,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/resources/{resourceId}/logs/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detected log capabilities for resource */
+        get: operations["getResourceLogsCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/logs/tail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Poll-tail recent log lines */
+        get: operations["tailResourceLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/logs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Range search for log lines */
+        get: operations["searchResourceLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/resources/{resourceId}/metrics/capabilities": {
         parameters: {
             query?: never;
@@ -622,9 +673,9 @@ export interface components {
             environment?: string;
         };
         /** @enum {string} */
-        MetricKind: "cpu" | "memory" | "reqRate" | "errRate" | "latency";
-        /** @enum {string} */
         MetricRange: "15m" | "1h" | "6h" | "24h";
+        /** @enum {string} */
+        MetricKind: "cpu" | "memory" | "reqRate" | "errRate" | "latency";
         SourceCreate: {
             name: string;
             domain: components["schemas"]["SourceDomain"];
@@ -637,9 +688,21 @@ export interface components {
             /** @enum {string} */
             kind: "metricsServer";
             config: components["schemas"]["MetricsServerConfig"];
+        } | {
+            name: string;
+            domain: components["schemas"]["SourceDomain"];
+            /** @enum {string} */
+            kind: "loki";
+            config: components["schemas"]["LokiConfig"];
+        } | {
+            name: string;
+            domain: components["schemas"]["SourceDomain"];
+            /** @enum {string} */
+            kind: "kubeLogs";
+            config: components["schemas"]["KubeLogsConfig"];
         };
         /** @enum {string} */
-        SourceDomain: "metrics";
+        SourceDomain: "metrics" | "logs";
         PrometheusConfig: {
             /** Format: uri */
             url: string;
@@ -659,6 +722,12 @@ export interface components {
             token: string;
         };
         MetricsServerConfig: Record<string, never>;
+        LokiConfig: {
+            /** Format: uri */
+            url: string;
+            auth: components["schemas"]["SourceAuth"];
+        };
+        KubeLogsConfig: Record<string, never>;
         Project: {
             /** Format: uuid */
             id: string;
@@ -849,15 +918,25 @@ export interface components {
         LogLine: {
             /** Format: date-time */
             timestamp: string;
-            level: string;
+            level: components["schemas"]["LogLevel"];
             message: string;
+            pod?: string;
+            container?: string;
         };
+        /** @enum {string} */
+        LogLevel: "error" | "warn" | "info" | "debug" | "unknown";
+        LogsCapabilities: {
+            sourceKind: components["schemas"]["SourceKind"] | null;
+            detected: components["schemas"]["LogCapability"][];
+        };
+        /** @enum {string} */
+        SourceKind: "prometheus" | "metricsServer" | "loki" | "kubeLogs";
+        /** @enum {string} */
+        LogCapability: "tail" | "search" | "level";
         MetricsCapabilities: {
             sourceKind: components["schemas"]["SourceKind"] | null;
             detected: components["schemas"]["MetricKind"][];
         };
-        /** @enum {string} */
-        SourceKind: "prometheus" | "metricsServer";
         MetricSeries: {
             /** @enum {string} */
             kind: "cpu";
@@ -924,6 +1003,32 @@ export interface components {
             /** @enum {string} */
             kind: "metricsServer";
             config: components["schemas"]["MetricsServerConfigOutput"];
+        } | {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            name: string;
+            domain: components["schemas"]["SourceDomain"];
+            isDefault: boolean;
+            /** @enum {string} */
+            kind: "loki";
+            config: components["schemas"]["LokiConfigSafe"];
+        } | {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            name: string;
+            domain: components["schemas"]["SourceDomain"];
+            isDefault: boolean;
+            /** @enum {string} */
+            kind: "kubeLogs";
+            config: components["schemas"]["KubeLogsConfigOutput"];
         };
         PrometheusConfigSafe: {
             /** Format: uri */
@@ -940,6 +1045,11 @@ export interface components {
         } | {
             /** @enum {string} */
             type: "bearer";
+        };
+        LokiConfigSafe: {
+            /** Format: uri */
+            url: string;
+            auth: components["schemas"]["SourceAuthSafe"];
         };
         SourceTestResult: {
             ok: boolean;
@@ -996,6 +1106,7 @@ export interface components {
             };
         };
         MetricsServerConfigOutput: Record<string, never>;
+        KubeLogsConfigOutput: Record<string, never>;
     };
     responses: never;
     parameters: never;
@@ -3337,6 +3448,190 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Log lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogLine"][];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceLogsCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Capabilities */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogsCapabilities"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tailResourceLogs: {
+        parameters: {
+            query?: {
+                sincePollAt?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogLine"][];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    searchResourceLogs: {
+        parameters: {
+            query?: {
+                range?: components["schemas"]["MetricRange"];
+                query?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lines */
             200: {
                 headers: {
                     [name: string]: unknown;
