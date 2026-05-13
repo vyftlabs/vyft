@@ -2,10 +2,7 @@ import { XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { EventTimeline, type TimelineEntry } from "./timeline";
 
 export interface DrawerTab {
   id: string;
@@ -51,16 +48,10 @@ export type DetailView = "events" | "logs" | "metrics" | null;
 
 export interface OverviewProps {
   metricsArea?: React.ReactNode;
-  timeline?: TimelineEntry[];
   logsArea?: React.ReactNode;
 }
 
-export function Overview({
-  metricsArea,
-  timeline = [],
-  logsArea,
-}: OverviewProps) {
-  const showTimeline = timeline !== undefined;
+export function Overview({ metricsArea, logsArea }: OverviewProps) {
   const showLogs = logsArea !== undefined;
   return (
     <div className="flex flex-col gap-5 h-full">
@@ -70,38 +61,7 @@ export function Overview({
           {metricsArea}
         </div>
       )}
-
-      {(showTimeline || showLogs) && (
-        <div
-          className={cn(
-            "flex-1 min-h-0 grid gap-4",
-            showTimeline && showLogs ? "grid-cols-2" : "grid-cols-1",
-          )}
-        >
-          {showTimeline && (
-            <div className="min-h-0 flex flex-col">
-              <div className="mb-2 shrink-0">
-                <p className="text-xs font-medium">Events</p>
-              </div>
-              <div className="flex-1 min-h-0 relative">
-                {timeline.length > 0 ? (
-                  <ScrollArea className="h-full -mr-4">
-                    <div className="pr-4">
-                      <EventTimeline entries={timeline} />
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                    No events yet
-                  </div>
-                )}
-                <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-              </div>
-            </div>
-          )}
-          {showLogs && logsArea}
-        </div>
-      )}
+      {showLogs && <div className="flex-1 min-h-0">{logsArea}</div>}
     </div>
   );
 }

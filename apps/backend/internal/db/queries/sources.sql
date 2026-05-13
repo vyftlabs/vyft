@@ -27,9 +27,18 @@ RETURNING *;
 -- name: DeleteSource :exec
 DELETE FROM sources WHERE id = $1;
 
--- name: SetDefaultSource :exec
--- Atomically flips is_default for one row in the domain and clears it on
--- the rest. The single statement is one SQL transaction.
+-- name: ClearDefaultSource :exec
+-- Step 1 of promotion: clear is_default on every other row in the
+-- domain. Paired w/ SetDefaultTrue under a single Go transaction so the
+-- partial unique index on (domain) WHERE is_default = true doesn't fire
+-- mid-row of a multi-row UPDATE.
 UPDATE sources
-   SET is_default = (id = $1)
- WHERE domain = $2;
+   SET is_default = false
+ WHERE domain = $1 AND id <> $2 AND is_default = true;
+
+-- name: SetDefaultTrue :exec
+-- Step 2: mark the target row as default. Must run after
+-- ClearDefaultSource inside the same transaction.
+UPDATE sources
+   SET is_default = true
+ WHERE id = $1;

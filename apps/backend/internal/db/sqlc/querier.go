@@ -11,6 +11,11 @@ import (
 )
 
 type Querier interface {
+	// Step 1 of promotion: clear is_default on every other row in the
+	// domain. Paired w/ SetDefaultTrue under a single Go transaction so the
+	// partial unique index on (domain) WHERE is_default = true doesn't fire
+	// mid-row of a multi-row UPDATE.
+	ClearDefaultSource(ctx context.Context, arg ClearDefaultSourceParams) error
 	CountSourcesInDomain(ctx context.Context, domain SourceDomain) (int64, error)
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) (Deployment, error)
 	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (Environment, error)
@@ -70,9 +75,9 @@ type Querier interface {
 	LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error)
 	MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error)
-	// Atomically flips is_default for one row in the domain and clears it on
-	// the rest. The single statement is one SQL transaction.
-	SetDefaultSource(ctx context.Context, arg SetDefaultSourceParams) error
+	// Step 2: mark the target row as default. Must run after
+	// ClearDefaultSource inside the same transaction.
+	SetDefaultTrue(ctx context.Context, id pgtype.UUID) error
 	UpdateDeploymentStatus(ctx context.Context, arg UpdateDeploymentStatusParams) (Deployment, error)
 	UpdatePlainVariableValue(ctx context.Context, arg UpdatePlainVariableValueParams) (Variable, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)

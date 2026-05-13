@@ -45,7 +45,6 @@ import { LogsPanel } from "../logs/panel";
 import { MetricsGrid } from "../metrics/grid";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
-import type { TimelineEntry } from "./timeline";
 
 type ResourceData = Resource;
 
@@ -57,31 +56,11 @@ function OverviewTab({
   projectId: string;
   project: string;
 }) {
-  const { data: events = [] } = useQuery({
-    ...api.observability.events(projectId, resourceId),
-    enabled: !!resourceId,
-    refetchInterval: 5000,
-  });
-
-  const timeline: TimelineEntry[] = events.map(
-    (e: (typeof events)[number]) => ({
-      kind: "event",
-      event: {
-        id: e.id,
-        type: e.type,
-        reason: e.reason,
-        message: e.message,
-        timestamp: e.timestamp,
-      },
-    }),
-  );
-
   return (
     <Overview
       metricsArea={
         <MetricsGrid projectId={projectId} resourceId={resourceId} />
       }
-      timeline={timeline}
       logsArea={<LogsPanel projectId={projectId} resourceId={resourceId} />}
     />
   );

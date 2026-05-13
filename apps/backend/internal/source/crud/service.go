@@ -174,10 +174,20 @@ func (s *Service) PromoteDefault(ctx context.Context, id uuid.UUID) (sqlc.Source
 		}
 		return sqlc.Source{}, apierr.Internal(err)
 	}
-	if err := s.db.Q.SetDefaultSource(ctx, sqlc.SetDefaultSourceParams{
-		ID:     row.ID,
-		Domain: row.Domain,
-	}); err != nil {
+	// Clear the existing default, then mark the target — in one
+	// transaction. A single multi-row UPDATE would trip the partial
+	// unique index on (domain) WHERE is_default = true because the
+	// constraint is checked per-row, not at statement end.
+	err = s.db.WithTx(ctx, func(q *sqlc.Queries) error {
+		if err := q.ClearDefaultSource(ctx, sqlc.ClearDefaultSourceParams{
+			Domain: row.Domain,
+			ID:     row.ID,
+		}); err != nil {
+			return err
+		}
+		return q.SetDefaultTrue(ctx, row.ID)
+	})
+	if err != nil {
 		return sqlc.Source{}, apierr.Internal(err)
 	}
 	out, err := s.db.Q.GetSource(ctx, row.ID)

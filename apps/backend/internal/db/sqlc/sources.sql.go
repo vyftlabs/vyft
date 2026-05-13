@@ -11,6 +11,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearDefaultSource = `-- name: ClearDefaultSource :exec
+UPDATE sources
+   SET is_default = false
+ WHERE domain = $1 AND id <> $2 AND is_default = true
+`
+
+type ClearDefaultSourceParams struct {
+	Domain SourceDomain `json:"domain"`
+	ID     pgtype.UUID  `json:"id"`
+}
+
+// Step 1 of promotion: clear is_default on every other row in the
+// domain. Paired w/ SetDefaultTrue under a single Go transaction so the
+// partial unique index on (domain) WHERE is_default = true doesn't fire
+// mid-row of a multi-row UPDATE.
+func (q *Queries) ClearDefaultSource(ctx context.Context, arg ClearDefaultSourceParams) error {
+	_, err := q.db.Exec(ctx, clearDefaultSource, arg.Domain, arg.ID)
+	return err
+}
+
 const countSourcesInDomain = `-- name: CountSourcesInDomain :one
 SELECT COUNT(*) FROM sources WHERE domain = $1
 `
@@ -182,21 +202,16 @@ func (q *Queries) ListSourcesByDomain(ctx context.Context, domain SourceDomain) 
 	return items, nil
 }
 
-const setDefaultSource = `-- name: SetDefaultSource :exec
+const setDefaultTrue = `-- name: SetDefaultTrue :exec
 UPDATE sources
-   SET is_default = (id = $1)
- WHERE domain = $2
+   SET is_default = true
+ WHERE id = $1
 `
 
-type SetDefaultSourceParams struct {
-	ID     pgtype.UUID  `json:"id"`
-	Domain SourceDomain `json:"domain"`
-}
-
-// Atomically flips is_default for one row in the domain and clears it on
-// the rest. The single statement is one SQL transaction.
-func (q *Queries) SetDefaultSource(ctx context.Context, arg SetDefaultSourceParams) error {
-	_, err := q.db.Exec(ctx, setDefaultSource, arg.ID, arg.Domain)
+// Step 2: mark the target row as default. Must run after
+// ClearDefaultSource inside the same transaction.
+func (q *Queries) SetDefaultTrue(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, setDefaultTrue, id)
 	return err
 }
 
