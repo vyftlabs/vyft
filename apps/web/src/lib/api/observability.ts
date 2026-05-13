@@ -60,7 +60,7 @@ export const metricsCapabilities = (projectId: string, resourceId: string) =>
     },
   });
 
-export const POLL_INTERVAL_MS = 15_000;
+export const POLL_INTERVAL_MS = 5_000;
 
 // pointsForRange returns the cap that aligns with the operator-selected
 // window at the current poll interval. range=15m + 15s polling = 60.
