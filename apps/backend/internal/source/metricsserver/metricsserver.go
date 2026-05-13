@@ -60,6 +60,13 @@ func (m *MetricsServer) Query(ctx context.Context, kind openapi.MetricKind, sel 
 		return source.Series{}, fmt.Errorf("metrics-server list: %w", err)
 	}
 
+	// No pods matched the selector — return an empty Series so the web
+	// client renders the "no-data-in-range" / "service-not-instrumented"
+	// empty state instead of a misleading 0.00 reading.
+	if len(list.Items) == 0 {
+		return source.Series{Kind: kind, Range: r, Points: nil}, nil
+	}
+
 	var totalMilli int64
 	var totalBytes int64
 	for _, pm := range list.Items {
