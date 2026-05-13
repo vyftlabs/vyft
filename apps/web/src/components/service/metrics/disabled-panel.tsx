@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router";
 import type { SourceKind } from "@vyft/spec";
 import { Button } from "@/components/ui/button";
+import { MetricSlotChrome } from "./chrome";
 
 export type DisabledCause = "none" | "ceiling" | "unreachable";
 
 const KIND_LABELS: Record<string, string> = {
   cpu: "CPU",
   memory: "Memory",
-  reqRate: "Request rate",
+  reqRate: "Requests",
   errRate: "Error rate",
   latency: "Latency",
 };
@@ -43,21 +44,23 @@ export function DisabledPanel({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="p-3 bg-muted/40 rounded-md flex flex-col gap-1">
-      <p className="text-[11px] text-muted-foreground">
-        {KIND_LABELS[kind] ?? kind}
-      </p>
-      <p className="text-xs text-muted-foreground flex-1">
-        {message(cause, kind, sourceKind)}
-      </p>
-      <Button
-        size="xs"
-        variant="outline"
-        className="self-start mt-1"
-        onClick={() => navigate("/settings/sources")}
-      >
-        Configure metrics
-      </Button>
-    </div>
+    <MetricSlotChrome
+      className="bg-muted/40"
+      title={KIND_LABELS[kind] ?? kind}
+      headline={
+        <span className="text-xs font-normal font-sans text-muted-foreground line-clamp-1">
+          {message(cause, kind, sourceKind)}
+        </span>
+      }
+      body={
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={() => navigate("/settings/sources")}
+        >
+          Configure metrics
+        </Button>
+      }
+    />
   );
 }

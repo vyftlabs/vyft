@@ -8,6 +8,7 @@ import {
 } from "@vyft/spec";
 import { LatencySparkline, Sparkline } from "@/components/service/drawer/sparklines";
 import * as api from "@/lib/api";
+import { MetricSlotChrome } from "./chrome";
 import { DisabledPanel } from "./disabled-panel";
 import { EmptyDataPanel } from "./empty-data-panel";
 
@@ -76,14 +77,26 @@ export function MetricSlot({
   }
   if (kindQuery.isLoading) {
     return (
-      <div className="p-3 h-[88px] rounded-md bg-muted/20 animate-pulse" />
+      <MetricSlotChrome
+        className="bg-muted/20 animate-pulse"
+        title={KIND_LABELS[kind]}
+        headline={<span className="opacity-0">—</span>}
+        body={null}
+      />
     );
   }
   if (kindQuery.error) {
     return (
-      <div className="p-3 h-[88px] rounded-md bg-destructive/10 text-xs text-destructive">
-        {KIND_LABELS[kind]}: error
-      </div>
+      <MetricSlotChrome
+        className="bg-destructive/10"
+        title={KIND_LABELS[kind]}
+        headline={
+          <span className="text-xs font-normal font-sans text-destructive line-clamp-1">
+            Query failed.
+          </span>
+        }
+        body={null}
+      />
     );
   }
   const series = kindQuery.data;
