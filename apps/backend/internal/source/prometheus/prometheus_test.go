@@ -137,7 +137,7 @@ func TestQuery_ErrRate_MultipliesToPercent(t *testing.T) {
 	fp := &fakeProm{
 		matrixByQuery: map[string][][2]float64{
 			// semconv error rate query — return 0.05 fraction
-			`http_server_request_duration_seconds_count{namespace="vyft-demo-production",pod=~"nginx-.*",http_response_status_code=~"5.."}`: {{ts(15), 0.05}},
+			`http_server_request_duration_seconds_count{k8s_namespace_name="vyft-demo-production",k8s_pod_name=~"nginx-.*",http_response_status_code=~"5.."}`: {{ts(15), 0.05}},
 		},
 	}
 	p := newClient(t, fp)

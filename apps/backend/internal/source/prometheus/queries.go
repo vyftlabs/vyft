@@ -38,18 +38,24 @@ const (
 // RED queries: semconv first (OTel HTTP server semantic conventions);
 // legacy fallback (community http_requests_total) used only when the
 // semconv query returns no series.
+//
+// Label convention split:
+// - cAdvisor uses `namespace` + `pod`.
+// - OTel / Beyla uses `k8s_namespace_name` + `k8s_pod_name`.
+// CPU + Memory templates stay on cAdvisor labels; RED + Latency use OTel
+// labels because that's what HTTP-instrumentation emitters tag with.
 const (
-	reqRateSemconv = `sum(rate(http_server_request_duration_seconds_count{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
+	reqRateSemconv = `sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m]))`
 	reqRateLegacy  = `sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
 
-	errRateSemconv = `sum(rate(http_server_request_duration_seconds_count{namespace="{namespace}",pod=~"{resource}-.*",http_response_status_code=~"5.."}[1m])) / sum(rate(http_server_request_duration_seconds_count{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
+	errRateSemconv = `sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*",http_response_status_code=~"5.."}[1m])) / sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m]))`
 	errRateLegacy  = `sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*",status=~"5.."}[1m])) / sum(rate(http_requests_total{namespace="{namespace}",pod=~"{resource}-.*"}[1m]))`
 )
 
 // latencyQuantile returns the histogram_quantile query for q in [0,1].
 func latencyQuantile(q float64) string {
 	return fmt.Sprintf(
-		`histogram_quantile(%g, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace="{namespace}",pod=~"{resource}-.*"}[1m])))`,
+		`histogram_quantile(%g, sum by (le) (rate(http_server_request_duration_seconds_bucket{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m])))`,
 		q,
 	)
 }
