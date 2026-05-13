@@ -205,6 +205,127 @@ export function Sparkline({
   );
 }
 
+// MultiSparkline renders one line per series (e.g. per pod) inside the
+// same chart slot used by Sparkline. No aggregate line — the headline
+// value is the max across series at the most recent timestamp, which
+// matches the "watch the worst-performing pod" framing.
+export interface MultiSeries {
+  key: string;
+  label: string;
+  points: { time: string; value: number }[];
+}
+
+const PALETTE = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+export function MultiSparkline({
+  title,
+  series,
+  formatHeadline,
+  tooltipExtra,
+}: {
+  title: string;
+  series: MultiSeries[];
+  formatHeadline?: (v: number) => { value: string; unit: string };
+  tooltipExtra?: (time: string) => React.ReactNode;
+}) {
+  // Pivot to recharts shape: [{ time, <k1>: v, <k2>: v, ... }].
+  const byTime = new Map<string, Record<string, number | string>>();
+  for (const s of series) {
+    for (const p of s.points) {
+      const row = byTime.get(p.time) ?? { time: p.time };
+      row[s.key] = p.value;
+      byTime.set(p.time, row);
+    }
+  }
+  const data = Array.from(byTime.values()).sort((a, b) =>
+    (a.time as string).localeCompare(b.time as string),
+  );
+
+  // Headline = max across pods at the latest timestamp w/ any data.
+  let headlineVal = 0;
+  for (let i = data.length - 1; i >= 0; i--) {
+    const row = data[i]!;
+    const vals = series
+      .map((s) => row[s.key])
+      .filter((v): v is number => typeof v === "number");
+    if (vals.length > 0) {
+      headlineVal = Math.max(...vals);
+      break;
+    }
+  }
+  const headline = formatHeadline
+    ? formatHeadline(headlineVal)
+    : { value: fmt(headlineVal), unit: "" };
+
+  return (
+    <div className="p-3">
+      <p className="text-[11px] text-muted-foreground">{title}</p>
+      <p className="text-lg font-semibold font-mono leading-7">
+        {headline.value}
+        <span className="text-xs ml-0.5 text-muted-foreground">
+          {headline.unit}
+        </span>
+      </p>
+      <div className="h-10 mt-1" style={{ minWidth: 0, minHeight: 0 }}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={1}
+          minHeight={1}
+        >
+          <AreaChart
+            data={data}
+            margin={{ top: 2, right: 0, bottom: 0, left: 0 }}
+          >
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const ts = payload[0]?.payload?.time as string | undefined;
+                return (
+                  <div className="rounded-md bg-popover px-2 py-1 text-xs font-mono shadow-md ring-1 ring-foreground/10 space-y-0.5">
+                    {ts && tooltipExtra && (
+                      <div className="text-foreground">{tooltipExtra(ts)}</div>
+                    )}
+                    {ts && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtTime(ts)}
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+              cursor={{
+                stroke: "var(--muted-foreground)",
+                strokeWidth: 1,
+                strokeDasharray: "3 3",
+              }}
+            />
+            {series.map((s, i) => (
+              <Area
+                key={s.key}
+                type="monotone"
+                dataKey={s.key}
+                stroke={PALETTE[i % PALETTE.length]}
+                fill="transparent"
+                strokeWidth={1.5}
+                isAnimationActive={false}
+                connectNulls={false}
+                dot={false}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 const latencyStrokes = [
   { width: 1.5, dash: undefined },
   { width: 1, dash: "4 2" },

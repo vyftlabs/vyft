@@ -6,7 +6,11 @@ import {
   type MetricsCapabilities,
   MetricsCeiling,
 } from "@vyft/spec";
-import { LatencySparkline, Sparkline } from "@/components/service/drawer/sparklines";
+import {
+  LatencySparkline,
+  MultiSparkline,
+  Sparkline,
+} from "@/components/service/drawer/sparklines";
 import * as api from "@/lib/api";
 import { MetricSlotChrome } from "./chrome";
 import { DisabledPanel } from "./disabled-panel";
@@ -192,6 +196,22 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
     byPod && byPod.length > 0
       ? (time: string) => <PodBreakdown byPod={byPod} time={time} format={baseFormatter} />
       : undefined;
+
+  if (byPod && byPod.length > 0) {
+    return (
+      <MultiSparkline
+        title={KIND_LABELS[kind]}
+        series={byPod.map((p) => ({
+          key: p.pod,
+          label: p.pod,
+          points: p.points,
+        }))}
+        formatHeadline={formatter}
+        tooltipExtra={tooltipExtra}
+      />
+    );
+  }
+
   return (
     <Sparkline
       title={KIND_LABELS[kind]}
