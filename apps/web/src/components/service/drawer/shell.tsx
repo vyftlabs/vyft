@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { LatencySparkline, Sparkline } from "./sparklines";
 import { EventTimeline, type TimelineEntry } from "./timeline";
 
 export interface DrawerTab {
@@ -57,15 +56,13 @@ export interface LogLine {
 export type DetailView = "events" | "logs" | "metrics" | null;
 
 export interface OverviewProps {
-  sparklines?: SparklineData[][];
-  latency?: LatencyChartData;
+  metricsArea?: React.ReactNode;
   timeline?: TimelineEntry[];
   logs?: LogLine[];
 }
 
 export function Overview({
-  sparklines = [],
-  latency,
+  metricsArea,
   timeline = [],
   logs,
 }: OverviewProps) {
@@ -73,26 +70,10 @@ export function Overview({
   const showLogs = logs !== undefined;
   return (
     <div className="flex flex-col gap-5 h-full">
-      {(sparklines.length > 0 || latency) && (
+      {metricsArea && (
         <div className="space-y-2 shrink-0">
           <p className="text-xs font-medium">Metrics</p>
-          {((sparklines[0]?.length ?? 0) > 0 || latency) && (
-            <div className="grid grid-cols-3 gap-2">
-              {sparklines[0]?.map((s) => (
-                <Sparkline key={s.title} {...s} />
-              ))}
-              {latency && <LatencySparkline {...latency} />}
-            </div>
-          )}
-          {sparklines[1] && (
-            <div
-              className={cn("grid gap-2", `grid-cols-${sparklines[1].length}`)}
-            >
-              {sparklines[1].map((s) => (
-                <Sparkline key={s.title} {...s} />
-              ))}
-            </div>
-          )}
+          {metricsArea}
         </div>
       )}
 

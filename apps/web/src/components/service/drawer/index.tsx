@@ -41,6 +41,7 @@ import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
 import { getAppSpec } from "@/lib/resource";
 import { cn } from "@/lib/utils";
+import { MetricsGrid } from "../metrics/grid";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
 import type { TimelineEntry } from "./timeline";
@@ -67,12 +68,6 @@ function OverviewTab({
     refetchInterval: 5000,
   });
 
-  const { data: metrics } = useQuery({
-    ...api.observability.metrics(projectId, resourceId),
-    enabled: !!resourceId,
-    refetchInterval: 10000,
-  });
-
   const timeline: TimelineEntry[] = events.map(
     (e: (typeof events)[number]) => ({
       kind: "event",
@@ -88,44 +83,9 @@ function OverviewTab({
 
   return (
     <Overview
-      sparklines={[
-        [
-          {
-            title: "Requests",
-            data: metrics?.reqRate ?? [],
-            dataKey: "value",
-            unit: "/s",
-          },
-          {
-            title: "Error rate",
-            data: metrics?.errRate ?? [],
-            dataKey: "value",
-            unit: "%",
-          },
-        ],
-        [
-          {
-            title: "CPU",
-            data: metrics?.cpu ?? [],
-            dataKey: "value",
-            unit: "%",
-          },
-          {
-            title: "Memory",
-            data: metrics?.memory ?? [],
-            dataKey: "value",
-            unit: "Mi",
-          },
-        ],
-      ]}
-      latency={{
-        data: metrics?.latency ?? [],
-        keys: [
-          { dataKey: "p99", label: "P99" },
-          { dataKey: "p95", label: "P95" },
-          { dataKey: "p50", label: "P50" },
-        ],
-      }}
+      metricsArea={
+        <MetricsGrid projectId={projectId} resourceId={resourceId} />
+      }
       timeline={timeline}
       logs={logs}
     />
