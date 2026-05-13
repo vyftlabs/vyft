@@ -248,12 +248,16 @@ export function LatencySparkline({
       <p className="text-xs text-muted-foreground font-mono mt-0.5">
         {secondaryValues.map((s, i) => {
           const s_level = severity(s.value, s.threshold);
+          const sf = formatHeadline
+            ? formatHeadline(s.value)
+            : { value: fmt(s.value), unit: "" };
           return (
             <span key={s.label}>
               {i > 0 && " · "}
               {s.label}{" "}
               <span className={cn(s_level && severityTextClass[s_level])}>
-                {fmt(s.value)}
+                {sf.value}
+                {sf.unit}
               </span>
             </span>
           );
