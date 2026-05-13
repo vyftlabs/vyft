@@ -20,6 +20,7 @@ type Querier interface {
 	CreateResourceVariable(ctx context.Context, arg CreateResourceVariableParams) (ResourceVariable, error)
 	CreateRoute(ctx context.Context, arg CreateRouteParams) (Route, error)
 	CreateSecretVariable(ctx context.Context, arg CreateSecretVariableParams) (Variable, error)
+	CreateSource(ctx context.Context, arg CreateSourceParams) (Source, error)
 	DeleteAllResourceVariables(ctx context.Context, resourceID pgtype.UUID) error
 	DeleteEnvironment(ctx context.Context, id pgtype.UUID) error
 	DeleteProject(ctx context.Context, id pgtype.UUID) error
@@ -27,6 +28,8 @@ type Querier interface {
 	DeleteResource(ctx context.Context, id pgtype.UUID) error
 	DeleteResourceVariable(ctx context.Context, arg DeleteResourceVariableParams) error
 	DeleteRoute(ctx context.Context, id pgtype.UUID) error
+	DeleteSource(ctx context.Context, id pgtype.UUID) error
+	DeleteSourceDefault(ctx context.Context, domain SourceDomain) error
 	DeleteVariable(ctx context.Context, id pgtype.UUID) error
 	// The unique partial index guarantees at most one row per (project, env).
 	GetActiveDeployment(ctx context.Context, arg GetActiveDeploymentParams) (Deployment, error)
@@ -41,6 +44,8 @@ type Querier interface {
 	GetResource(ctx context.Context, id pgtype.UUID) (Resource, error)
 	GetResourceByName(ctx context.Context, arg GetResourceByNameParams) (Resource, error)
 	GetRoute(ctx context.Context, id pgtype.UUID) (Route, error)
+	GetSource(ctx context.Context, id pgtype.UUID) (Source, error)
+	GetSourceDefault(ctx context.Context, domain SourceDomain) (Source, error)
 	GetVariable(ctx context.Context, id pgtype.UUID) (Variable, error)
 	// Boot recovery: re-fire goroutines for deployments stuck in pending/applying.
 	ListActiveDeployments(ctx context.Context) ([]Deployment, error)
@@ -58,11 +63,13 @@ type Querier interface {
 	ListRoutesByProjectEnv(ctx context.Context, arg ListRoutesByProjectEnvParams) ([]Route, error)
 	ListRoutesByResource(ctx context.Context, resourceID pgtype.UUID) ([]Route, error)
 	ListRoutesByResourceEnv(ctx context.Context, arg ListRoutesByResourceEnvParams) ([]Route, error)
+	ListSources(ctx context.Context) ([]Source, error)
 	ListVariablesByProject(ctx context.Context, projectID pgtype.UUID) ([]Variable, error)
 	ListVariablesByProjectEnv(ctx context.Context, arg ListVariablesByProjectEnvParams) ([]Variable, error)
 	LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error)
 	MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error)
+	SetSourceDefault(ctx context.Context, arg SetSourceDefaultParams) error
 	UpdateDeploymentStatus(ctx context.Context, arg UpdateDeploymentStatusParams) (Deployment, error)
 	UpdatePlainVariableValue(ctx context.Context, arg UpdatePlainVariableValueParams) (Variable, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
@@ -71,6 +78,7 @@ type Querier interface {
 	UpdateResourcePosition(ctx context.Context, arg UpdateResourcePositionParams) error
 	UpdateRoute(ctx context.Context, arg UpdateRouteParams) (Route, error)
 	UpdateSecretVariableValue(ctx context.Context, arg UpdateSecretVariableValueParams) (Variable, error)
+	UpdateSource(ctx context.Context, arg UpdateSourceParams) (Source, error)
 	UpdateVariableKey(ctx context.Context, arg UpdateVariableKeyParams) (Variable, error)
 }
 

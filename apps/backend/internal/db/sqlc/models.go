@@ -97,6 +97,89 @@ func (ns NullRoutePathType) Value() (driver.Value, error) {
 	return string(ns.RoutePathType), nil
 }
 
+type SourceDomain string
+
+const (
+	SourceDomainMetrics SourceDomain = "metrics"
+)
+
+func (e *SourceDomain) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SourceDomain(s)
+	case string:
+		*e = SourceDomain(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SourceDomain: %T", src)
+	}
+	return nil
+}
+
+type NullSourceDomain struct {
+	SourceDomain SourceDomain `json:"source_domain"`
+	Valid        bool         `json:"valid"` // Valid is true if SourceDomain is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSourceDomain) Scan(value interface{}) error {
+	if value == nil {
+		ns.SourceDomain, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SourceDomain.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSourceDomain) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SourceDomain), nil
+}
+
+type SourceKind string
+
+const (
+	SourceKindPrometheus    SourceKind = "prometheus"
+	SourceKindMetricsServer SourceKind = "metrics_server"
+)
+
+func (e *SourceKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SourceKind(s)
+	case string:
+		*e = SourceKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SourceKind: %T", src)
+	}
+	return nil
+}
+
+type NullSourceKind struct {
+	SourceKind SourceKind `json:"source_kind"`
+	Valid      bool       `json:"valid"` // Valid is true if SourceKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSourceKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.SourceKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SourceKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSourceKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SourceKind), nil
+}
+
 type VariableScope string
 
 const (
@@ -210,6 +293,22 @@ type Route struct {
 	Config        []byte             `json:"config"`
 	Created       pgtype.Timestamptz `json:"created"`
 	Updated       pgtype.Timestamptz `json:"updated"`
+}
+
+type Source struct {
+	ID            pgtype.UUID        `json:"id"`
+	Kind          SourceKind         `json:"kind"`
+	Name          string             `json:"name"`
+	Config        []byte             `json:"config"`
+	AuthEncrypted []byte             `json:"auth_encrypted"`
+	Created       pgtype.Timestamptz `json:"created"`
+	Updated       pgtype.Timestamptz `json:"updated"`
+}
+
+type SourceDefault struct {
+	Domain   SourceDomain       `json:"domain"`
+	SourceID pgtype.UUID        `json:"source_id"`
+	Updated  pgtype.Timestamptz `json:"updated"`
 }
 
 type Variable struct {
