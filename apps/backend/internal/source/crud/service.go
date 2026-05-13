@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
@@ -23,20 +24,22 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/loki"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/prometheus"
 )
 
 // Service owns source CRUD business logic. Stateless beyond the DB
-// handle. mcs is optional — nil when the kube metrics client could not
-// be built (test endpoint reports unreachable for metrics-server in that
-// case).
+// handle. cs and mcs are optional — nil when the corresponding kube
+// client could not be built; affected source kinds report unreachable
+// in their Test result.
 type Service struct {
 	db  *db.DB
+	cs  kubernetes.Interface
 	mcs metricsclient.Interface
 }
 
-func NewService(d *db.DB, mcs metricsclient.Interface) *Service {
-	return &Service{db: d, mcs: mcs}
+func NewService(d *db.DB, cs kubernetes.Interface, mcs metricsclient.Interface) *Service {
+	return &Service{db: d, cs: cs, mcs: mcs}
 }
 
 func (s *Service) List(ctx context.Context) ([]sqlc.Source, error) {
@@ -155,6 +158,10 @@ func (s *Service) Test(ctx context.Context, body openapi.SourceCreate) (TestResu
 		return testPrometheusConfig(ctx, parsed)
 	case sqlc.SourceKindMetricsServer:
 		return testMetricsServer(ctx, s.mcs)
+	case sqlc.SourceKindLoki:
+		return testLokiConfig(ctx, parsed)
+	case sqlc.SourceKindKubeLogs:
+		return testKubeLogs(ctx, s.cs)
 	}
 	return TestResult{}, apierr.Internal(fmt.Errorf("unknown source kind %q", parsed.kind))
 }
@@ -230,6 +237,38 @@ func parseCreate(body openapi.SourceCreate) (parsedCreate, error) {
 		}
 		return parsedCreate{
 			kind:       sqlc.SourceKindMetricsServer,
+			domain:     v.Domain,
+			name:       v.Name,
+			configJSON: []byte(`{}`),
+			authSecret: nil,
+		}, nil
+	case openapi.Loki:
+		v, err := body.AsSourceCreate2()
+		if err != nil {
+			return parsedCreate{}, fmt.Errorf("decode loki body: %w", err)
+		}
+		stored, secret, err := splitLokiConfig(v.Config)
+		if err != nil {
+			return parsedCreate{}, err
+		}
+		j, err := json.Marshal(stored)
+		if err != nil {
+			return parsedCreate{}, err
+		}
+		return parsedCreate{
+			kind:       sqlc.SourceKindLoki,
+			domain:     v.Domain,
+			name:       v.Name,
+			configJSON: j,
+			authSecret: secret,
+		}, nil
+	case openapi.KubeLogs:
+		v, err := body.AsSourceCreate3()
+		if err != nil {
+			return parsedCreate{}, fmt.Errorf("decode kube-logs body: %w", err)
+		}
+		return parsedCreate{
+			kind:       sqlc.SourceKindKubeLogs,
 			domain:     v.Domain,
 			name:       v.Name,
 			configJSON: []byte(`{}`),
@@ -324,10 +363,104 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 		}); err != nil {
 			return openapi.Source{}, err
 		}
+	case sqlc.SourceKindLoki:
+		var stored loki.StoredConfig
+		if err := json.Unmarshal(row.Config, &stored); err != nil {
+			return openapi.Source{}, fmt.Errorf("decode loki config: %w", err)
+		}
+		safe, err := lokiConfigSafe(stored)
+		if err != nil {
+			return openapi.Source{}, err
+		}
+		if err := out.FromSource2(openapi.Source2{
+			Id:        id,
+			CreatedAt: row.Created.Time,
+			UpdatedAt: row.Updated.Time,
+			Kind:      openapi.Source2Kind(openapi.Loki),
+			Domain:    domain,
+			Name:      row.Name,
+			IsDefault: row.IsDefault,
+			Config:    safe,
+		}); err != nil {
+			return openapi.Source{}, err
+		}
+	case sqlc.SourceKindKubeLogs:
+		if err := out.FromSource3(openapi.Source3{
+			Id:        id,
+			CreatedAt: row.Created.Time,
+			UpdatedAt: row.Updated.Time,
+			Kind:      openapi.Source3Kind(openapi.KubeLogs),
+			Domain:    domain,
+			Name:      row.Name,
+			IsDefault: row.IsDefault,
+			Config:    openapi.KubeLogsConfigOutput{},
+		}); err != nil {
+			return openapi.Source{}, err
+		}
 	default:
 		return openapi.Source{}, fmt.Errorf("unknown source kind %q", row.Kind)
 	}
 	return out, nil
+}
+
+// splitLokiConfig mirrors splitPrometheusConfig — pulls password/token
+// into the secret byte slice and returns the non-secret stored shape.
+func splitLokiConfig(cfg openapi.LokiConfig) (loki.StoredConfig, []byte, error) {
+	auth := cfg.Auth
+	discriminator, err := authType(auth)
+	if err != nil {
+		return loki.StoredConfig{}, nil, err
+	}
+	stored := loki.StoredConfig{URL: cfg.Url, Auth: loki.StoredAuth{Type: loki.AuthType(discriminator)}}
+	switch loki.AuthType(discriminator) {
+	case loki.AuthNone:
+		return stored, nil, nil
+	case loki.AuthBasic:
+		basic, err := auth.AsSourceAuth1()
+		if err != nil {
+			return loki.StoredConfig{}, nil, fmt.Errorf("decode basic auth: %w", err)
+		}
+		stored.Auth.Username = basic.Username
+		return stored, []byte(basic.Password), nil
+	case loki.AuthBearer:
+		bearer, err := auth.AsSourceAuth2()
+		if err != nil {
+			return loki.StoredConfig{}, nil, fmt.Errorf("decode bearer auth: %w", err)
+		}
+		return stored, []byte(bearer.Token), nil
+	}
+	return loki.StoredConfig{}, nil, fmt.Errorf("unsupported auth type %q", discriminator)
+}
+
+func lokiConfigSafe(stored loki.StoredConfig) (openapi.LokiConfigSafe, error) {
+	var safe openapi.LokiConfigSafe
+	safe.Url = stored.URL
+	var authUnion openapi.SourceAuthSafe
+	switch stored.Auth.Type {
+	case loki.AuthNone, "":
+		if err := authUnion.FromSourceAuthSafe0(openapi.SourceAuthSafe0{
+			Type: openapi.SourceAuthSafe0Type("none"),
+		}); err != nil {
+			return openapi.LokiConfigSafe{}, err
+		}
+	case loki.AuthBasic:
+		if err := authUnion.FromSourceAuthSafe1(openapi.SourceAuthSafe1{
+			Type:     openapi.SourceAuthSafe1Type("basic"),
+			Username: stored.Auth.Username,
+		}); err != nil {
+			return openapi.LokiConfigSafe{}, err
+		}
+	case loki.AuthBearer:
+		if err := authUnion.FromSourceAuthSafe2(openapi.SourceAuthSafe2{
+			Type: openapi.SourceAuthSafe2Type("bearer"),
+		}); err != nil {
+			return openapi.LokiConfigSafe{}, err
+		}
+	default:
+		return openapi.LokiConfigSafe{}, fmt.Errorf("unknown auth type %q", stored.Auth.Type)
+	}
+	safe.Auth = authUnion
+	return safe, nil
 }
 
 func promConfigSafe(stored prometheus.StoredConfig) (openapi.PrometheusConfigSafe, error) {
@@ -378,6 +511,36 @@ func testPrometheusConfig(ctx context.Context, p parsedCreate) (TestResult, erro
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if _, err := src.Probe(probeCtx, []string{"up"}); err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	return TestResult{OK: true}, nil
+}
+
+func testLokiConfig(ctx context.Context, p parsedCreate) (TestResult, error) {
+	var stored loki.StoredConfig
+	if err := json.Unmarshal(p.configJSON, &stored); err != nil {
+		return TestResult{}, apierr.Internal(fmt.Errorf("decode config: %w", err))
+	}
+	src, err := stored.Build(uuid.New(), p.name, p.authSecret)
+	if err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := src.Probe(probeCtx); err != nil {
+		return TestResult{OK: false, Error: err.Error()}, nil
+	}
+	return TestResult{OK: true}, nil
+}
+
+func testKubeLogs(ctx context.Context, cs kubernetes.Interface) (TestResult, error) {
+	if cs == nil {
+		return TestResult{OK: false, Error: "kube client not available on backend"}, nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if _, err := cs.Discovery().ServerVersion(); err != nil {
+		_ = probeCtx
 		return TestResult{OK: false, Error: err.Error()}, nil
 	}
 	return TestResult{OK: true}, nil

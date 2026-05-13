@@ -74,6 +74,6 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, mcs
 		registryAPI:      registry.NewHandler(registry.New(database)),
 		deploymentAPI:    deployment.NewHandler(depSvc),
 		observabilityAPI: observability.NewHandler(observability.New(database, envSvc, res)),
-		sourceAPI:        crud.NewHandler(crud.NewService(database, mcs)),
+		sourceAPI:        crud.NewHandler(crud.NewService(database, cs, mcs)),
 	}, depSvc
 }
