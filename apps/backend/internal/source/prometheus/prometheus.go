@@ -76,6 +76,12 @@ func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel sou
 		if err != nil {
 			return source.Series{}, err
 		}
+		// PromQL rate() of container_cpu_usage_seconds_total yields cores
+		// (cpu-seconds / second). Wire format is millicores, matching
+		// metrics-server's MilliValue().
+		for i := range pts {
+			pts[i].Value *= 1000
+		}
 		return source.Series{Kind: kind, Range: r, Points: pts}, nil
 
 	case openapi.MetricKindMemory:

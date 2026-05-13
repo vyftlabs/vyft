@@ -116,6 +116,9 @@ export function Sparkline({
                 if (!active || !payload?.length) return null;
                 const v = payload[0]?.value as number;
                 const s = severity(v, threshold);
+                const formatted = formatHeadline
+                  ? formatHeadline(v)
+                  : { value: fmt(v), unit };
                 return (
                   <div
                     className={cn(
@@ -123,8 +126,8 @@ export function Sparkline({
                       s && severityTextClass[s],
                     )}
                   >
-                    {fmt(v)}
-                    {unit}
+                    {formatted.value}
+                    {formatted.unit}
                   </div>
                 );
               }}
