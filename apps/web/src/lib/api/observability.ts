@@ -60,30 +60,42 @@ export const metricsCapabilities = (projectId: string, resourceId: string) =>
     },
   });
 
-// MAX_RING_POINTS = 4 hours at 15s polling; long enough for the metrics-
-// server time-series to feel useful without unbounded memory growth.
-const MAX_RING_POINTS = 960;
+export const POLL_INTERVAL_MS = 15_000;
 
-// mergeRing is used by metricsByKind when the source returns a single
-// instantaneous point per fetch (metrics-server). React Query keeps the
-// previous data via `structuralSharing`; we append the new point and cap
-// the buffer.
-function mergeRing(prev: MetricSeries | undefined, next: MetricSeries): MetricSeries {
-  // Non-latency kinds use `points`; latency uses its own.
-  if (next.kind === "latency") {
-    if (!prev || prev.kind !== "latency") return next;
-    const merged = [...prev.points, ...next.points];
-    return {
-      ...next,
-      points: merged.slice(-MAX_RING_POINTS),
-    };
-  }
-  if (!prev || prev.kind === "latency") return next;
-  const merged = [...prev.points, ...next.points];
+// pointsForRange returns the cap that aligns with the operator-selected
+// window at the current poll interval. range=15m + 15s polling = 60.
+// Used for both:
+// - sizing the metrics-server client-side ring buffer (instant points
+//   accumulate to fill the window).
+// - bounding the merged buffer when Prom returns a full range each fetch
+//   (we still cap as defense-in-depth).
+function pointsForRange(range: MetricRange): number {
+  const seconds =
+    range === "15m" ? 15 * 60
+    : range === "1h" ? 60 * 60
+    : range === "6h" ? 6 * 60 * 60
+    : 24 * 60 * 60;
+  return Math.ceil((seconds * 1000) / POLL_INTERVAL_MS);
+}
+
+// mergeRing merges a fresh fetch into the previous query data.
+// - Range responses (Prom returns N>1 points covering the full window):
+//   trust the backend and replace. No accumulation needed; Prom already
+//   has the history.
+// - Instant responses (metrics-server returns 1 point): append and cap
+//   to the operator-selected window's worth of samples.
+function mergeRing(
+  prev: MetricSeries | undefined,
+  next: MetricSeries,
+  cap: number,
+): MetricSeries {
+  if (next.points.length !== 1 || !prev || prev.kind !== next.kind) return next;
+  // Same kind by check above; cast bypasses TS's union narrowing
+  // limitation across two values.
   return {
     ...next,
-    points: merged.slice(-MAX_RING_POINTS),
-  };
+    points: [...prev.points, ...next.points].slice(-cap),
+  } as MetricSeries;
 }
 
 export const metricsByKind = (
@@ -91,11 +103,16 @@ export const metricsByKind = (
   resourceId: string,
   kind: MetricKind,
   range: MetricRange = "15m",
-) =>
-  queryOptions({
+) => {
+  const cap = pointsForRange(range);
+  return queryOptions({
     queryKey: [...ROOT, "metricsByKind", projectId, resourceId, kind, range],
     structuralSharing: (oldData, newData) =>
-      mergeRing(oldData as MetricSeries | undefined, newData as MetricSeries),
+      mergeRing(
+        oldData as MetricSeries | undefined,
+        newData as MetricSeries,
+        cap,
+      ),
     queryFn: async () => {
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/{kind}",
@@ -109,3 +126,4 @@ export const metricsByKind = (
       return data!;
     },
   });
+};

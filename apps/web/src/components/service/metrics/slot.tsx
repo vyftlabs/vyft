@@ -20,7 +20,7 @@ const KIND_LABELS: Record<MetricKind, string> = {
   latency: "Latency",
 };
 
-const POLL_INTERVAL_MS = 15_000;
+import { POLL_INTERVAL_MS } from "@/lib/api/observability";
 
 // formatBytes auto-scales bytes → KiB / MiB / GiB / TiB. Spec says
 // memory uses base-2 units.
