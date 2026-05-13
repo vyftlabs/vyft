@@ -9,9 +9,13 @@ Acceptance:
 - `LogSearchParams`: `{ range: MetricRange, query?: string, limit?: number }` (reuse `MetricRange` enum).
 - `LogTailParams`: `{ sincePollAt?: ISO datetime, limit?: number }`.
 - Exported constant `LogsCeiling: Record<SourceKind, LogCapability[]>` — same shape as `MetricsCeiling`.
-- Add `loki` to `SourceKind` enum (drop or keep `metricsServer`? keep — metrics-kind doesn't affect logs).
-- Add `logs` to `SourceDomain` enum (extends what backend will read).
-- Loki source config: `LokiConfig` = `{ url, auth }` (reuse `SourceAuth`).
-- `SourceCreate` discriminated union gains a `loki` variant.
+- Add `loki` AND `kubeLogs` to `SourceKind` enum.
+- Add `logs` to `SourceDomain` enum.
+- `LokiConfig` = `{ url, auth }` (reuse `SourceAuth`).
+- `KubeLogsConfig` = `{}` (no config — always-on when backend has cluster access; mirrors `MetricsServerConfig`).
+- `SourceCreate` discriminated union gains both `loki` and `kubeLogs` variants.
+- `LogsCeiling` entries:
+  - `loki → [tail, search, level]`
+  - `kubeLogs → [tail, level]` (no search)
 
 Notes: `SourceKind` already covers prometheus + metricsServer. Adding `loki` means the existing settings UI lists Loki under sources too — `sourcePresets` gets a Loki entry.

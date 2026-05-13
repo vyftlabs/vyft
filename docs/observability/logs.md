@@ -18,9 +18,9 @@ Not every source supports all three. Capability set is per-source-kind (ceiling)
 | Kind | Ceiling | Note |
 |---|---|---|
 | Loki | live tail, search, level filter | Full LogQL via Grafana Loki HTTP API. |
-| Kubernetes | live tail, level filter | Direct pod logs via the kube API. No search — kube API doesn't index. |
+| kube-logs | live tail, level filter | Direct pod logs via the kube API. No search — kube API doesn't index. Always-on when the backend has cluster access; no separate URL/auth. |
 
-Operator picks one source for the `logs` domain. Same domain-default mechanism the metrics vertical already exposes via the `sources` table.
+Operator picks one source for the `logs` domain. Same domain-default mechanism the metrics vertical already exposes via the `sources` table. Parallels the metrics pairing (Prometheus rich vs metrics-server built-in baseline).
 
 ## Panel states
 
