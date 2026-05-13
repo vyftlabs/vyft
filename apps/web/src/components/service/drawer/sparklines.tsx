@@ -24,6 +24,15 @@ function fmt(v: number): string {
   return v.toFixed(2);
 }
 
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -119,6 +128,7 @@ export function Sparkline({
                 const formatted = formatHeadline
                   ? formatHeadline(v)
                   : { value: fmt(v), unit };
+                const ts = payload[0]?.payload?.time as string | undefined;
                 return (
                   <div
                     className={cn(
@@ -126,8 +136,15 @@ export function Sparkline({
                       s && severityTextClass[s],
                     )}
                   >
-                    {formatted.value}
-                    {formatted.unit}
+                    <div>
+                      {formatted.value}
+                      {formatted.unit}
+                    </div>
+                    {ts && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtTime(ts)}
+                      </div>
+                    )}
                   </div>
                 );
               }}
@@ -330,8 +347,14 @@ export function LatencySparkline({
             <Tooltip
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
+                const ts = payload[0]?.payload?.time as string | undefined;
                 return (
                   <div className="rounded-md bg-popover px-2 py-1.5 shadow-md ring-1 ring-foreground/10 space-y-0.5">
+                    {ts && (
+                      <div className="text-[10px] text-muted-foreground font-mono">
+                        {fmtTime(ts)}
+                      </div>
+                    )}
                     {keys.map((k) => {
                       const entry = payload.find(
                         (p) => p.dataKey === k.dataKey,
