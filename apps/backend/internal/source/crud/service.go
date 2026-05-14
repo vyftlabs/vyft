@@ -357,29 +357,29 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			return openapi.Source{}, err
 		}
 		if err := out.FromSource0(openapi.Source0{
-			Id:        id,
-			CreatedAt: row.Created.Time,
-			UpdatedAt: row.Updated.Time,
-			Kind:      openapi.Source0Kind(openapi.Prometheus),
-			Domain:    domain,
-			Name:      row.Name,
-			IsDefault: row.IsDefault,
+			Id:          id,
+			CreatedAt:   row.Created.Time,
+			UpdatedAt:   row.Updated.Time,
+			Kind:        openapi.Source0Kind(openapi.Prometheus),
+			Domain:      domain,
+			Name:        row.Name,
+			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
-			Config:    safe,
+			Config:      safe,
 		}); err != nil {
 			return openapi.Source{}, err
 		}
 	case sqlc.SourceKindMetricsServer:
 		if err := out.FromSource1(openapi.Source1{
-			Id:        id,
-			CreatedAt: row.Created.Time,
-			UpdatedAt: row.Updated.Time,
-			Kind:      openapi.Source1Kind(openapi.MetricsServer),
-			Domain:    domain,
-			Name:      row.Name,
-			IsDefault: row.IsDefault,
+			Id:          id,
+			CreatedAt:   row.Created.Time,
+			UpdatedAt:   row.Updated.Time,
+			Kind:        openapi.Source1Kind(openapi.MetricsServer),
+			Domain:      domain,
+			Name:        row.Name,
+			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
-			Config:    openapi.MetricsServerConfigOutput{},
+			Config:      openapi.MetricsServerConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err
 		}
@@ -393,29 +393,29 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			return openapi.Source{}, err
 		}
 		if err := out.FromSource2(openapi.Source2{
-			Id:        id,
-			CreatedAt: row.Created.Time,
-			UpdatedAt: row.Updated.Time,
-			Kind:      openapi.Source2Kind(openapi.Loki),
-			Domain:    domain,
-			Name:      row.Name,
-			IsDefault: row.IsDefault,
+			Id:          id,
+			CreatedAt:   row.Created.Time,
+			UpdatedAt:   row.Updated.Time,
+			Kind:        openapi.Source2Kind(openapi.Loki),
+			Domain:      domain,
+			Name:        row.Name,
+			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
-			Config:    safe,
+			Config:      safe,
 		}); err != nil {
 			return openapi.Source{}, err
 		}
 	case sqlc.SourceKindKubeLogs:
 		if err := out.FromSource3(openapi.Source3{
-			Id:        id,
-			CreatedAt: row.Created.Time,
-			UpdatedAt: row.Updated.Time,
-			Kind:      openapi.Source3Kind(openapi.KubeLogs),
-			Domain:    domain,
-			Name:      row.Name,
-			IsDefault: row.IsDefault,
+			Id:          id,
+			CreatedAt:   row.Created.Time,
+			UpdatedAt:   row.Updated.Time,
+			Kind:        openapi.Source3Kind(openapi.KubeLogs),
+			Domain:      domain,
+			Name:        row.Name,
+			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
-			Config:    openapi.KubeLogsConfigOutput{},
+			Config:      openapi.KubeLogsConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err
 		}

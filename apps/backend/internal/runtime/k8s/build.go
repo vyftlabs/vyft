@@ -34,7 +34,7 @@ func Build(p deployment.Project, s deployment.State) Manifests {
 		switch r.Kind {
 		case "app":
 			buildApp(&m, p, r, rvars)
-		// future kinds: worker, postgres, redis, cron, template
+			// future kinds: worker, postgres, redis, cron, template
 		}
 	}
 

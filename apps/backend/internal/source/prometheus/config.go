@@ -6,8 +6,8 @@ import "github.com/google/uuid"
 // prometheus kind. Secrets (password, token) are NOT carried here — they
 // live in `sources.auth_encrypted` and are combined in Build.
 type StoredConfig struct {
-	URL  string      `json:"url"`
-	Auth StoredAuth  `json:"auth"`
+	URL  string     `json:"url"`
+	Auth StoredAuth `json:"auth"`
 }
 
 type StoredAuth struct {

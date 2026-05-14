@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
@@ -419,4 +419,3 @@ func dedup(in []string) []string {
 	}
 	return out
 }
-

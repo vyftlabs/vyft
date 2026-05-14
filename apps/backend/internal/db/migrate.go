@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
 
 // Migrate runs all pending up migrations against pool using the embedded
 // migrations FS. Safe to call on every process boot.
-//
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	goose.SetBaseFS(MigrationsFS)
 	goose.SetLogger(goose.NopLogger())

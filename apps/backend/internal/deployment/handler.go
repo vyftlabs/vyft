@@ -3,8 +3,8 @@ package deployment
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	uuid "github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"

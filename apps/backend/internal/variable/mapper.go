@@ -4,8 +4,8 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
+	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 )
 
 func variableToWire(v sqlc.Variable, usedBy []openapi.VariableUsage) openapi.Variable {

@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type DiskCreate,
-  type Deployment,
   type Resource,
   ResourceAppCreate,
 } from "@vyft/spec";

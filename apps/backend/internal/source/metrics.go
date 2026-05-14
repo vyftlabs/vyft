@@ -12,9 +12,9 @@ type Prober interface {
 // kind family has its own query method returning the appropriate series
 // type — no discriminated union, no scaling, canonical units throughout.
 //
-//   QueryResource:  cpu, memory      → per-pod series with optional limit/request per point
-//   QueryRate:      requestRate, errorRate → single aggregate series
-//   QueryLatency:   latency          → single series with p50/p95/p99 per point
+//	QueryResource:  cpu, memory      → per-pod series with optional limit/request per point
+//	QueryRate:      requestRate, errorRate → single aggregate series
+//	QueryLatency:   latency          → single series with p50/p95/p99 per point
 //
 // Implementations should return empty slices (not errors) when there's
 // no data — the handler maps that to 200 with an empty body. They should

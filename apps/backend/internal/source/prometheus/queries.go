@@ -41,9 +41,10 @@ const (
 // CPU + Memory templates stay on cAdvisor labels; RED + Latency use OTel
 // labels because that's what HTTP-instrumentation emitters tag with.
 // Each query tail-pipes `or (sum(metric{labels}) * 0)`:
-//  - rate has samples → real value
-//  - metric exists for labels but no rate in window → 0 (idle zero-fill)
-//  - metric never exists for labels → empty (UI renders "no data")
+//   - rate has samples → real value
+//   - metric exists for labels but no rate in window → 0 (idle zero-fill)
+//   - metric never exists for labels → empty (UI renders "no data")
+//
 // Single round-trip distinguishes "supported but idle" from "unsupported".
 const (
 	reqRateSemconv = `sum(rate(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}[1m])) or (sum(http_server_request_duration_seconds_count{k8s_namespace_name="{namespace}",k8s_pod_name=~"{resource}-.*"}) * 0)`
