@@ -23,6 +23,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/httpx"
 	k8srt "github.com/vyftlabs/vyft/apps/backend/internal/runtime/k8s"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source/crud"
 	"github.com/vyftlabs/vyft/apps/backend/internal/web"
 )
 
@@ -42,6 +43,13 @@ func Run(ctx context.Context) error {
 	slog.Info("running migrations")
 	if err := vdb.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("migrate: %w", err)
+	}
+
+	database := vdb.New(pool)
+	provDir := crud.ResolveProvisioningDir()
+	slog.Info("syncing provisioning", "dir", provDir)
+	if err := crud.SyncProvisioning(ctx, database, provDir); err != nil {
+		return fmt.Errorf("sync provisioning: %w", err)
 	}
 
 	rt, cs, mcs, hooks := buildRuntime(config, pool)

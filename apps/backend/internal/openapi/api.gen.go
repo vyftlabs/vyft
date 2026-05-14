@@ -1584,14 +1584,15 @@ type Source struct {
 
 // Source0 defines model for .
 type Source0 struct {
-	Config    PrometheusConfigSafe `json:"config"`
-	CreatedAt time.Time            `json:"createdAt"`
-	Domain    SourceDomain         `json:"domain"`
-	Id        openapi_types.UUID   `json:"id"`
-	IsDefault bool                 `json:"isDefault"`
-	Kind      Source0Kind          `json:"kind"`
-	Name      string               `json:"name"`
-	UpdatedAt time.Time            `json:"updatedAt"`
+	Config      PrometheusConfigSafe `json:"config"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	Domain      SourceDomain         `json:"domain"`
+	Id          openapi_types.UUID   `json:"id"`
+	IsDefault   bool                 `json:"isDefault"`
+	Kind        Source0Kind          `json:"kind"`
+	Name        string               `json:"name"`
+	Provisioned bool                 `json:"provisioned"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
 // Source0Kind defines model for Source.0.Kind.
@@ -1599,14 +1600,15 @@ type Source0Kind string
 
 // Source1 defines model for .
 type Source1 struct {
-	Config    MetricsServerConfigOutput `json:"config"`
-	CreatedAt time.Time                 `json:"createdAt"`
-	Domain    SourceDomain              `json:"domain"`
-	Id        openapi_types.UUID        `json:"id"`
-	IsDefault bool                      `json:"isDefault"`
-	Kind      Source1Kind               `json:"kind"`
-	Name      string                    `json:"name"`
-	UpdatedAt time.Time                 `json:"updatedAt"`
+	Config      MetricsServerConfigOutput `json:"config"`
+	CreatedAt   time.Time                 `json:"createdAt"`
+	Domain      SourceDomain              `json:"domain"`
+	Id          openapi_types.UUID        `json:"id"`
+	IsDefault   bool                      `json:"isDefault"`
+	Kind        Source1Kind               `json:"kind"`
+	Name        string                    `json:"name"`
+	Provisioned bool                      `json:"provisioned"`
+	UpdatedAt   time.Time                 `json:"updatedAt"`
 }
 
 // Source1Kind defines model for Source.1.Kind.
@@ -1614,14 +1616,15 @@ type Source1Kind string
 
 // Source2 defines model for .
 type Source2 struct {
-	Config    LokiConfigSafe     `json:"config"`
-	CreatedAt time.Time          `json:"createdAt"`
-	Domain    SourceDomain       `json:"domain"`
-	Id        openapi_types.UUID `json:"id"`
-	IsDefault bool               `json:"isDefault"`
-	Kind      Source2Kind        `json:"kind"`
-	Name      string             `json:"name"`
-	UpdatedAt time.Time          `json:"updatedAt"`
+	Config      LokiConfigSafe     `json:"config"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Domain      SourceDomain       `json:"domain"`
+	Id          openapi_types.UUID `json:"id"`
+	IsDefault   bool               `json:"isDefault"`
+	Kind        Source2Kind        `json:"kind"`
+	Name        string             `json:"name"`
+	Provisioned bool               `json:"provisioned"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
 // Source2Kind defines model for Source.2.Kind.
@@ -1629,14 +1632,15 @@ type Source2Kind string
 
 // Source3 defines model for .
 type Source3 struct {
-	Config    KubeLogsConfigOutput `json:"config"`
-	CreatedAt time.Time            `json:"createdAt"`
-	Domain    SourceDomain         `json:"domain"`
-	Id        openapi_types.UUID   `json:"id"`
-	IsDefault bool                 `json:"isDefault"`
-	Kind      Source3Kind          `json:"kind"`
-	Name      string               `json:"name"`
-	UpdatedAt time.Time            `json:"updatedAt"`
+	Config      KubeLogsConfigOutput `json:"config"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	Domain      SourceDomain         `json:"domain"`
+	Id          openapi_types.UUID   `json:"id"`
+	IsDefault   bool                 `json:"isDefault"`
+	Kind        Source3Kind          `json:"kind"`
+	Name        string               `json:"name"`
+	Provisioned bool                 `json:"provisioned"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
 // Source3Kind defines model for Source.3.Kind.

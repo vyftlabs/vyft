@@ -88,6 +88,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.SourceC
 		}
 		return sqlc.Source{}, apierr.Internal(err)
 	}
+	if existing.Provisioned {
+		return sqlc.Source{}, apierr.Conflict("source is provisioned; edit etc/vyft/provisioning/sources")
+	}
 	parsed, err := parseCreate(body)
 	if err != nil {
 		return sqlc.Source{}, apierr.BadRequest(err.Error())
@@ -125,11 +128,15 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.SourceC
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	if _, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id)); err != nil {
+	existing, err := s.db.Q.GetSource(ctx, pgxid.PgUUID(id))
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apierr.NotFound("source not found")
 		}
 		return apierr.Internal(err)
+	}
+	if existing.Provisioned {
+		return apierr.Conflict("source is provisioned; remove from etc/vyft/provisioning/sources")
 	}
 	if err := s.db.Q.DeleteSource(ctx, pgxid.PgUUID(id)); err != nil {
 		return apierr.Internal(err)
@@ -356,6 +363,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Domain:    domain,
 			Name:      row.Name,
 			IsDefault: row.IsDefault,
+			Provisioned: row.Provisioned,
 			Config:    safe,
 		}); err != nil {
 			return openapi.Source{}, err
@@ -369,6 +377,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Domain:    domain,
 			Name:      row.Name,
 			IsDefault: row.IsDefault,
+			Provisioned: row.Provisioned,
 			Config:    openapi.MetricsServerConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err
@@ -390,6 +399,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Domain:    domain,
 			Name:      row.Name,
 			IsDefault: row.IsDefault,
+			Provisioned: row.Provisioned,
 			Config:    safe,
 		}); err != nil {
 			return openapi.Source{}, err
@@ -403,6 +413,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Domain:    domain,
 			Name:      row.Name,
 			IsDefault: row.IsDefault,
+			Provisioned: row.Provisioned,
 			Config:    openapi.KubeLogsConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err

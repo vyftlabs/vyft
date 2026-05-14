@@ -1,0 +1,18 @@
+# Provisioned sources. Loaded at backend startup. Each entry upserts a
+# row marked provisioned=true; the API rejects mutation/delete of those
+# rows. Removing an entry deletes its row on next start.
+apiVersion: v1
+sources:
+  - name: prometheus
+    kind: prometheus
+    domain: metrics
+    config:
+      url: http://localhost:9090
+      auth: { type: none }
+
+  - name: loki
+    kind: loki
+    domain: logs
+    config:
+      url: http://localhost:3100
+      auth: { type: none }

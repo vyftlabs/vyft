@@ -978,6 +978,7 @@ export interface components {
             name: string;
             domain: components["schemas"]["SourceDomain"];
             isDefault: boolean;
+            provisioned: boolean;
             /** @enum {string} */
             kind: "prometheus";
             config: components["schemas"]["PrometheusConfigSafe"];
@@ -991,6 +992,7 @@ export interface components {
             name: string;
             domain: components["schemas"]["SourceDomain"];
             isDefault: boolean;
+            provisioned: boolean;
             /** @enum {string} */
             kind: "metricsServer";
             config: components["schemas"]["MetricsServerConfigOutput"];
@@ -1004,6 +1006,7 @@ export interface components {
             name: string;
             domain: components["schemas"]["SourceDomain"];
             isDefault: boolean;
+            provisioned: boolean;
             /** @enum {string} */
             kind: "loki";
             config: components["schemas"]["LokiConfigSafe"];
@@ -1017,6 +1020,7 @@ export interface components {
             name: string;
             domain: components["schemas"]["SourceDomain"];
             isDefault: boolean;
+            provisioned: boolean;
             /** @enum {string} */
             kind: "kubeLogs";
             config: components["schemas"]["KubeLogsConfigOutput"];

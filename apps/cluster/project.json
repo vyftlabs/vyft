@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "@vyft/cluster",
+  "projectType": "application",
+  "sourceRoot": "apps/cluster",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash apps/cluster/forward.sh",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

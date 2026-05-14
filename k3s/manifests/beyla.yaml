@@ -1,0 +1,26 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: beyla
+  namespace: kube-system
+spec:
+  chart: beyla
+  repo: https://grafana.github.io/helm-charts
+  version: 1.7.0
+  targetNamespace: observability
+  createNamespace: true
+  valuesContent: |-
+    config:
+      data:
+        discovery:
+          services:
+            - k8s_namespace: default
+        attributes:
+          kubernetes:
+            enable: true
+        otel_metrics_export:
+          endpoint: http://kps-prometheus.observability.svc.cluster.local:9090/api/v1/otlp
+        otel_traces_export:
+          endpoint: ""
+    serviceAccount:
+      create: true

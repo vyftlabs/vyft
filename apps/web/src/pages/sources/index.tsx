@@ -288,9 +288,7 @@ function SourceDialog({
   const open = mode.type !== "closed";
   const editing = mode.type === "edit" ? mode.source : null;
   const [page, setPage] = useState<"picker" | SourceKind>("picker");
-  const [testResult, setTestResult] = useState<
-    { ok: boolean; message: string } | null
-  >(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean } | null>(null);
   const [testing, setTesting] = useState(false);
 
   // After a test result shows, revert the button to its original label after
@@ -506,15 +504,15 @@ function SourceDialog({
                       test.mutateAsync(body),
                       fakeDelay,
                     ]);
-                    setTestResult({
-                      ok: r.ok,
-                      message: r.ok ? "Reachable" : (r.error ?? "Unreachable"),
-                    });
+                    setTestResult({ ok: r.ok });
+                    if (!r.ok) {
+                      toast.error(r.error ?? "Connection failed");
+                    }
                   } catch (err) {
-                    setTestResult({
-                      ok: false,
-                      message: err instanceof Error ? err.message : "failed",
-                    });
+                    setTestResult({ ok: false });
+                    toast.error(
+                      err instanceof Error ? err.message : "Connection failed",
+                    );
                   } finally {
                     setTesting(false);
                   }
@@ -537,7 +535,7 @@ function SourceDialog({
                       <XIcon className="size-3.5" />
                     )}
                     <span className="truncate">
-                      {testResult.ok ? "Working" : testResult.message}
+                      {testResult.ok ? "Working" : "Failed"}
                     </span>
                   </>
                 ) : (
