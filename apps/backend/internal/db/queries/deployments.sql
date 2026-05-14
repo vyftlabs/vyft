@@ -53,3 +53,12 @@ UPDATE deployments
        error  = $2
  WHERE id = $1
 RETURNING *;
+
+-- name: UpdateDeploymentSnapshot :exec
+-- Used post-Discard to refresh the baseline's snapshot to reflect the
+-- now-current rows (which have new updated_at timestamps from the writes,
+-- even though their content matches the original snapshot). Keeps the
+-- frontend's hasChanges gate in sync after a discard.
+UPDATE deployments
+   SET snapshot = $2
+ WHERE id = $1;

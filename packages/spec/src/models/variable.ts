@@ -16,6 +16,17 @@ export const ResourceRef = z
   .object({ id: z.uuid(), name: z.string() })
   .meta({ id: "ResourceRef" });
 
+// VariableUsage is one import edge: a resource importing this variable under
+// a local key. ResourceRef alone hides the key, which is part of the
+// deployable contract — different keys are different env vars.
+export const VariableUsage = z
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+    key: z.string().min(1).max(255),
+  })
+  .meta({ id: "VariableUsage" });
+
 export const Variable = BaseFields.extend({
   projectId: z.uuid(),
   resourceId: z.uuid().nullable(),
@@ -23,7 +34,7 @@ export const Variable = BaseFields.extend({
   value: z.string().nullable(),
   secret: z.boolean(),
   // Resources currently importing this variable (populated on list/get).
-  usedBy: z.array(ResourceRef).optional(),
+  usedBy: z.array(VariableUsage).optional(),
 }).meta({ id: "Variable" });
 
 export const VariableCreate = z

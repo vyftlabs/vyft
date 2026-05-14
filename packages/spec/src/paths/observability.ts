@@ -6,14 +6,22 @@ import {
   ResourceScope,
 } from "../models/common.ts";
 import {
+  LatencyMetrics,
   LogLine,
   LogsCapabilities,
-  MetricKind,
   MetricRange,
-  MetricSeries,
-  MetricsCapabilities,
+  RateMetrics,
+  ResourceMetrics,
   ServiceEvent,
 } from "../models/observability.ts";
+
+// Time-range query params shared by all metric endpoints.
+//   from / to = unix milliseconds, inclusive
+// Optional — server defaults: from = now-15m, to = now.
+const MetricsRangeQuery = z.object({
+  from: z.coerce.number().int().optional(),
+  to: z.coerce.number().int().optional(),
+});
 
 export const observabilityPaths: ZodOpenApiPathsObject = {
   "/projects/{projectId}/resources/{resourceId}/events": {
@@ -85,38 +93,80 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
           description: "Lines",
           content: { "application/json": { schema: z.array(LogLine) } },
         },
-        ...collectionErrors,
+        ...itemErrors,
       },
     },
   },
-  "/projects/{projectId}/resources/{resourceId}/metrics/capabilities": {
+  "/projects/{projectId}/resources/{resourceId}/metrics/cpu": {
     get: {
-      operationId: "getResourceMetricsCapabilities",
-      summary: "Detected metric kinds for resource",
+      operationId: "getResourceCpuMetrics",
+      summary: "CPU usage timeseries, per-pod",
       tags: ["Observability"],
-      requestParams: { path: ResourceScope },
-      responses: {
-        200: {
-          description: "Capabilities",
-          content: { "application/json": { schema: MetricsCapabilities } },
-        },
-        ...collectionErrors,
-      },
-    },
-  },
-  "/projects/{projectId}/resources/{resourceId}/metrics/{kind}": {
-    get: {
-      operationId: "getResourceMetricSeries",
-      summary: "Time series for one metric kind",
-      tags: ["Observability"],
-      requestParams: {
-        path: ResourceScope.extend({ kind: MetricKind }),
-        query: z.object({ range: MetricRange.default("15m") }),
-      },
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
       responses: {
         200: {
           description: "Series",
-          content: { "application/json": { schema: MetricSeries } },
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/memory": {
+    get: {
+      operationId: "getResourceMemoryMetrics",
+      summary: "Memory usage timeseries, per-pod",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/requestRate": {
+    get: {
+      operationId: "getResourceRequestRateMetrics",
+      summary: "Request rate timeseries",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/errorRate": {
+    get: {
+      operationId: "getResourceErrorRateMetrics",
+      summary: "Error rate timeseries (5xx / total, fraction)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/latency": {
+    get: {
+      operationId: "getResourceLatencyMetrics",
+      summary: "Latency timeseries with p50/p95/p99 per point",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: LatencyMetrics } },
         },
         ...itemErrors,
       },

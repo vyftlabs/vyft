@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -21,6 +23,20 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
 )
+
+// deriveSlug returns "<sanitized name>-<6 hex of id>". Slug is DNS-1123 safe
+// (lowercase a-z, 0-9, hyphens), stable across renames, unique per project.
+// Used for k8s object names + label selectors + observability queries.
+var slugUnsafe = regexp.MustCompile(`[^a-z0-9]+`)
+
+func deriveSlug(name string, id uuid.UUID) string {
+	base := slugUnsafe.ReplaceAllString(strings.ToLower(name), "-")
+	base = strings.Trim(base, "-")
+	if base == "" {
+		base = "r"
+	}
+	return base + "-" + strings.ReplaceAll(id.String(), "-", "")[:6]
+}
 
 // ResourceWithRoutes is the documented exception to "service returns sqlc
 // rows": resource handlers need both the resource row and its joined routes
@@ -119,6 +135,7 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 			ID:        pgxid.PgUUID(resourceID),
 			ProjectID: pgxid.PgUUID(projectID),
 			Name:      body.Name,
+			Slug:      deriveSlug(body.Name, resourceID),
 			Kind:      configEnvelope.Kind,
 			PositionX: float64(body.PositionX),
 			PositionY: float64(body.PositionY),

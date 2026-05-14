@@ -49,6 +49,41 @@ func (h *Handler) CreateDeployment(ctx context.Context, req openapi.CreateDeploy
 	return openapi.CreateDeployment202JSONResponse(toWire(d, envSlug)), nil
 }
 
+func (h *Handler) ListResourceDeployments(ctx context.Context, req openapi.ListResourceDeploymentsRequestObject) (openapi.ListResourceDeploymentsResponseObject, error) {
+	limit := int32(50)
+	offset := int32(0)
+	if req.Params.Limit != nil {
+		limit = int32(*req.Params.Limit)
+	}
+	if req.Params.Offset != nil {
+		offset = int32(*req.Params.Offset)
+	}
+	rows, err := h.svc.ListForResource(ctx, uuid.UUID(req.ProjectId), uuid.UUID(req.ResourceId), req.Params.Environment, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]openapi.Deployment, 0, len(rows))
+	for _, d := range rows {
+		envSlug, _ := h.envSlug(ctx, d.EnvironmentID)
+		out = append(out, toWire(d, envSlug))
+	}
+	return openapi.ListResourceDeployments200JSONResponse(out), nil
+}
+
+func (h *Handler) DiscardProjectChanges(ctx context.Context, req openapi.DiscardProjectChangesRequestObject) (openapi.DiscardProjectChangesResponseObject, error) {
+	if err := h.svc.Discard(ctx, uuid.UUID(req.ProjectId)); err != nil {
+		return nil, err
+	}
+	return openapi.DiscardProjectChanges204Response{}, nil
+}
+
+func (h *Handler) RestoreResourceDeployment(ctx context.Context, req openapi.RestoreResourceDeploymentRequestObject) (openapi.RestoreResourceDeploymentResponseObject, error) {
+	if err := h.svc.Restore(ctx, uuid.UUID(req.ProjectId), uuid.UUID(req.ResourceId), uuid.UUID(req.Id)); err != nil {
+		return nil, err
+	}
+	return openapi.RestoreResourceDeployment204Response{}, nil
+}
+
 func (h *Handler) GetDeployment(ctx context.Context, req openapi.GetDeploymentRequestObject) (openapi.GetDeploymentResponseObject, error) {
 	d, err := h.svc.Get(ctx, uuid.UUID(req.Id))
 	if err != nil {

@@ -6,6 +6,7 @@ export interface DrawerTab {
   id: string;
   label: string;
   content: React.ReactNode;
+  onHover?: () => void;
 }
 
 export interface ServiceDrawerShellProps {
@@ -219,6 +220,8 @@ function ServiceDrawerTabs({
               key={tab.id}
               value={tab.id}
               data-testid={`service.drawer.tab.${tab.id}`}
+              onMouseEnter={tab.onHover}
+              onFocus={tab.onHover}
             >
               {tab.label}
             </TabsTrigger>

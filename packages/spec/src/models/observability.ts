@@ -39,87 +39,87 @@ export const LogsCapabilities = z
   })
   .meta({ id: "LogsCapabilities" });
 
-export const RangePoint = z
+// MetricKind is no longer a wire enum (URL path is the discriminator)
+// but the frontend still needs a typed list for layout iteration.
+export const MetricKind = z
+  .enum(["cpu", "memory", "requestRate", "errorRate", "latency"])
+  .meta({ id: "MetricKind" });
+
+// MetricRange lives on for /logs/search only. Metrics use from/to.
+export const MetricRange = z
+  .enum(["15m", "1h", "6h", "24h"])
+  .meta({ id: "MetricRange" });
+
+// Point types — each endpoint family has one concrete point shape.
+// All values in canonical units:
+//   cpu        cores
+//   memory     bytes
+//   requestRate requests/second
+//   errorRate  fraction (0..1)
+//   latency    seconds
+
+export const ResourcePoint = z
   .object({
-    time: z.iso.datetime(),
+    timestamp: z.number().int(),
+    value: z.number(),
+    limit: z.number().optional(),
+    request: z.number().optional(),
+  })
+  .meta({ id: "ResourcePoint" });
+
+export const RatePoint = z
+  .object({
+    timestamp: z.number().int(),
     value: z.number(),
   })
-  .meta({ id: "RangePoint" });
+  .meta({ id: "RatePoint" });
 
 export const LatencyPoint = z
   .object({
-    time: z.iso.datetime(),
+    timestamp: z.number().int(),
     p50: z.number(),
     p95: z.number(),
     p99: z.number(),
   })
   .meta({ id: "LatencyPoint" });
 
-export const MetricKind = z
-  .enum(["cpu", "memory", "reqRate", "errRate", "latency"])
-  .meta({ id: "MetricKind" });
+// Series envelope. `id` is per-series identity (pod name for cpu/memory)
+// and is omitted for aggregate series (rates, latency).
 
-export const MetricRange = z
-  .enum(["15m", "1h", "6h", "24h"])
-  .meta({ id: "MetricRange" });
-
-export const MetricsCapabilities = z
+export const ResourceSeries = z
   .object({
-    sourceKind: SourceKind.nullable(),
-    detected: z.array(MetricKind),
+    id: z.string().optional(),
+    points: z.array(ResourcePoint),
   })
-  .meta({ id: "MetricsCapabilities" });
+  .meta({ id: "ResourceSeries" });
 
-const PodSeries = z.object({
-  pod: z.string(),
-  points: z.array(RangePoint),
-});
+export const RateSeries = z
+  .object({
+    id: z.string().optional(),
+    points: z.array(RatePoint),
+  })
+  .meta({ id: "RateSeries" });
 
-export const MetricSeries = z
-  .discriminatedUnion("kind", [
-    z.object({
-      kind: z.literal("cpu"),
-      range: MetricRange,
-      points: z.array(RangePoint),
-      // Pod CPU limit (millicores), aggregated across containers. Omitted
-      // when the workload has no limit set; UI falls back to raw display.
-      limit: z.number().optional(),
-      // Per-pod breakdown used by the tooltip to surface noisy-neighbor
-      // and historical (terminated) pods. Omitted by sources that can't
-      // produce it (metrics-server). Sum across byPod equals `points`.
-      byPod: z.array(PodSeries).optional(),
-    }),
-    z.object({
-      kind: z.literal("memory"),
-      range: MetricRange,
-      points: z.array(RangePoint),
-      limit: z.number().optional(),
-      byPod: z.array(PodSeries).optional(),
-    }),
-    z.object({
-      kind: z.literal("reqRate"),
-      range: MetricRange,
-      points: z.array(RangePoint),
-    }),
-    z.object({
-      kind: z.literal("errRate"),
-      range: MetricRange,
-      points: z.array(RangePoint),
-    }),
-    z.object({
-      kind: z.literal("latency"),
-      range: MetricRange,
-      points: z.array(LatencyPoint),
-    }),
-  ])
-  .meta({ id: "MetricSeries" });
+export const LatencySeries = z
+  .object({
+    id: z.string().optional(),
+    points: z.array(LatencyPoint),
+  })
+  .meta({ id: "LatencySeries" });
 
-export const MetricsCeiling: Partial<
-  Record<z.infer<typeof SourceKind>, z.infer<typeof MetricKind>[]>
-> = {
-  prometheus: ["cpu", "memory", "reqRate", "errRate", "latency"],
-  metricsServer: ["cpu", "memory"],
-};
+// Response envelopes per endpoint family.
+
+export const ResourceMetrics = z
+  .object({ series: z.array(ResourceSeries) })
+  .meta({ id: "ResourceMetrics" });
+
+export const RateMetrics = z
+  .object({ series: z.array(RateSeries) })
+  .meta({ id: "RateMetrics" });
+
+export const LatencyMetrics = z
+  .object({ series: z.array(LatencySeries) })
+  .meta({ id: "LatencyMetrics" });
 
 export const LogsCeiling: Partial<
   Record<z.infer<typeof SourceKind>, z.infer<typeof LogCapability>[]>
@@ -133,9 +133,14 @@ export type LogLevel = z.infer<typeof LogLevel>;
 export type LogLine = z.infer<typeof LogLine>;
 export type LogCapability = z.infer<typeof LogCapability>;
 export type LogsCapabilities = z.infer<typeof LogsCapabilities>;
-export type RangePoint = z.infer<typeof RangePoint>;
-export type LatencyPoint = z.infer<typeof LatencyPoint>;
 export type MetricKind = z.infer<typeof MetricKind>;
 export type MetricRange = z.infer<typeof MetricRange>;
-export type MetricsCapabilities = z.infer<typeof MetricsCapabilities>;
-export type MetricSeries = z.infer<typeof MetricSeries>;
+export type ResourcePoint = z.infer<typeof ResourcePoint>;
+export type RatePoint = z.infer<typeof RatePoint>;
+export type LatencyPoint = z.infer<typeof LatencyPoint>;
+export type ResourceSeries = z.infer<typeof ResourceSeries>;
+export type RateSeries = z.infer<typeof RateSeries>;
+export type LatencySeries = z.infer<typeof LatencySeries>;
+export type ResourceMetrics = z.infer<typeof ResourceMetrics>;
+export type RateMetrics = z.infer<typeof RateMetrics>;
+export type LatencyMetrics = z.infer<typeof LatencyMetrics>;

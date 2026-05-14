@@ -82,6 +82,35 @@ func (s *Service) List(ctx context.Context, projectID uuid.UUID, envSlug *string
 	return rows, nil
 }
 
+// ListForResource returns deployments whose snapshot slice for the given
+// resource differs from the prior deployment's slice — i.e. deployments
+// that *changed* something for this service. Variables scoped to other
+// resources (or project-wide variables) are intentionally excluded from
+// the slice; the per-service tab only flags resource-attributable changes.
+func (s *Service) ListForResource(ctx context.Context, projectID, resourceID uuid.UUID, envSlug *string, limit, offset int32) ([]sqlc.Deployment, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	// Cap pre-filter fetch — filtering walks pairwise so we need history
+	// to diff against. 200 is the same upper bound as the spec query.
+	rows, err := s.List(ctx, projectID, envSlug, 200, 0)
+	if err != nil {
+		return nil, err
+	}
+	filtered, err := filterByResourceChanges(rows, resourceID)
+	if err != nil {
+		return nil, apierr.Internal(err)
+	}
+	if int(offset) >= len(filtered) {
+		return nil, nil
+	}
+	filtered = filtered[offset:]
+	if int(limit) < len(filtered) {
+		filtered = filtered[:limit]
+	}
+	return filtered, nil
+}
+
 // Create inserts a new deployment row and fires the async runApply goroutine.
 // `envSlug` nil → resolves to the production env.
 func (s *Service) Create(ctx context.Context, projectID uuid.UUID, envSlug *string) (sqlc.Deployment, error) {
@@ -238,6 +267,7 @@ func (s *Service) loadSnapshot(ctx context.Context, projectID, envID uuid.UUID) 
 		state.Resources[i] = Resource{
 			ID:        uuid.UUID(r.ID.Bytes),
 			Name:      r.Name,
+			Slug:      r.Slug,
 			Kind:      r.Kind,
 			Spec:      r.Spec,
 			PositionX: r.PositionX,

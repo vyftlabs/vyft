@@ -53,3 +53,26 @@ func (r Range) Step() time.Duration {
 }
 
 func (r Range) OpenAPI() openapi.MetricRange { return openapi.MetricRange(r) }
+
+// TimeRange is the metric query window, used by the new from/to endpoints.
+// Step is server-chosen based on window duration.
+type TimeRange struct {
+	From time.Time
+	To   time.Time
+}
+
+func (r TimeRange) Duration() time.Duration { return r.To.Sub(r.From) }
+
+func (r TimeRange) Step() time.Duration {
+	d := r.Duration()
+	switch {
+	case d <= 30*time.Minute:
+		return 15 * time.Second
+	case d <= 2*time.Hour:
+		return 30 * time.Second
+	case d <= 12*time.Hour:
+		return time.Minute
+	default:
+		return 5 * time.Minute
+	}
+}

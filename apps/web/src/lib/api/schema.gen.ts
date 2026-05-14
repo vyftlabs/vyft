@@ -278,6 +278,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard staged project changes
+         * @description Reverts all current project state (resources, routes, variables) back to the latest applied deployment. Used to throw away staged changes without deploying. 409 if no applied deployment exists yet.
+         */
+        post: operations["discardProjectChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/deployments/{id}": {
         parameters: {
             query?: never;
@@ -289,6 +309,43 @@ export interface paths {
         get: operations["getDeployment"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List deployments that changed a service */
+        get: operations["listResourceDeployments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/deployments/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stage service config from this deployment
+         * @description Reverts the service's spec, routes, and resource-scoped variables to match this deployment's snapshot. Does not deploy — caller must trigger a deployment afterwards. Secret variable values are not in the snapshot and are preserved as-is when the variable still exists.
+         */
+        post: operations["restoreResourceDeployment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -363,15 +420,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/resources/{resourceId}/metrics/capabilities": {
+    "/projects/{projectId}/resources/{resourceId}/metrics/cpu": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Detected metric kinds for resource */
-        get: operations["getResourceMetricsCapabilities"];
+        /** CPU usage timeseries, per-pod */
+        get: operations["getResourceCpuMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -380,15 +437,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{projectId}/resources/{resourceId}/metrics/{kind}": {
+    "/projects/{projectId}/resources/{resourceId}/metrics/memory": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Time series for one metric kind */
-        get: operations["getResourceMetricSeries"];
+        /** Memory usage timeseries, per-pod */
+        get: operations["getResourceMemoryMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/metrics/requestRate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Request rate timeseries */
+        get: operations["getResourceRequestRateMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/metrics/errorRate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Error rate timeseries (5xx / total, fraction) */
+        get: operations["getResourceErrorRateMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/metrics/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latency timeseries with p50/p95/p99 per point */
+        get: operations["getResourceLatencyMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -657,8 +765,6 @@ export interface components {
         };
         /** @enum {string} */
         MetricRange: "15m" | "1h" | "6h" | "24h";
-        /** @enum {string} */
-        MetricKind: "cpu" | "memory" | "reqRate" | "errRate" | "latency";
         SourceCreate: {
             name: string;
             domain: components["schemas"]["SourceDomain"];
@@ -745,6 +851,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             name: string;
+            slug: string;
             /** Format: uuid */
             projectId: string;
             positionX: number;
@@ -857,7 +964,13 @@ export interface components {
             key: string;
             value: string | null;
             secret: boolean;
-            usedBy?: components["schemas"]["ResourceRef"][];
+            usedBy?: components["schemas"]["VariableUsage"][];
+        };
+        VariableUsage: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            key: string;
         };
         Registry: {
             /** Format: uuid */
@@ -916,54 +1029,39 @@ export interface components {
         };
         /** @enum {string} */
         LogLevel: "error" | "warn" | "info" | "debug" | "unknown";
-        MetricsCapabilities: {
-            sourceKind: components["schemas"]["SourceKind"] | null;
-            detected: components["schemas"]["MetricKind"][];
+        ResourceMetrics: {
+            series: components["schemas"]["ResourceSeries"][];
         };
-        MetricSeries: {
-            /** @enum {string} */
-            kind: "cpu";
-            range: components["schemas"]["MetricRange"];
-            points: components["schemas"]["RangePoint"][];
-            limit?: number;
-            byPod?: {
-                pod: string;
-                points: components["schemas"]["RangePoint"][];
-            }[];
-        } | {
-            /** @enum {string} */
-            kind: "memory";
-            range: components["schemas"]["MetricRange"];
-            points: components["schemas"]["RangePoint"][];
-            limit?: number;
-            byPod?: {
-                pod: string;
-                points: components["schemas"]["RangePoint"][];
-            }[];
-        } | {
-            /** @enum {string} */
-            kind: "reqRate";
-            range: components["schemas"]["MetricRange"];
-            points: components["schemas"]["RangePoint"][];
-        } | {
-            /** @enum {string} */
-            kind: "errRate";
-            range: components["schemas"]["MetricRange"];
-            points: components["schemas"]["RangePoint"][];
-        } | {
-            /** @enum {string} */
-            kind: "latency";
-            range: components["schemas"]["MetricRange"];
-            points: components["schemas"]["LatencyPoint"][];
+        ResourceSeries: {
+            id?: string;
+            points: components["schemas"]["ResourcePoint"][];
         };
-        RangePoint: {
-            /** Format: date-time */
-            time: string;
+        ResourcePoint: {
+            timestamp: number;
+            value: number;
+            limit?: number;
+            request?: number;
+        };
+        RateMetrics: {
+            series: components["schemas"]["RateSeries"][];
+        };
+        RateSeries: {
+            id?: string;
+            points: components["schemas"]["RatePoint"][];
+        };
+        RatePoint: {
+            timestamp: number;
             value: number;
         };
+        LatencyMetrics: {
+            series: components["schemas"]["LatencySeries"][];
+        };
+        LatencySeries: {
+            id?: string;
+            points: components["schemas"]["LatencyPoint"][];
+        };
         LatencyPoint: {
-            /** Format: date-time */
-            time: string;
+            timestamp: number;
             p50: number;
             p95: number;
             p99: number;
@@ -3301,6 +3399,71 @@ export interface operations {
             };
         };
     };
+    discardProjectChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getDeployment: {
         parameters: {
             query?: never;
@@ -3321,6 +3484,136 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Deployment"];
                 };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listResourceDeployments: {
+        parameters: {
+            query?: {
+                environment?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deployments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deployment"][];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    restoreResourceDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restored */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad request */
             400: {
@@ -3601,6 +3894,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description Conflict */
             409: {
                 headers: {
@@ -3612,9 +3914,12 @@ export interface operations {
             };
         };
     };
-    getResourceMetricsCapabilities: {
+    getResourceCpuMetrics: {
         parameters: {
-            query?: never;
+            query?: {
+                from?: number;
+                to?: number;
+            };
             header?: never;
             path: {
                 projectId: string;
@@ -3624,13 +3929,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Capabilities */
+            /** @description Series */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MetricsCapabilities"];
+                    "application/json": components["schemas"]["ResourceMetrics"];
                 };
             };
             /** @description Bad request */
@@ -3660,6 +3965,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description Conflict */
             409: {
                 headers: {
@@ -3671,16 +3985,16 @@ export interface operations {
             };
         };
     };
-    getResourceMetricSeries: {
+    getResourceMemoryMetrics: {
         parameters: {
             query?: {
-                range?: components["schemas"]["MetricRange"];
+                from?: number;
+                to?: number;
             };
             header?: never;
             path: {
                 projectId: string;
                 resourceId: string;
-                kind: components["schemas"]["MetricKind"];
             };
             cookie?: never;
         };
@@ -3692,7 +4006,220 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MetricSeries"];
+                    "application/json": components["schemas"]["ResourceMetrics"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceRequestRateMetrics: {
+        parameters: {
+            query?: {
+                from?: number;
+                to?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateMetrics"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceErrorRateMetrics: {
+        parameters: {
+            query?: {
+                from?: number;
+                to?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateMetrics"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceLatencyMetrics: {
+        parameters: {
+            query?: {
+                from?: number;
+                to?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatencyMetrics"];
                 };
             };
             /** @description Bad request */

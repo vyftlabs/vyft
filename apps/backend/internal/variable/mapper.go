@@ -8,7 +8,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 )
 
-func variableToWire(v sqlc.Variable, usedBy []openapi.ResourceRef) openapi.Variable {
+func variableToWire(v sqlc.Variable, usedBy []openapi.VariableUsage) openapi.Variable {
 	secret := v.Secret != nil && *v.Secret
 	var val *string
 	if !secret {
@@ -82,10 +82,11 @@ func importedSourceResourceWire(res sqlc.Resource) *openapi.ResourceRef {
 	}
 }
 
-func resourceRefUsedBy(res sqlc.Resource) openapi.ResourceRef {
-	return openapi.ResourceRef{
+func variableUsage(res sqlc.Resource, key string) openapi.VariableUsage {
+	return openapi.VariableUsage{
 		Id:   openapi_types.UUID(uuid.UUID(res.ID.Bytes)),
 		Name: res.Name,
+		Key:  key,
 	}
 }
 

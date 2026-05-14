@@ -2,9 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type DiskCreate,
+  type Deployment,
   type Resource,
   ResourceAppCreate,
 } from "@vyft/spec";
+import { LoaderIcon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
@@ -63,6 +65,86 @@ function OverviewTab({
       }
       logsArea={<LogsPanel projectId={projectId} resourceId={resourceId} />}
     />
+  );
+}
+
+
+function formatDeploymentTime(ts: string): string {
+  return new Date(ts).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function DeploymentsTab({
+  resourceId,
+  projectId,
+}: {
+  resourceId: string;
+  projectId: string;
+}) {
+  const { data: deployments = [] } = useQuery({
+    ...api.deployments.listByResource(projectId, resourceId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.[0]?.status;
+      return status === "pending" || status === "applying" ? 1000 : false;
+    },
+  });
+  const restore = useMutation(api.deployments.restoreResource);
+
+  if (deployments.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground py-4">
+        No deployments yet for this service.
+      </p>
+    );
+  }
+
+  return (
+    <div className="divide-y">
+      {deployments.map((d) => {
+        const isRestoringThis =
+          restore.isPending && restore.variables?.id === d.id;
+        return (
+          <div key={d.id} className="group py-2.5">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-xs font-mono text-foreground shrink-0">
+                {d.id.slice(0, 7)}
+              </span>
+              <span className="text-xs text-muted-foreground flex-1 truncate tabular-nums">
+                {formatDeploymentTime(d.createdAt)}
+              </span>
+              {(d.status === "pending" || d.status === "applying") && (
+                <LoaderIcon className="size-3 text-muted-foreground animate-spin shrink-0" />
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] gap-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                disabled={restore.isPending}
+                onClick={() =>
+                  restore.mutate({ projectId, resourceId, id: d.id })
+                }
+              >
+                {isRestoringThis ? (
+                  <LoaderIcon className="size-3 animate-spin" />
+                ) : (
+                  <RotateCcwIcon className="size-3" />
+                )}
+                Restore
+              </Button>
+            </div>
+            {d.error && (
+              <p className="text-[10px] text-severity-critical-text mt-1 leading-snug">
+                {d.error}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -801,6 +883,7 @@ function useServiceDrawerTabs(
   },
   onClose?: () => void,
 ): { tabs: DrawerTab[]; defaultTab: string } {
+  const qc = useQueryClient();
   const isCreating = !resource;
 
   if (isCreating) {
@@ -822,12 +905,26 @@ function useServiceDrawerTabs(
     };
   }
 
+  // staleTime on prefetch makes repeated hovers a no-op when cached.
+  const prefetch = (
+    opts: Parameters<typeof qc.prefetchQuery>[0],
+  ) => qc.prefetchQuery({ ...opts, staleTime: 60_000 });
+
   return {
     defaultTab: "overview",
     tabs: [
       {
         id: "overview",
         label: "Overview",
+        onHover: () => {
+          prefetch(api.observability.events(projectId, resource.id));
+          prefetch(api.observability.logsCapabilities(projectId, resource.id));
+          prefetch(api.observability.cpuMetrics(projectId, resource.id));
+          prefetch(api.observability.memoryMetrics(projectId, resource.id));
+          prefetch(api.observability.requestRateMetrics(projectId, resource.id));
+          prefetch(api.observability.errorRateMetrics(projectId, resource.id));
+          prefetch(api.observability.latencyMetrics(projectId, resource.id));
+        },
         content: (
           <OverviewTab
             resourceId={resource.id}
@@ -837,8 +934,23 @@ function useServiceDrawerTabs(
         ),
       },
       {
+        id: "deployments",
+        label: "Deployments",
+        onHover: () => {
+          prefetch(api.deployments.listByResource(projectId, resource.id));
+        },
+        content: (
+          <DeploymentsTab resourceId={resource.id} projectId={projectId} />
+        ),
+      },
+      {
         id: "variables",
         label: "Variables",
+        onHover: () => {
+          prefetch(api.variables.project.list(projectId));
+          prefetch(api.variables.resource.list(projectId, resource.id));
+          prefetch(api.resources.list(projectId));
+        },
         content: (
           <VariablesTab
             resourceId={resource.id}
@@ -850,6 +962,9 @@ function useServiceDrawerTabs(
       {
         id: "settings",
         label: "Settings",
+        onHover: () => {
+          prefetch(api.routes.list(projectId));
+        },
         content: (
           <SettingsTab
             resource={resource}

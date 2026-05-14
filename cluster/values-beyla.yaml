@@ -1,0 +1,15 @@
+config:
+  data:
+    discovery:
+      services:
+        - k8s_namespace: vyft-.+
+    attributes:
+      kubernetes:
+        enable: true
+    otel_metrics_export:
+      endpoint: http://kps-prometheus.observability.svc.cluster.local:9090/api/v1/otlp/v1/metrics
+      interval: 5s
+    otel_traces_export:
+      endpoint: ""
+serviceAccount:
+  create: true

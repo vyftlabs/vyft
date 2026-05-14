@@ -192,16 +192,19 @@ function ServicesCanvas() {
           image,
           status: { state: "running" },
           onHover: () => {
-            queryClient.prefetchQuery(api.resources.byId(projectId, r.id));
-            queryClient.prefetchQuery(
-              api.observability.events(projectId, r.id),
-            );
-            queryClient.prefetchQuery(
-              api.observability.logsCapabilities(projectId, r.id),
-            );
-            queryClient.prefetchQuery(
-              api.observability.metricsCapabilities(projectId, r.id),
-            );
+            // staleTime on prefetchQuery makes it a no-op when cached
+            // data is still fresh — repeated hovers don't re-fetch.
+            const prefetch = (
+              opts: Parameters<typeof queryClient.prefetchQuery>[0],
+            ) => queryClient.prefetchQuery({ ...opts, staleTime: 60_000 });
+            prefetch(api.resources.byId(projectId, r.id));
+            prefetch(api.observability.events(projectId, r.id));
+            prefetch(api.observability.logsCapabilities(projectId, r.id));
+            prefetch(api.observability.cpuMetrics(projectId, r.id));
+            prefetch(api.observability.memoryMetrics(projectId, r.id));
+            prefetch(api.observability.requestRateMetrics(projectId, r.id));
+            prefetch(api.observability.errorRateMetrics(projectId, r.id));
+            prefetch(api.observability.latencyMetrics(projectId, r.id));
           },
         };
         const existing = byId.get(r.id);

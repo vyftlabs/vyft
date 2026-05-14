@@ -61,3 +61,8 @@ export const ResourceScope = z.object({
   projectId: z.uuid(),
   resourceId: z.uuid(),
 });
+export const ResourceAndIdScope = z.object({
+  projectId: z.uuid(),
+  resourceId: z.uuid(),
+  id: z.uuid(),
+});

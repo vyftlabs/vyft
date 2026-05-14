@@ -22,6 +22,7 @@ export interface Snapshot {
 interface SnapResource {
   id: string;
   name: string;
+  slug: string;
   kind: string;
   spec: unknown;
   updatedAt: number;
@@ -39,13 +40,29 @@ interface SnapRoute {
   updatedAt: number;
 }
 
-interface SnapVariable {
+// Discriminated by `kind`:
+//   owned     — variable definition (project-wide if resourceId null, else
+//               resource-scoped). Carries id + value/secret + updatedAt.
+//   reference — env-binding of another variable into a resource under a
+//               local key. Carries resourceId + key + sourceVariableId.
+// Backend mirror: snapshotVariable in snapshot.go.
+type SnapVariable = SnapOwnedVariable | SnapReferenceVariable;
+
+interface SnapOwnedVariable {
+  kind: "owned";
   id: string;
   resourceId: string | null;
   key: string;
   secret: boolean;
   value: string;
   updatedAt: number;
+}
+
+interface SnapReferenceVariable {
+  kind: "reference";
+  resourceId: string;
+  key: string;
+  sourceVariableId: string;
 }
 
 export function buildSnapshot(input: {
@@ -57,6 +74,7 @@ export function buildSnapshot(input: {
     .map((r) => ({
       id: r.id,
       name: r.name,
+      slug: r.slug,
       kind: r.config.kind,
       spec: stripRoutes(r.config.spec),
       updatedAt: toMillis(r.updatedAt),
@@ -77,16 +95,37 @@ export function buildSnapshot(input: {
     }))
     .sort(byId);
 
-  const variables: SnapVariable[] = input.variables
-    .map((v) => ({
-      id: v.id,
-      resourceId: v.resourceId,
-      key: v.key,
-      secret: v.secret,
-      value: v.secret ? "" : (v.value ?? ""),
-      updatedAt: toMillis(v.updatedAt),
-    }))
-    .sort(byId);
+  const owned: SnapOwnedVariable[] = input.variables.map((v) => ({
+    kind: "owned" as const,
+    id: v.id,
+    resourceId: v.resourceId,
+    key: v.key,
+    secret: v.secret,
+    value: v.secret ? "" : (v.value ?? ""),
+    updatedAt: toMillis(v.updatedAt),
+  }));
+
+  // References: each Variable carries `usedBy` — resources that import it
+  // under some local key. Expand to per-reference rows so adding/removing
+  // an import flips the snapshot hash.
+  const references: SnapReferenceVariable[] = input.variables.flatMap((v) =>
+    (v.usedBy ?? []).map((u) => ({
+      kind: "reference" as const,
+      resourceId: u.id,
+      key: u.key,
+      sourceVariableId: v.id,
+    })),
+  );
+
+  // Sort matches backend: owned by id; reference by (resourceId, key).
+  // Kind groups separately ("owned" < "reference" lexicographically).
+  owned.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  references.sort((a, b) => {
+    if (a.resourceId !== b.resourceId)
+      return a.resourceId < b.resourceId ? -1 : 1;
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  });
+  const variables: SnapVariable[] = [...owned, ...references];
 
   return { resources, routes, variables };
 }
@@ -129,8 +168,24 @@ export function canonicalStringify(value: unknown): string {
   return "{" + entries.join(",") + "}";
 }
 
+// stripVolatile removes fields that mutate without changing deployable content
+// (currently `updatedAt`). Restore bumps the resource row's `updated` column
+// even though the spec matches a prior deployment — keeping updatedAt in the
+// hash would mark a restored project as "has changes" against its own
+// snapshot. Recurses into arrays + objects.
+function stripVolatile(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(stripVolatile);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (k === "updatedAt") continue;
+    out[k] = stripVolatile(v);
+  }
+  return out;
+}
+
 export async function snapshotHash(snapshot: unknown): Promise<string> {
-  const text = canonicalStringify(snapshot);
+  const text = canonicalStringify(stripVolatile(snapshot));
   const buf = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(text),

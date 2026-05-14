@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RocketIcon } from "lucide-react";
+import { RocketIcon, RotateCcwIcon } from "lucide-react";
 import * as React from "react";
 import { Link, Outlet, useParams } from "react-router";
 import { toast } from "sonner";
@@ -25,7 +25,7 @@ function DeployButton({ projectId }: { projectId: string }) {
 
   // Latest deployment = first item of the list (ordered created DESC by API).
   // Poll while pending/applying so the spinner clears as soon as the row settles.
-  const { data: deployments } = useQuery({
+  const { data: deployments, isPending: deploymentsLoading } = useQuery({
     ...api.deployments.list(projectId),
     refetchInterval: (query) => {
       const status = query.state.data?.[0]?.status;
@@ -47,6 +47,11 @@ function DeployButton({ projectId }: { projectId: string }) {
   // Default hidden. The async compare flips it on if hashes differ.
   const [hasChanges, setHasChanges] = React.useState(false);
   React.useEffect(() => {
+    // Wait for the deployments query to settle before flipping. Otherwise
+    // hasChanges briefly flickers true on first paint (no baseline known
+    // yet → looks like changes) which makes the Deploy button appear
+    // alone before Discard catches up.
+    if (deploymentsLoading) return;
     let cancelled = false;
     (async () => {
       const current = buildSnapshot({ resources, routes, variables });
@@ -73,7 +78,7 @@ function DeployButton({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [resources, routes, variables, latest?.snapshot]);
+  }, [resources, routes, variables, latest?.snapshot, deploymentsLoading]);
 
   const isDeploying =
     latest?.status === "pending" || latest?.status === "applying";
@@ -95,24 +100,53 @@ function DeployButton({ projectId }: { projectId: string }) {
     }
   }, [latest?.status, latest, queryClient, projectId, isDeploying]);
 
+  const discard = useMutation(api.deployments.discard);
+  // Discard reverts to the latest *applied* deployment; if none exists, the
+  // backend will 409. Hide the button until we have an applied baseline.
+  const hasAppliedBaseline = deployments?.some((d) => d.status === "applied");
+
   if (!hasChanges && !isDeploying) return null;
 
+  const showDiscard = hasChanges && !isDeploying && hasAppliedBaseline;
+
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="gap-1.5"
-      onClick={() => deploy.mutate({ projectId })}
-      disabled={deploy.isPending || isDeploying}
-      data-testid="deploy-button"
+    <div
+      data-slot="button-group"
+      className="flex items-center [&>button:not(:first-child)]:-ml-px [&>button:not(:first-child)]:rounded-l-none [&>button:not(:last-child)]:rounded-r-none"
     >
-      {deploy.isPending || isDeploying ? (
-        <Spinner className="size-3.5" />
-      ) : (
-        <RocketIcon className="size-3.5" />
+      {showDiscard && (
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label="Discard staged changes"
+          title="Discard staged changes"
+          onClick={() => discard.mutate({ projectId })}
+          disabled={discard.isPending}
+          data-testid="discard-button"
+        >
+          {discard.isPending ? (
+            <Spinner className="size-3.5" />
+          ) : (
+            <RotateCcwIcon className="size-3.5" />
+          )}
+        </Button>
       )}
-      {isDeploying ? "Deploying" : "Deploy"}
-    </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5"
+        onClick={() => deploy.mutate({ projectId })}
+        disabled={deploy.isPending || isDeploying}
+        data-testid="deploy-button"
+      >
+        {deploy.isPending || isDeploying ? (
+          <Spinner className="size-3.5" />
+        ) : (
+          <RocketIcon className="size-3.5" />
+        )}
+        {isDeploying ? "Deploying" : "Deploy"}
+      </Button>
+    </div>
   );
 }
 

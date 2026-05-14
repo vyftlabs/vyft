@@ -25,6 +25,7 @@ type Project struct {
 type Resource struct {
 	ID        uuid.UUID
 	Name      string
+	Slug      string
 	Kind      string
 	Spec      json.RawMessage
 	PositionX float64

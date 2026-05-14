@@ -1,38 +1,36 @@
 package source
 
-import (
-	"context"
+import "context"
 
-	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
-)
-
-// Prober runs a single combined existence check for a set of metric
-// names. Optional — sources whose detection is static (e.g. metrics-
-// server) don't implement it. Returns map[name]bool: true means at least
-// one series exists for that name. Implementations should perform a
-// single round-trip.
+// Prober checks which of the given metric names exist for a resource.
+// Empty ResourceSelector means "anywhere" (connectivity probes).
 type Prober interface {
-	Probe(ctx context.Context, metricNames []string) (map[string]bool, error)
+	Probe(ctx context.Context, sel ResourceSelector, metricNames []string) (map[string]bool, error)
 }
 
-// MetricsCapable is implemented by sources that can serve the metrics
-// domain. The capabilities handler probes each kind in Supports() against
-// ProbeMetricNames() to decide what's actually queryable.
+// MetricsCapable is the source contract for the metrics domain. Each
+// kind family has its own query method returning the appropriate series
+// type — no discriminated union, no scaling, canonical units throughout.
+//
+//   QueryResource:  cpu, memory      → per-pod series with optional limit/request per point
+//   QueryRate:      requestRate, errorRate → single aggregate series
+//   QueryLatency:   latency          → single series with p50/p95/p99 per point
+//
+// Implementations should return empty slices (not errors) when there's
+// no data — the handler maps that to 200 with an empty body. They should
+// return an error only for genuine failures (auth, network, query syntax).
 type MetricsCapable interface {
 	Source
 
-	// Supports returns the kinds the source could in principle serve
-	// (its ceiling). Static, no I/O.
-	Supports() []openapi.MetricKind
+	// Supports returns the kinds the source could in principle serve.
+	Supports() []MetricKind
 
 	// ProbeMetricNames returns the underlying metric names that must
 	// exist for the kind to be considered runtime-detected. nil means
-	// the kind is statically detected (no probe needed) — e.g. metrics-
-	// server's CPU/Memory are always-on when the source is reachable.
-	ProbeMetricNames(kind openapi.MetricKind) []string
+	// static detection (always-on when reachable) — metrics-server.
+	ProbeMetricNames(kind MetricKind) []string
 
-	// Query executes a single kind query and returns a Series. Empty
-	// points slice is a valid response (empty-data state on the UI), not
-	// an error.
-	Query(ctx context.Context, kind openapi.MetricKind, sel ResourceSelector, r Range) (Series, error)
+	QueryResource(ctx context.Context, kind MetricKind, sel ResourceSelector, r TimeRange) ([]ResourceSeries, error)
+	QueryRate(ctx context.Context, kind MetricKind, sel ResourceSelector, r TimeRange) (RateSeries, error)
+	QueryLatency(ctx context.Context, sel ResourceSelector, r TimeRange) (LatencySeries, error)
 }

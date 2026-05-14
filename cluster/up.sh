@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Bring up local kind cluster + observability stack.
+set -euo pipefail
+
+CLUSTER=vyft
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${DIR}/.." && pwd)"
+
+if ! kind get clusters | grep -q "^${CLUSTER}$"; then
+  kind create cluster --config "${DIR}/kind.yaml"
+fi
+
+mkdir -p "${ROOT}/.kube"
+kind get kubeconfig --name "${CLUSTER}" > "${ROOT}/.kube/config"
+chmod 644 "${ROOT}/.kube/config"
+
+kubectl --kubeconfig "${ROOT}/.kube/config" cluster-info
+
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
+helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
+helm repo update >/dev/null
+
+kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
+
+helm upgrade --install kps prometheus-community/kube-prometheus-stack \
+  --version 76.0.0 \
+  --namespace observability \
+  --values "${DIR}/values-kps.yaml" \
+  --wait --timeout 5m --atomic --cleanup-on-fail
+
+helm upgrade --install loki grafana/loki-stack \
+  --version 2.10.2 \
+  --namespace observability \
+  --values "${DIR}/values-loki.yaml" \
+  --wait --timeout 5m --atomic --cleanup-on-fail
+
+helm upgrade --install beyla grafana/beyla \
+  --version 1.7.0 \
+  --namespace observability \
+  --values "${DIR}/values-beyla.yaml" \
+  --wait --timeout 5m --atomic --cleanup-on-fail
+
+echo
+echo "prometheus: http://localhost:30090"
+echo "loki:       http://localhost:30100"

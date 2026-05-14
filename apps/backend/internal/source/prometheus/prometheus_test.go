@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source"
 )
 
@@ -39,7 +38,7 @@ func (f *fakeProm) handler() http.Handler {
 			for i, p := range matrix {
 				values[i] = []interface{}{p[0], floatStr(p[1])}
 			}
-			resp.Data.Result = []promSeries{{Metric: map[string]string{}, Values: values}}
+			resp.Data.Result = []promSeries{{Metric: map[string]string{"pod": "nginx-abc-1"}, Values: values}}
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	})
@@ -85,10 +84,15 @@ func sel() source.ResourceSelector {
 }
 
 func ts(offsetSec int64) float64 {
-	return float64(time.Now().Add(-time.Duration(offsetSec)*time.Second).Unix())
+	return float64(time.Now().Add(-time.Duration(offsetSec) * time.Second).Unix())
 }
 
-func TestQuery_CPU_AggregatesAcrossPods(t *testing.T) {
+func tr() source.TimeRange {
+	now := time.Now().UTC()
+	return source.TimeRange{From: now.Add(-15 * time.Minute), To: now}
+}
+
+func TestQueryResource_CPU_ReturnsPerPodSeries(t *testing.T) {
 	fp := &fakeProm{
 		matrixByQuery: map[string][][2]float64{
 			"container_cpu_usage_seconds_total": {
@@ -99,19 +103,19 @@ func TestQuery_CPU_AggregatesAcrossPods(t *testing.T) {
 	}
 	p := newClient(t, fp)
 
-	series, err := p.Query(context.Background(), openapi.MetricKindCpu, sel(), source.DefaultRange)
+	series, err := p.QueryResource(context.Background(), source.KindCpu, sel(), tr())
 	if err != nil {
 		t.Fatalf("cpu: %v", err)
 	}
-	if len(series.Points) != 2 {
-		t.Fatalf("got %d points, want 2", len(series.Points))
+	if len(series) != 1 {
+		t.Fatalf("got %d series, want 1", len(series))
 	}
-	if series.Kind != openapi.MetricKindCpu {
-		t.Errorf("kind: got %s, want cpu", series.Kind)
+	if len(series[0].Points) != 2 {
+		t.Fatalf("got %d points, want 2", len(series[0].Points))
 	}
 }
 
-func TestQuery_ReqRate_FallsBackToLegacy(t *testing.T) {
+func TestQueryRate_RequestRate_FallsBackToLegacy(t *testing.T) {
 	fp := &fakeProm{
 		matrixByQuery: map[string][][2]float64{
 			// semconv returns empty; legacy returns data
@@ -120,12 +124,12 @@ func TestQuery_ReqRate_FallsBackToLegacy(t *testing.T) {
 	}
 	p := newClient(t, fp)
 
-	series, err := p.Query(context.Background(), openapi.MetricKindReqRate, sel(), source.DefaultRange)
+	s, err := p.QueryRate(context.Background(), source.KindRequestRate, sel(), tr())
 	if err != nil {
-		t.Fatalf("reqRate: %v", err)
+		t.Fatalf("requestRate: %v", err)
 	}
-	if len(series.Points) != 1 || series.Points[0].Value != 5.0 {
-		t.Fatalf("got %+v, want one point with value 5", series.Points)
+	if len(s.Points) != 1 || s.Points[0].Value != 5.0 {
+		t.Fatalf("got %+v, want one point with value 5", s.Points)
 	}
 	// At least 2 queries hit Prom (semconv + legacy).
 	if len(fp.queries) < 2 {
@@ -133,7 +137,7 @@ func TestQuery_ReqRate_FallsBackToLegacy(t *testing.T) {
 	}
 }
 
-func TestQuery_ErrRate_MultipliesToPercent(t *testing.T) {
+func TestQueryRate_ErrorRate_ReturnsFractionUnchanged(t *testing.T) {
 	fp := &fakeProm{
 		matrixByQuery: map[string][][2]float64{
 			// semconv error rate query — return 0.05 fraction
@@ -142,19 +146,19 @@ func TestQuery_ErrRate_MultipliesToPercent(t *testing.T) {
 	}
 	p := newClient(t, fp)
 
-	series, err := p.Query(context.Background(), openapi.MetricKindErrRate, sel(), source.DefaultRange)
+	s, err := p.QueryRate(context.Background(), source.KindErrorRate, sel(), tr())
 	if err != nil {
-		t.Fatalf("errRate: %v", err)
+		t.Fatalf("errorRate: %v", err)
 	}
-	if len(series.Points) != 1 {
-		t.Fatalf("got %d points, want 1", len(series.Points))
+	if len(s.Points) != 1 {
+		t.Fatalf("got %d points, want 1", len(s.Points))
 	}
-	if got, want := series.Points[0].Value, 5.0; got != want {
-		t.Errorf("value: got %v, want %v (percent)", got, want)
+	if got, want := s.Points[0].Value, 0.05; got != want {
+		t.Errorf("value: got %v, want %v (fraction)", got, want)
 	}
 }
 
-func TestQuery_Latency_MergesThreeQuantiles(t *testing.T) {
+func TestQueryLatency_MergesThreeQuantiles(t *testing.T) {
 	tsec := ts(15)
 	fp := &fakeProm{
 		matrixByQuery: map[string][][2]float64{
@@ -165,14 +169,14 @@ func TestQuery_Latency_MergesThreeQuantiles(t *testing.T) {
 	}
 	p := newClient(t, fp)
 
-	series, err := p.Query(context.Background(), openapi.MetricKindLatency, sel(), source.DefaultRange)
+	s, err := p.QueryLatency(context.Background(), sel(), tr())
 	if err != nil {
 		t.Fatalf("latency: %v", err)
 	}
-	if len(series.Latency) != 1 {
-		t.Fatalf("got %d latency points, want 1", len(series.Latency))
+	if len(s.Points) != 1 {
+		t.Fatalf("got %d points, want 1", len(s.Points))
 	}
-	lp := series.Latency[0]
+	lp := s.Points[0]
 	if lp.P50 != 0.01 || lp.P95 != 0.05 || lp.P99 != 0.10 {
 		t.Errorf("got p50=%v p95=%v p99=%v, want 0.01 / 0.05 / 0.10", lp.P50, lp.P95, lp.P99)
 	}
@@ -188,12 +192,12 @@ func TestSupports_ReturnsAllFiveKinds(t *testing.T) {
 
 func TestProbeMetricNames(t *testing.T) {
 	p, _ := New(uuid.New(), "test", "http://localhost", Auth{Type: AuthNone})
-	cases := map[openapi.MetricKind][]string{
-		openapi.MetricKindCpu:     {"container_cpu_usage_seconds_total"},
-		openapi.MetricKindMemory:  {"container_memory_working_set_bytes"},
-		openapi.MetricKindReqRate: {"http_server_request_duration_seconds_count", "http_requests_total"},
-		openapi.MetricKindErrRate: {"http_server_request_duration_seconds_count", "http_requests_total"},
-		openapi.MetricKindLatency: {"http_server_request_duration_seconds_bucket"},
+	cases := map[source.MetricKind][]string{
+		source.KindCpu:         {"container_cpu_usage_seconds_total"},
+		source.KindMemory:      {"container_memory_working_set_bytes"},
+		source.KindRequestRate: {"http_server_request_duration_seconds_count", "http_requests_total"},
+		source.KindErrorRate:   {"http_server_request_duration_seconds_count", "http_requests_total"},
+		source.KindLatency:     {"http_server_request_duration_seconds_bucket"},
 	}
 	for kind, want := range cases {
 		got := p.ProbeMetricNames(kind)
@@ -241,7 +245,7 @@ func TestAuth_BasicAndBearer_SetsHeaders(t *testing.T) {
 			if err != nil {
 				t.Fatalf("new: %v", err)
 			}
-			_, _ = p.Query(context.Background(), openapi.MetricKindCpu, sel(), source.DefaultRange)
+			_, _ = p.QueryResource(context.Background(), source.KindCpu, sel(), tr())
 			if !tc.check(got) {
 				t.Errorf("got header %q", got)
 			}

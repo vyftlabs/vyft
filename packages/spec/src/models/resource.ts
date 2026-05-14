@@ -117,6 +117,10 @@ export const ResourceConfigUpdate = z
 
 const ResourceBase = BaseFields.extend({
   name: ResourceName,
+  // Slug is the immutable k8s identifier — derived from name + uuid suffix
+  // at create. Used everywhere a stable handle is needed (object names,
+  // labels, observability selectors). Name remains editable + display-only.
+  slug: z.string().min(1).max(63),
   projectId: z.uuid(),
   positionX: z.number(),
   positionY: z.number(),

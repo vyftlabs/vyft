@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  type MetricKind,
-  type MetricRange,
-  type MetricSeries,
-  type MetricsCapabilities,
-  MetricsCeiling,
+import type {
+  LatencyMetrics,
+  LatencyPoint,
+  MetricKind,
+  RateMetrics,
+  RatePoint,
+  ResourceMetrics,
+  ResourcePoint,
 } from "@vyft/spec";
 import {
   LatencySparkline,
@@ -12,22 +14,19 @@ import {
   Sparkline,
 } from "@/components/service/drawer/sparklines";
 import * as api from "@/lib/api";
+import { ApiError } from "@/lib/api/errors";
 import { MetricSlotChrome } from "./chrome";
-import { DisabledPanel } from "./disabled-panel";
-import { EmptyDataPanel } from "./empty-data-panel";
 
 const KIND_LABELS: Record<MetricKind, string> = {
   cpu: "CPU",
   memory: "Memory",
-  reqRate: "Requests",
-  errRate: "Error rate",
+  requestRate: "Requests",
+  errorRate: "Error rate",
   latency: "Latency",
 };
 
-import { POLL_INTERVAL_MS } from "@/lib/api/observability";
+// ── formatters ────────────────────────────────────────────────────────
 
-// formatBytes auto-scales bytes → KiB / MiB / GiB / TiB. Spec says
-// memory uses base-2 units.
 function formatBytes(b: number): { value: string; unit: string } {
   if (!Number.isFinite(b)) return { value: "—", unit: "B" };
   const abs = Math.abs(b);
@@ -43,15 +42,16 @@ function formatBytes(b: number): { value: string; unit: string } {
   return { value: Math.round(b).toString(), unit: "B" };
 }
 
-// formatMillicores stays in millicores below 1000m; auto-scales to cores
-// at or above 1000m.
-function formatMillicores(m: number): { value: string; unit: string } {
-  if (!Number.isFinite(m)) return { value: "—", unit: "m" };
-  if (Math.abs(m) >= 1000) return { value: fmtTrim(m / 1000), unit: "cores" };
-  return { value: Math.round(m).toString(), unit: "m" };
+// formatCores auto-scales cores → µ/m/cores. Backend emits canonical
+// cores; idle workloads land in µ territory.
+function formatCores(c: number): { value: string; unit: string } {
+  if (!Number.isFinite(c)) return { value: "—", unit: "m" };
+  const abs = Math.abs(c);
+  if (abs >= 1) return { value: fmtTrim(c), unit: "cores" };
+  if (abs >= 0.001) return { value: fmtTrim(c * 1000), unit: "m" };
+  return { value: fmtTrim(c * 1_000_000), unit: "µ" };
 }
 
-// formatSeconds auto-scales between µs / ms / s.
 function formatSeconds(s: number): { value: string; unit: string } {
   if (!Number.isFinite(s)) return { value: "—", unit: "ms" };
   const abs = Math.abs(s);
@@ -64,8 +64,9 @@ function formatRate(v: number): { value: string; unit: string } {
   return { value: fmtTrim(v), unit: "/s" };
 }
 
-function formatPercent(v: number): { value: string; unit: string } {
-  return { value: fmtTrim(v), unit: "%" };
+// formatFraction renders an errorRate fraction (0..1) as a percent.
+function formatFraction(v: number): { value: string; unit: string } {
+  return { value: fmtTrim(v * 100), unit: "%" };
 }
 
 function fmtTrim(v: number): string {
@@ -76,148 +77,181 @@ function fmtTrim(v: number): string {
   return v.toFixed(2);
 }
 
-const KIND_FORMATTERS: Record<
-  Exclude<MetricKind, "latency">,
-  (v: number) => { value: string; unit: string }
-> = {
-  cpu: formatMillicores,
-  memory: formatBytes,
-  reqRate: formatRate,
-  errRate: formatPercent,
-};
+// formatPercentOfLimit: percent big, raw small ("47% 473m").
+function formatPercentOfLimit(
+  v: number,
+  limit: number,
+  baseFormatter: (v: number) => { value: string; unit: string },
+): { value: string; unit: string } {
+  const pct = (v / limit) * 100;
+  const raw = baseFormatter(v);
+  return {
+    value: `${fmtTrim(pct)}%`,
+    unit: ` ${raw.value}${raw.unit}`,
+  };
+}
+
+// ── slot ──────────────────────────────────────────────────────────────
 
 export function MetricSlot({
   projectId,
   resourceId,
   kind,
-  range = "15m",
-  capabilities,
-  capabilitiesError,
 }: {
   projectId: string;
   resourceId: string;
   kind: MetricKind;
-  range?: MetricRange;
-  capabilities?: MetricsCapabilities;
-  capabilitiesError?: boolean;
 }) {
-  const sk = capabilities?.sourceKind ?? null;
-  const ceiling = sk ? (MetricsCeiling[sk] ?? []) : [];
-  const ceilingHas = !!sk && ceiling.includes(kind);
-  const detected = !!capabilities?.detected.includes(kind);
-  const enabled = !!sk && ceilingHas && detected;
+  switch (kind) {
+    case "cpu":
+      return <ResourceSlot projectId={projectId} resourceId={resourceId} kind="cpu" />;
+    case "memory":
+      return <ResourceSlot projectId={projectId} resourceId={resourceId} kind="memory" />;
+    case "requestRate":
+      return <RateSlot projectId={projectId} resourceId={resourceId} kind="requestRate" />;
+    case "errorRate":
+      return <RateSlot projectId={projectId} resourceId={resourceId} kind="errorRate" />;
+    case "latency":
+      return <LatencySlot projectId={projectId} resourceId={resourceId} />;
+  }
+}
 
-  const kindQuery = useQuery({
-    ...api.observability.metricsByKind(projectId, resourceId, kind, range),
-    enabled,
-    refetchInterval: POLL_INTERVAL_MS,
+// ── helpers ───────────────────────────────────────────────────────────
+
+// is404 distinguishes "kind not detected" from real failures. Checks
+// the code property directly rather than `instanceof ApiError` because
+// class identity can drift across hot-reload / module boundaries.
+function is404(err: unknown): boolean {
+  if (err instanceof ApiError) return err.code === "NOT_FOUND";
+  if (typeof err === "object" && err !== null && "code" in err) {
+    return (err as { code: unknown }).code === "NOT_FOUND";
+  }
+  return false;
+}
+
+function LoadingChrome({ kind }: { kind: MetricKind }) {
+  return (
+    <MetricSlotChrome
+      className="bg-muted/20 animate-pulse"
+      title={KIND_LABELS[kind]}
+      headline={<span className="opacity-0">—</span>}
+      body={null}
+    />
+  );
+}
+
+function NotDetectedChrome({ kind }: { kind: MetricKind }) {
+  return (
+    <MetricSlotChrome
+      title={KIND_LABELS[kind]}
+      headline={<span className="text-muted-foreground/60">—</span>}
+      body={
+        <div className="w-full border-b border-muted-foreground/20" />
+      }
+    />
+  );
+}
+
+function ErrorChrome({ kind, message }: { kind: MetricKind; message: string }) {
+  return (
+    <MetricSlotChrome
+      className="bg-destructive/10"
+      title={KIND_LABELS[kind]}
+      headline={
+        <span className="text-xs font-normal font-sans text-destructive line-clamp-1">
+          {message}
+        </span>
+      }
+      body={null}
+    />
+  );
+}
+
+// ── ResourceSlot: cpu + memory ────────────────────────────────────────
+
+function ResourceSlot({
+  projectId,
+  resourceId,
+  kind,
+}: {
+  projectId: string;
+  resourceId: string;
+  kind: "cpu" | "memory";
+}) {
+  const q = useQuery({
+    ...(kind === "cpu"
+      ? api.observability.cpuMetrics(projectId, resourceId)
+      : api.observability.memoryMetrics(projectId, resourceId)),
   });
-
-  if (capabilitiesError) {
-    return <DisabledPanel cause="unreachable" kind={kind} />;
+  if (q.isLoading) return <LoadingChrome kind={kind} />;
+  if (q.error) {
+    if (is404(q.error)) return <NotDetectedChrome kind={kind} />;
+    return <ErrorChrome kind={kind} message="Query failed." />;
   }
-  if (!capabilities?.sourceKind) {
-    return <DisabledPanel cause="none" kind={kind} />;
-  }
-  if (!ceilingHas) {
-    return (
-      <DisabledPanel
-        cause="ceiling"
-        kind={kind}
-        sourceKind={capabilities.sourceKind}
-      />
-    );
-  }
-  if (!detected) {
-    return <EmptyDataPanel cause="service-not-instrumented" kind={kind} />;
-  }
-  if (kindQuery.isLoading) {
-    return (
-      <MetricSlotChrome
-        className="bg-muted/20 animate-pulse"
-        title={KIND_LABELS[kind]}
-        headline={<span className="opacity-0">—</span>}
-        body={null}
-      />
-    );
-  }
-  if (kindQuery.error) {
-    return (
-      <MetricSlotChrome
-        className="bg-destructive/10"
-        title={KIND_LABELS[kind]}
-        headline={
-          <span className="text-xs font-normal font-sans text-destructive line-clamp-1">
-            Query failed.
-          </span>
-        }
-        body={null}
-      />
-    );
-  }
-  const series = kindQuery.data;
-  if (!series || pointsLen(series) === 0) {
-    return <EmptyDataPanel cause="no-data-in-range" kind={kind} />;
-  }
-  return renderLive(kind, series);
+  return <ResourceChart kind={kind} data={q.data!} />;
 }
 
-function pointsLen(series: MetricSeries): number {
-  return series.points.length;
-}
+function ResourceChart({
+  kind,
+  data,
+}: {
+  kind: "cpu" | "memory";
+  data: ResourceMetrics;
+}) {
+  const baseFormatter = kind === "cpu" ? formatCores : formatBytes;
 
-function renderLive(kind: MetricKind, series: MetricSeries) {
-  if (series.kind === "latency") {
-    // Backend sends seconds; auto-scale headline based on p95.
-    return (
-      <LatencySparkline
-        data={series.points as unknown as Record<string, unknown>[]}
-        keys={[
-          { dataKey: "p99", label: "P99" },
-          { dataKey: "p95", label: "P95" },
-          { dataKey: "p50", label: "P50" },
-        ]}
-        unit="s"
-        formatHeadline={formatSeconds}
-      />
-    );
+  // Pick the latest limit seen across all series (they all share it).
+  let limit = 0;
+  for (const s of data.series) {
+    for (const p of s.points) {
+      if (p.limit && p.limit > limit) limit = p.limit;
+    }
   }
-  const k = kind as Exclude<MetricKind, "latency">;
-  const limit =
-    series.kind === "cpu" || series.kind === "memory" ? series.limit : undefined;
-  const byPod =
-    series.kind === "cpu" || series.kind === "memory" ? series.byPod : undefined;
-  const baseFormatter = KIND_FORMATTERS[k];
+
   const formatter =
-    limit && limit > 0
+    limit > 0
       ? (v: number) => formatPercentOfLimit(v, limit, baseFormatter)
       : baseFormatter;
-  const tooltipExtra =
-    byPod && byPod.length > 0
-      ? (time: string) => <PodBreakdown byPod={byPod} time={time} format={baseFormatter} />
-      : undefined;
 
-  if (byPod && byPod.length > 0) {
+  // Convert ResourcePoint[] → sparkline rows ({time: ISO, value: number}).
+  const seriesForChart = data.series.map((s) => ({
+    key: s.id ?? "default",
+    label: s.id ?? "—",
+    points: s.points.map((p: ResourcePoint) => ({
+      time: new Date(p.timestamp).toISOString(),
+      value: p.value,
+    })),
+  }));
+
+  if (seriesForChart.length === 0 || seriesForChart.every((s) => s.points.length === 0)) {
+    return <NotDetectedChrome kind={kind} />;
+  }
+
+  // Single series → simple sparkline. Multiple → per-pod multi-line.
+  if (seriesForChart.length === 1) {
     return (
-      <MultiSparkline
+      <Sparkline
         title={KIND_LABELS[kind]}
-        series={byPod.map((p) => ({
-          key: p.pod,
-          label: p.pod,
-          points: p.points,
-        }))}
+        data={seriesForChart[0]!.points as unknown as Record<string, unknown>[]}
+        dataKey="value"
+        unit=""
         formatHeadline={formatter}
-        tooltipExtra={tooltipExtra}
       />
     );
   }
 
+  const tooltipExtra = (time: string) => (
+    <PodBreakdown
+      byPod={seriesForChart.map((s) => ({ pod: s.label, points: s.points }))}
+      time={time}
+      format={baseFormatter}
+    />
+  );
+
   return (
-    <Sparkline
+    <MultiSparkline
       title={KIND_LABELS[kind]}
-      data={series.points as unknown as Record<string, unknown>[]}
-      dataKey="value"
-      unit=""
+      series={seriesForChart}
       formatHeadline={formatter}
       tooltipExtra={tooltipExtra}
     />
@@ -225,15 +259,14 @@ function renderLive(kind: MetricKind, series: MetricSeries) {
 }
 
 // PodBreakdown lists each pod's value at the hovered timestamp. Falls
-// back to the nearest sample within the pod's timeline (chart cursor
-// may land between scrape ticks). Pods with no data near the cursor
-// time are skipped.
+// back to the nearest sample within 60s drift (cursor may land between
+// scrape ticks). Pods with no nearby data are skipped.
 function PodBreakdown({
   byPod,
   time,
   format,
 }: {
-  byPod: Array<{ pod: string; points: Array<{ time: string; value: number }> }>;
+  byPod: { pod: string; points: { time: string; value: number }[] }[];
   time: string;
   format: (v: number) => { value: string; unit: string };
 }) {
@@ -264,14 +297,12 @@ function PodBreakdown({
 }
 
 function nearestPoint(
-  points: Array<{ time: string; value: number }>,
+  points: { time: string; value: number }[],
   targetMs: number,
 ): { time: string; value: number } | null {
   if (points.length === 0) return null;
   let best = points[0]!;
   let bestDiff = Math.abs(new Date(best.time).getTime() - targetMs);
-  // Tolerate up to one step-interval drift. Beyond that the pod isn't
-  // really "at" this cursor time — skip.
   const maxDriftMs = 60 * 1000;
   for (const p of points) {
     const diff = Math.abs(new Date(p.time).getTime() - targetMs);
@@ -284,19 +315,94 @@ function nearestPoint(
   return best;
 }
 
-// formatPercentOfLimit returns "<percent>%" as the primary value and the
-// raw measurement (via baseFormatter) as the trailing unit, e.g.
-// "47%  ·  473m". The Sparkline renders `value` big and `unit` small so
-// percent is the headline.
-function formatPercentOfLimit(
-  v: number,
-  limit: number,
-  baseFormatter: (v: number) => { value: string; unit: string },
-): { value: string; unit: string } {
-  const pct = (v / limit) * 100;
-  const raw = baseFormatter(v);
-  return {
-    value: `${fmtTrim(pct)}%`,
-    unit: ` ${raw.value}${raw.unit}`,
-  };
+// ── RateSlot: requestRate + errorRate ─────────────────────────────────
+
+function RateSlot({
+  projectId,
+  resourceId,
+  kind,
+}: {
+  projectId: string;
+  resourceId: string;
+  kind: "requestRate" | "errorRate";
+}) {
+  const q = useQuery({
+    ...(kind === "requestRate"
+      ? api.observability.requestRateMetrics(projectId, resourceId)
+      : api.observability.errorRateMetrics(projectId, resourceId)),
+  });
+  if (q.isLoading) return <LoadingChrome kind={kind} />;
+  if (q.error) {
+    if (is404(q.error)) return <NotDetectedChrome kind={kind} />;
+    return <ErrorChrome kind={kind} message="Query failed." />;
+  }
+  return <RateChart kind={kind} data={q.data!} />;
+}
+
+function RateChart({
+  kind,
+  data,
+}: {
+  kind: "requestRate" | "errorRate";
+  data: RateMetrics;
+}) {
+  const series = data.series[0];
+  if (!series || series.points.length === 0)
+    return <NotDetectedChrome kind={kind} />;
+  const rows = series.points.map((p: RatePoint) => ({
+    time: new Date(p.timestamp).toISOString(),
+    value: p.value,
+  }));
+  const formatter = kind === "requestRate" ? formatRate : formatFraction;
+  return (
+    <Sparkline
+      title={KIND_LABELS[kind]}
+      data={rows as unknown as Record<string, unknown>[]}
+      dataKey="value"
+      unit=""
+      formatHeadline={formatter}
+    />
+  );
+}
+
+// ── LatencySlot ───────────────────────────────────────────────────────
+
+function LatencySlot({
+  projectId,
+  resourceId,
+}: {
+  projectId: string;
+  resourceId: string;
+}) {
+  const q = useQuery(api.observability.latencyMetrics(projectId, resourceId));
+  if (q.isLoading) return <LoadingChrome kind="latency" />;
+  if (q.error) {
+    if (is404(q.error)) return <NotDetectedChrome kind="latency" />;
+    return <ErrorChrome kind="latency" message="Query failed." />;
+  }
+  return <LatencyChart data={q.data!} />;
+}
+
+function LatencyChart({ data }: { data: LatencyMetrics }) {
+  const series = data.series[0];
+  if (!series || series.points.length === 0)
+    return <NotDetectedChrome kind="latency" />;
+  const rows = series.points.map((p: LatencyPoint) => ({
+    time: new Date(p.timestamp).toISOString(),
+    p50: p.p50,
+    p95: p.p95,
+    p99: p.p99,
+  }));
+  return (
+    <LatencySparkline
+      data={rows as unknown as Record<string, unknown>[]}
+      keys={[
+        { dataKey: "p99", label: "P99" },
+        { dataKey: "p95", label: "P95" },
+        { dataKey: "p50", label: "P50" },
+      ]}
+      unit="s"
+      formatHeadline={formatSeconds}
+    />
+  );
 }

@@ -48,8 +48,8 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 		return
 	}
 
-	labels := stdLabels(p, r.Name)
-	selector := map[string]string{LabelProject: p.Slug, LabelResource: r.Name}
+	labels := stdLabels(p, r.Slug)
+	selector := map[string]string{LabelProject: p.Slug, LabelResource: r.Slug}
 
 	// Per-resource env Secret (only when there's at least one secret value).
 	var secretApplied bool
@@ -67,7 +67,7 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 				WithName(v.Key).
 				WithValueFrom(corev1ac.EnvVarSource().
 					WithSecretKeyRef(corev1ac.SecretKeySelector().
-						WithName(appSecretName(r.Name)).
+						WithName(appSecretName(r.Slug)).
 						WithKey(v.Key))))
 		} else {
 			envEntries = append(envEntries, corev1ac.EnvVar().
@@ -79,7 +79,7 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 
 	// Container.
 	container := corev1ac.Container().
-		WithName(r.Name).
+		WithName(r.Slug).
 		WithImage(spec.Source.Image).
 		WithEnv(envEntries...)
 
@@ -130,7 +130,7 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 			vols = append(vols, corev1ac.Volume().
 				WithName(diskVolumeName(d.Name)).
 				WithPersistentVolumeClaim(corev1ac.PersistentVolumeClaimVolumeSource().
-					WithClaimName(pvcName(r.Name, d.Name))))
+					WithClaimName(pvcName(r.Slug, d.Name))))
 		}
 		podSpec.WithVolumes(vols...)
 	}
@@ -141,7 +141,7 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 		WithSpec(podSpec)
 
 	// Deployment.
-	dep := appsv1ac.Deployment(r.Name, "").
+	dep := appsv1ac.Deployment(r.Slug, "").
 		WithLabels(labels).
 		WithSpec(appsv1ac.DeploymentSpec().
 			WithReplicas(spec.Instances).
@@ -152,7 +152,7 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 
 	// Service (only when port != nil).
 	if spec.Port != nil {
-		svc := corev1ac.Service(r.Name, "").
+		svc := corev1ac.Service(r.Slug, "").
 			WithLabels(labels).
 			WithSpec(corev1ac.ServiceSpec().
 				WithType(corev1.ServiceTypeClusterIP).
@@ -168,8 +168,8 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 	// PVCs (one per disk).
 	for _, d := range spec.Disks {
 		size := resource.MustParse(fmt.Sprintf("%dMi", d.Size))
-		pvc := corev1ac.PersistentVolumeClaim(pvcName(r.Name, d.Name), "").
-			WithLabels(stdLabels(p, r.Name)).
+		pvc := corev1ac.PersistentVolumeClaim(pvcName(r.Slug, d.Name), "").
+			WithLabels(stdLabels(p, r.Slug)).
 			WithSpec(corev1ac.PersistentVolumeClaimSpec().
 				WithAccessModes(corev1.ReadWriteOnce).
 				WithResources(corev1ac.VolumeResourceRequirements().
@@ -193,8 +193,8 @@ func buildAppSecret(p deployment.Project, r deployment.Resource, rvars []resolve
 			data[v.Key] = v.Value
 		}
 	}
-	return corev1ac.Secret(appSecretName(r.Name), "").
-		WithLabels(stdLabels(p, r.Name)).
+	return corev1ac.Secret(appSecretName(r.Slug), "").
+		WithLabels(stdLabels(p, r.Slug)).
 		WithType(corev1.SecretTypeOpaque).
 		WithStringData(data)
 }

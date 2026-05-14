@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -184,65 +185,8 @@ func logsUnreachable503(kind string) openapi.GetResourceLogsCapabilitiesResponse
 	}}
 }
 
-func (h *Handler) GetResourceMetricsCapabilities(ctx context.Context, _ openapi.GetResourceMetricsCapabilitiesRequestObject) (openapi.GetResourceMetricsCapabilitiesResponseObject, error) {
-	mc, err := h.svc.res.ResolveMetrics(ctx)
-	if err != nil {
-		return nil, apierr.Internal(err)
-	}
-	if mc == nil {
-		return openapi.GetResourceMetricsCapabilities200JSONResponse{
-			SourceKind: nil,
-			Detected:   []openapi.MetricKind{},
-		}, nil
-	}
-
-	detected := []openapi.MetricKind{}
-	probeNames := []string{}
-	probeKinds := map[openapi.MetricKind][]string{}
-
-	for _, kind := range mc.Supports() {
-		names := mc.ProbeMetricNames(kind)
-		if names == nil {
-			// Statically detected (metrics-server) — always-on when reachable.
-			detected = append(detected, kind)
-			continue
-		}
-		probeKinds[kind] = names
-		probeNames = append(probeNames, names...)
-	}
-
-	if len(probeNames) > 0 {
-		prober, ok := mc.(source.Prober)
-		if !ok {
-			return nil, apierr.Internal(fmt.Errorf("source %q reports probe names but is not a Prober", mc.Kind()))
-		}
-		hits, err := prober.Probe(ctx, dedup(probeNames))
-		if err != nil {
-			// Auth fail / unreachable — surface as 503 + body w/ source kind
-			// so the UI can render the "unreachable" disabled panel state.
-			return unreachable503(mc.Kind()), nil
-		}
-		for kind, names := range probeKinds {
-			for _, n := range names {
-				if hits[n] {
-					detected = append(detected, kind)
-					break
-				}
-			}
-		}
-	}
-
-	sk := toAPISourceKind(mc.Kind())
-	return openapi.GetResourceMetricsCapabilities200JSONResponse{
-		SourceKind: &sk,
-		Detected:   detected,
-	}, nil
-}
-
 // toAPISourceKind translates a Go-internal kind constant (snake_case,
 // matches the DB enum) to the camelCase value the OpenAPI spec emits.
-// Wire format must use camelCase so the web client's MetricsCeiling map
-// resolves correctly.
 func toAPISourceKind(internal string) openapi.SourceKind {
 	switch internal {
 	case "metrics_server":
@@ -253,38 +197,188 @@ func toAPISourceKind(internal string) openapi.SourceKind {
 	return openapi.SourceKind(internal)
 }
 
-func (h *Handler) GetResourceMetricSeries(ctx context.Context, req openapi.GetResourceMetricSeriesRequestObject) (openapi.GetResourceMetricSeriesResponseObject, error) {
+// metricsContext bundles the prep work shared across the five metric
+// handlers: resolve the source, build the selector, parse from/to.
+// Returns 404 when the kind isn't supported or isn't detected for this
+// resource, 503 when the source can't be reached.
+func (h *Handler) metricsContext(ctx context.Context, resourceID openapi_types.UUID, kind source.MetricKind, from, to *int) (source.MetricsCapable, source.ResourceSelector, source.TimeRange, error) {
 	mc, err := h.svc.res.ResolveMetrics(ctx)
 	if err != nil {
-		return nil, apierr.Internal(err)
+		return nil, source.ResourceSelector{}, source.TimeRange{}, apierr.Internal(err)
 	}
 	if mc == nil {
-		return nil, apierr.NotFound("no metrics source configured")
+		return nil, source.ResourceSelector{}, source.TimeRange{}, apierr.NotFound("no metrics source configured")
 	}
-	if !supports(mc, req.Kind) {
-		return nil, apierr.NotFound(fmt.Sprintf("source %q does not support kind %q", mc.Kind(), req.Kind))
+	if !supports(mc, kind) {
+		return nil, source.ResourceSelector{}, source.TimeRange{}, apierr.NotFound(fmt.Sprintf("source %q does not support kind %q", mc.Kind(), kind))
 	}
 
-	sel, err := h.svc.buildSelector(ctx, uuid.UUID(req.ResourceId))
+	sel, err := h.svc.buildSelector(ctx, uuid.UUID(resourceID))
+	if err != nil {
+		return nil, source.ResourceSelector{}, source.TimeRange{}, err
+	}
+
+	// No probe gate — sources return empty series when data is absent.
+	// The UI renders that as a "no data" state. Avoids 404 for the common
+	// "metric not yet collected" case.
+
+	r := parseTimeRange(from, to)
+	return mc, sel, r, nil
+}
+
+// parseTimeRange normalizes the optional from/to params into a TimeRange.
+// Defaults: to = now, from = now - 15m. Both clamped to a 7-day window
+// upper bound to keep one request from running a 30-day query.
+func parseTimeRange(from, to *int) source.TimeRange {
+	now := time.Now().UTC()
+	end := now
+	if to != nil {
+		end = time.UnixMilli(int64(*to)).UTC()
+	}
+	start := end.Add(-15 * time.Minute)
+	if from != nil {
+		start = time.UnixMilli(int64(*from)).UTC()
+	}
+	if end.Sub(start) > 7*24*time.Hour {
+		start = end.Add(-7 * 24 * time.Hour)
+	}
+	if !start.Before(end) {
+		// Caller passed from >= to; collapse to a zero-duration window. The
+		// source will return an empty series; the UI renders nothing.
+		start = end
+	}
+	return source.TimeRange{From: start, To: end}
+}
+
+// GetResourceCpuMetrics serves /metrics/cpu — per-pod CPU usage in cores.
+func (h *Handler) GetResourceCpuMetrics(ctx context.Context, req openapi.GetResourceCpuMetricsRequestObject) (openapi.GetResourceCpuMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindCpu, req.Params.From, req.Params.To)
 	if err != nil {
 		return nil, err
 	}
-
-	rangeStr := ""
-	if req.Params.Range != nil {
-		rangeStr = string(*req.Params.Range)
-	}
-	r, err := source.ParseRange(rangeStr)
-	if err != nil {
-		return nil, apierr.BadRequest(err.Error())
-	}
-
-	series, err := mc.Query(ctx, req.Kind, sel, r)
+	series, err := mc.QueryResource(ctx, source.KindCpu, sel, r)
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
+	return openapi.GetResourceCpuMetrics200JSONResponse(toResourceMetrics(series)), nil
+}
 
-	return toMetricSeriesResponse(series)
+// GetResourceMemoryMetrics serves /metrics/memory — per-pod memory in bytes.
+func (h *Handler) GetResourceMemoryMetrics(ctx context.Context, req openapi.GetResourceMemoryMetricsRequestObject) (openapi.GetResourceMemoryMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindMemory, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindMemory, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceMemoryMetrics200JSONResponse(toResourceMetrics(series)), nil
+}
+
+// GetResourceRequestRateMetrics serves /metrics/requestRate — req/sec.
+func (h *Handler) GetResourceRequestRateMetrics(ctx context.Context, req openapi.GetResourceRequestRateMetricsRequestObject) (openapi.GetResourceRequestRateMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindRequestRate, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindRequestRate, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceRequestRateMetrics200JSONResponse(toRateMetrics(s)), nil
+}
+
+// GetResourceErrorRateMetrics serves /metrics/errorRate — fraction 0..1.
+func (h *Handler) GetResourceErrorRateMetrics(ctx context.Context, req openapi.GetResourceErrorRateMetricsRequestObject) (openapi.GetResourceErrorRateMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindErrorRate, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindErrorRate, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceErrorRateMetrics200JSONResponse(toRateMetrics(s)), nil
+}
+
+// GetResourceLatencyMetrics serves /metrics/latency — p50/p95/p99 in seconds.
+func (h *Handler) GetResourceLatencyMetrics(ctx context.Context, req openapi.GetResourceLatencyMetricsRequestObject) (openapi.GetResourceLatencyMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindLatency, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryLatency(ctx, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceLatencyMetrics200JSONResponse(toLatencyMetrics(s)), nil
+}
+
+// toResourceMetrics converts internal ResourceSeries slices to the
+// generated wire shape. Empty/zero Limit/Request are omitted from the
+// payload.
+func toResourceMetrics(in []source.ResourceSeries) openapi.ResourceMetrics {
+	out := openapi.ResourceMetrics{Series: make([]openapi.ResourceSeries, len(in))}
+	for i, s := range in {
+		points := make([]openapi.ResourcePoint, len(s.Points))
+		for j, p := range s.Points {
+			rp := openapi.ResourcePoint{
+				Timestamp: int(p.Time.UnixMilli()),
+				Value:     float32(p.Value),
+			}
+			if p.Limit > 0 {
+				v := float32(p.Limit)
+				rp.Limit = &v
+			}
+			if p.Request > 0 {
+				v := float32(p.Request)
+				rp.Request = &v
+			}
+			points[j] = rp
+		}
+		entry := openapi.ResourceSeries{Points: points}
+		if s.ID != "" {
+			id := s.ID
+			entry.Id = &id
+		}
+		out.Series[i] = entry
+	}
+	return out
+}
+
+func toRateMetrics(in source.RateSeries) openapi.RateMetrics {
+	points := make([]openapi.RatePoint, len(in.Points))
+	for j, p := range in.Points {
+		points[j] = openapi.RatePoint{
+			Timestamp: int(p.Time.UnixMilli()),
+			Value:     float32(p.Value),
+		}
+	}
+	entry := openapi.RateSeries{Points: points}
+	if in.ID != "" {
+		id := in.ID
+		entry.Id = &id
+	}
+	return openapi.RateMetrics{Series: []openapi.RateSeries{entry}}
+}
+
+func toLatencyMetrics(in source.LatencySeries) openapi.LatencyMetrics {
+	points := make([]openapi.LatencyPoint, len(in.Points))
+	for j, p := range in.Points {
+		points[j] = openapi.LatencyPoint{
+			Timestamp: int(p.Time.UnixMilli()),
+			P50:       float32(p.P50),
+			P95:       float32(p.P95),
+			P99:       float32(p.P99),
+		}
+	}
+	entry := openapi.LatencySeries{Points: points}
+	if in.ID != "" {
+		id := in.ID
+		entry.Id = &id
+	}
+	return openapi.LatencyMetrics{Series: []openapi.LatencySeries{entry}}
 }
 
 func (s *Service) buildSelector(ctx context.Context, resourceID uuid.UUID) (source.ResourceSelector, error) {
@@ -301,11 +395,11 @@ func (s *Service) buildSelector(ctx context.Context, resourceID uuid.UUID) (sour
 	}
 	return source.ResourceSelector{
 		Namespace:    k8s.NamespaceFor(proj.Slug, environment.DefaultSlug),
-		ResourceName: row.Name,
+		ResourceName: row.Slug,
 	}, nil
 }
 
-func supports(mc source.MetricsCapable, k openapi.MetricKind) bool {
+func supports(mc source.MetricsCapable, k source.MetricKind) bool {
 	for _, supported := range mc.Supports() {
 		if supported == k {
 			return true
@@ -326,123 +420,3 @@ func dedup(in []string) []string {
 	return out
 }
 
-// toMetricSeriesResponse converts the internal Series to one of the five
-// generated MetricSeriesN union variants. Latency populates the latency
-// variant; everything else uses the matching RangePoint variant.
-func toMetricSeriesResponse(s source.Series) (openapi.GetResourceMetricSeries200JSONResponse, error) {
-	var ms openapi.MetricSeries
-	r := openapi.MetricRange(s.Range)
-	switch s.Kind {
-	case openapi.MetricKindCpu:
-		out := openapi.MetricSeries0{
-			Kind:   openapi.MetricSeries0KindCpu,
-			Range:  r,
-			Points: source.ToOpenAPIRangePoints(s.Points),
-		}
-		if s.Limit > 0 {
-			l := float32(s.Limit)
-			out.Limit = &l
-		}
-		if bp := byPodCPU(s.ByPod); bp != nil {
-			out.ByPod = bp
-		}
-		if err := ms.FromMetricSeries0(out); err != nil {
-			return openapi.GetResourceMetricSeries200JSONResponse{}, err
-		}
-	case openapi.MetricKindMemory:
-		out := openapi.MetricSeries1{
-			Kind:   "memory",
-			Range:  r,
-			Points: source.ToOpenAPIRangePoints(s.Points),
-		}
-		if s.Limit > 0 {
-			l := float32(s.Limit)
-			out.Limit = &l
-		}
-		if bp := byPodMem(s.ByPod); bp != nil {
-			out.ByPod = bp
-		}
-		if err := ms.FromMetricSeries1(out); err != nil {
-			return openapi.GetResourceMetricSeries200JSONResponse{}, err
-		}
-	case openapi.MetricKindReqRate:
-		if err := ms.FromMetricSeries2(openapi.MetricSeries2{
-			Kind:   "reqRate",
-			Range:  r,
-			Points: source.ToOpenAPIRangePoints(s.Points),
-		}); err != nil {
-			return openapi.GetResourceMetricSeries200JSONResponse{}, err
-		}
-	case openapi.MetricKindErrRate:
-		if err := ms.FromMetricSeries3(openapi.MetricSeries3{
-			Kind:   "errRate",
-			Range:  r,
-			Points: source.ToOpenAPIRangePoints(s.Points),
-		}); err != nil {
-			return openapi.GetResourceMetricSeries200JSONResponse{}, err
-		}
-	case openapi.MetricKindLatency:
-		if err := ms.FromMetricSeries4(openapi.MetricSeries4{
-			Kind:   "latency",
-			Range:  r,
-			Points: source.ToOpenAPILatencyPoints(s.Latency),
-		}); err != nil {
-			return openapi.GetResourceMetricSeries200JSONResponse{}, err
-		}
-	default:
-		return openapi.GetResourceMetricSeries200JSONResponse{}, fmt.Errorf("unsupported metric kind %q", s.Kind)
-	}
-	return openapi.GetResourceMetricSeries200JSONResponse(ms), nil
-}
-
-// byPodCPU / byPodMem convert the internal per-pod breakdown into the
-// anonymous struct shape generated by the OpenAPI codegen. Returns nil
-// when the source didn't produce a breakdown (metrics-server), so the
-// JSON omits the field entirely.
-func byPodCPU(in []source.PodSeries) *[]struct {
-	Pod    string              `json:"pod"`
-	Points []openapi.RangePoint `json:"points"`
-} {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]struct {
-		Pod    string              `json:"pod"`
-		Points []openapi.RangePoint `json:"points"`
-	}, len(in))
-	for i, ps := range in {
-		out[i].Pod = ps.Pod
-		out[i].Points = source.ToOpenAPIRangePoints(ps.Points)
-	}
-	return &out
-}
-
-func byPodMem(in []source.PodSeries) *[]struct {
-	Pod    string              `json:"pod"`
-	Points []openapi.RangePoint `json:"points"`
-} {
-	return byPodCPU(in)
-}
-
-// unreachable503 is a hand-built 503 response that satisfies the
-// capabilities response interface. The JSON body carries sourceKind so
-// the web client can render the "unreachable" disabled-state correctly.
-type unreachable503Body struct {
-	SourceKind openapi.SourceKind `json:"sourceKind"`
-	Error      string             `json:"error"`
-}
-
-type unreachable503Resp struct{ body unreachable503Body }
-
-func (r unreachable503Resp) VisitGetResourceMetricsCapabilitiesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	return json.NewEncoder(w).Encode(r.body)
-}
-
-func unreachable503(kind string) openapi.GetResourceMetricsCapabilitiesResponseObject {
-	return unreachable503Resp{body: unreachable503Body{
-		SourceKind: toAPISourceKind(kind),
-		Error:      "unreachable",
-	}}
-}

@@ -380,18 +380,18 @@ func (s *Service) DeleteResourceEnv(ctx context.Context, projectID, resourceID u
 // Internal helpers
 // =============================================================================
 
-func (s *Service) usedBy(ctx context.Context, variableID pgtype.UUID) ([]openapi.ResourceRef, error) {
+func (s *Service) usedBy(ctx context.Context, variableID pgtype.UUID) ([]openapi.VariableUsage, error) {
 	imports, err := s.db.Q.ListImportsOfVariable(ctx, variableID)
 	if err != nil {
 		return nil, apierr.Internal(err)
 	}
-	out := make([]openapi.ResourceRef, 0, len(imports))
+	out := make([]openapi.VariableUsage, 0, len(imports))
 	for _, imp := range imports {
 		res, err := s.db.Q.GetResource(ctx, imp.ResourceID)
 		if err != nil {
 			continue
 		}
-		out = append(out, resourceRefUsedBy(res))
+		out = append(out, variableUsage(res, imp.Key))
 	}
 	return out, nil
 }

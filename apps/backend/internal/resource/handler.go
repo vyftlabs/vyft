@@ -66,6 +66,7 @@ func resourceToWire(rwr ResourceWithRoutes) (openapi.Resource, error) {
 		Id:        openapi_types.UUID(uuid.UUID(r.ID.Bytes)),
 		ProjectId: openapi_types.UUID(uuid.UUID(r.ProjectID.Bytes)),
 		Name:      r.Name,
+		Slug:      r.Slug,
 		PositionX: float32(r.PositionX),
 		PositionY: float32(r.PositionY),
 		Config:    cfg,

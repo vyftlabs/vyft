@@ -27,7 +27,7 @@ func buildRoute(m *Manifests, p deployment.Project, owner deployment.Resource, r
 				WithPathType(pathType).
 				WithBackend(netv1ac.IngressBackend().
 					WithService(netv1ac.IngressServiceBackend().
-						WithName(owner.Name).
+						WithName(owner.Slug).
 						WithPort(netv1ac.ServiceBackendPort().
 							WithNumber(r.Port))))))
 
@@ -35,12 +35,12 @@ func buildRoute(m *Manifests, p deployment.Project, owner deployment.Resource, r
 	if r.TLS {
 		spec.WithTLS(netv1ac.IngressTLS().
 			WithHosts(r.Domain).
-			WithSecretName(owner.Name + "-tls"))
+			WithSecretName(owner.Slug + "-tls"))
 	}
 
-	name := routeIngressName(owner.Name, r.Domain, r.Path)
+	name := routeIngressName(owner.Slug, r.Domain, r.Path)
 	ing := netv1ac.Ingress(name, "").
-		WithLabels(stdLabels(p, owner.Name)).
+		WithLabels(stdLabels(p, owner.Slug)).
 		WithSpec(spec)
 	m.Ingresses = append(m.Ingresses, ing)
 }

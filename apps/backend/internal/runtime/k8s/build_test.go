@@ -40,7 +40,7 @@ func TestBuild_AppGolden(t *testing.T) {
 	}
 	state := deployment.State{
 		Resources: []deployment.Resource{
-			{ID: resID, Name: "api", Kind: "app", Spec: specJSON},
+			{ID: resID, Name: "api", Slug: "api", Kind: "app", Spec: specJSON},
 		},
 		Variables: []deployment.Variable{
 			{ID: uuid.MustParse("00000000-0000-0000-0000-00000000aaa1"),
@@ -69,7 +69,7 @@ func TestBuild_RouteGolden(t *testing.T) {
 	p := deployment.Project{Slug: "demo", Name: "Demo"}
 	state := deployment.State{
 		Resources: []deployment.Resource{
-			{ID: resID, Name: "api", Kind: "app", Spec: specJSON},
+			{ID: resID, Name: "api", Slug: "api", Kind: "app", Spec: specJSON},
 		},
 		Routes: []deployment.Route{
 			{ID: uuid.MustParse("00000000-0000-0000-0000-00000000bbb1"),
@@ -97,7 +97,7 @@ func TestBuild_RegistryGolden(t *testing.T) {
 	p := deployment.Project{Slug: "demo", Name: "Demo"}
 	state := deployment.State{
 		Resources: []deployment.Resource{
-			{ID: resID, Name: "api", Kind: "app", Spec: specJSON},
+			{ID: resID, Name: "api", Slug: "api", Kind: "app", Spec: specJSON},
 		},
 		Registries: []deployment.Registry{
 			{ID: uuid.MustParse("00000000-0000-0000-0000-00000000ccc1"),

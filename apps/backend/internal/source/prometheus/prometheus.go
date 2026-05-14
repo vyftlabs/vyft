@@ -13,7 +13,6 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 
-	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source"
 )
 
@@ -36,115 +35,157 @@ func New(id uuid.UUID, name, url string, auth Auth) (*Prometheus, error) {
 func (p *Prometheus) ID() uuid.UUID { return p.id }
 func (p *Prometheus) Kind() string  { return Kind }
 
-func (p *Prometheus) Supports() []openapi.MetricKind {
-	return []openapi.MetricKind{
-		openapi.MetricKindCpu,
-		openapi.MetricKindMemory,
-		openapi.MetricKindReqRate,
-		openapi.MetricKindErrRate,
-		openapi.MetricKindLatency,
+func (p *Prometheus) Supports() []source.MetricKind {
+	return []source.MetricKind{
+		source.KindCpu,
+		source.KindMemory,
+		source.KindRequestRate,
+		source.KindErrorRate,
+		source.KindLatency,
 	}
 }
 
 // ProbeMetricNames returns the underlying metric series names whose
 // existence implies the kind is detected. RED falls back to legacy
 // `http_requests_total` when semconv isn't deployed.
-func (p *Prometheus) ProbeMetricNames(kind openapi.MetricKind) []string {
+func (p *Prometheus) ProbeMetricNames(kind source.MetricKind) []string {
 	switch kind {
-	case openapi.MetricKindCpu:
+	case source.KindCpu:
 		return []string{"container_cpu_usage_seconds_total"}
-	case openapi.MetricKindMemory:
+	case source.KindMemory:
 		return []string{"container_memory_working_set_bytes"}
-	case openapi.MetricKindReqRate, openapi.MetricKindErrRate:
+	case source.KindRequestRate, source.KindErrorRate:
 		return []string{
 			"http_server_request_duration_seconds_count",
 			"http_requests_total",
 		}
-	case openapi.MetricKindLatency:
+	case source.KindLatency:
 		return []string{"http_server_request_duration_seconds_bucket"}
 	}
 	return nil
 }
 
-func (p *Prometheus) Query(ctx context.Context, kind openapi.MetricKind, sel source.ResourceSelector, r source.Range) (source.Series, error) {
+// QueryResource serves cpu + memory. Returns one ResourceSeries per pod
+// with per-point limit (max across pods, identical for every pod since
+// the limit is a workload-level cap). Values in canonical units (cores
+// or bytes) — no scaling.
+func (p *Prometheus) QueryResource(ctx context.Context, kind source.MetricKind, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
 	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
-	// Truncate end to the step boundary so independent per-kind queries
-	// that fire within the same step interval return the same wall-clock
-	// timestamps. Without this, each kind's start/end drifts by
-	// milliseconds and the chart's X-axis values don't line up across
-	// panels.
-	step := r.Step()
-	end := time.Now().UTC().Truncate(step)
-	rng := promv1.Range{Start: end.Add(-r.Duration()), End: end, Step: step}
+	rng := promRange(r)
 
+	var perPodTmpl, limitTmpl string
 	switch kind {
-	case openapi.MetricKindCpu:
-		pts, byPod, err := p.queryWithBreakdown(ctx, expand(cpuTmpl, vars), rng)
-		if err != nil {
-			return source.Series{}, err
-		}
-		// PromQL rate() of container_cpu_usage_seconds_total yields cores
-		// (cpu-seconds / second). Wire format is millicores, matching
-		// metrics-server's MilliValue().
-		scalePoints(pts, 1000)
-		for i := range byPod {
-			scalePoints(byPod[i].Points, 1000)
-		}
-		stripResourcePrefix(byPod, sel.ResourceName)
-		limit, err := p.queryLimitInstant(ctx, expand(cpuLimitTmpl, vars))
-		if err == nil && limit > 0 {
-			limit *= 1000 // cores → millicores to match Points scale
-		}
-		return source.Series{Kind: kind, Range: r, Points: pts, ByPod: byPod, Limit: limit}, nil
-
-	case openapi.MetricKindMemory:
-		pts, byPod, err := p.queryWithBreakdown(ctx, expand(memoryTmpl, vars), rng)
-		if err != nil {
-			return source.Series{}, err
-		}
-		stripResourcePrefix(byPod, sel.ResourceName)
-		limit, _ := p.queryLimitInstant(ctx, expand(memoryLimitTmpl, vars))
-		// Pods without a memory limit get a node-capacity value from
-		// cAdvisor. Sanity threshold: 100 PiB. Anything above that is
-		// definitely "no real limit" — drop.
-		const memCap = float64(int64(1) << 60)
-		if limit >= memCap {
-			limit = 0
-		}
-		return source.Series{Kind: kind, Range: r, Points: pts, ByPod: byPod, Limit: limit}, nil
-
-	case openapi.MetricKindReqRate:
-		pts, err := p.queryWithFallback(ctx, expand(reqRateSemconv, vars), expand(reqRateLegacy, vars), rng)
-		if err != nil {
-			return source.Series{}, err
-		}
-		return source.Series{Kind: kind, Range: r, Points: pts}, nil
-
-	case openapi.MetricKindErrRate:
-		pts, err := p.queryWithFallback(ctx, expand(errRateSemconv, vars), expand(errRateLegacy, vars), rng)
-		if err != nil {
-			return source.Series{}, err
-		}
-		// Spec wants percent; PromQL returns 0-1 fraction.
-		for i := range pts {
-			pts[i].Value *= 100
-		}
-		return source.Series{Kind: kind, Range: r, Points: pts}, nil
-
-	case openapi.MetricKindLatency:
-		latency, err := p.queryLatency(ctx, vars, rng)
-		if err != nil {
-			return source.Series{}, err
-		}
-		return source.Series{Kind: kind, Range: r, Latency: latency}, nil
+	case source.KindCpu:
+		perPodTmpl, limitTmpl = cpuPerPodTmpl, cpuLimitTmpl
+	case source.KindMemory:
+		perPodTmpl, limitTmpl = memoryPerPodTmpl, memoryLimitTmpl
+	default:
+		return nil, fmt.Errorf("prometheus: not a resource kind: %q", kind)
 	}
 
-	return source.Series{}, fmt.Errorf("prometheus: unsupported kind %q", kind)
+	byPod, err := p.queryPerPod(ctx, expand(perPodTmpl, vars), rng)
+	if err != nil {
+		return nil, err
+	}
+	stripResourcePrefix(byPod, sel.ResourceName)
+
+	limit, _ := p.queryLimitInstant(ctx, expand(limitTmpl, vars))
+	if kind == source.KindMemory && limit >= memCap {
+		// cAdvisor leaks node capacity for pods without a real limit.
+		limit = 0
+	}
+
+	out := make([]source.ResourceSeries, len(byPod))
+	for i, ps := range byPod {
+		points := make([]source.ResourcePoint, len(ps.Points))
+		for j, p := range ps.Points {
+			points[j] = source.ResourcePoint{
+				Time:  p.Time,
+				Value: p.Value,
+				Limit: limit,
+			}
+		}
+		out[i] = source.ResourceSeries{ID: ps.Pod, Points: points}
+	}
+	return out, nil
 }
 
-// queryLimitInstant runs a one-shot instant query and sums the resulting
-// vector samples into a single scalar. Used for limit / capacity queries
-// where we only need a snapshot, not a series.
+// QueryRate serves requestRate + errorRate. Single aggregate series.
+// Values in canonical units: req/sec (requestRate) or fraction 0..1 (errorRate).
+func (p *Prometheus) QueryRate(ctx context.Context, kind source.MetricKind, sel source.ResourceSelector, r source.TimeRange) (source.RateSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+
+	var primary, fallback string
+	switch kind {
+	case source.KindRequestRate:
+		primary, fallback = reqRateSemconv, reqRateLegacy
+	case source.KindErrorRate:
+		primary, fallback = errRateSemconv, errRateLegacy
+	default:
+		return source.RateSeries{}, fmt.Errorf("prometheus: not a rate kind: %q", kind)
+	}
+
+	pts, err := p.queryWithFallback(ctx, expand(primary, vars), expand(fallback, vars), rng)
+	if err != nil {
+		return source.RateSeries{}, err
+	}
+	rate := make([]source.RatePoint, len(pts))
+	for i, p := range pts {
+		rate[i] = source.RatePoint{Time: p.Time, Value: p.Value}
+	}
+	return source.RateSeries{Points: rate}, nil
+}
+
+// QueryLatency runs three quantile queries in series and merges by
+// timestamp into LatencyPoints carrying p50/p95/p99.
+func (p *Prometheus) QueryLatency(ctx context.Context, sel source.ResourceSelector, r source.TimeRange) (source.LatencySeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+
+	p50, err := p.queryAggregated(ctx, expand(latencyQuantile(0.50), vars), rng)
+	if err != nil {
+		return source.LatencySeries{}, err
+	}
+	p95, err := p.queryAggregated(ctx, expand(latencyQuantile(0.95), vars), rng)
+	if err != nil {
+		return source.LatencySeries{}, err
+	}
+	p99, err := p.queryAggregated(ctx, expand(latencyQuantile(0.99), vars), rng)
+	if err != nil {
+		return source.LatencySeries{}, err
+	}
+	return source.LatencySeries{Points: mergeLatency(p50, p95, p99)}, nil
+}
+
+// --- helpers -----------------------------------------------------------
+
+// memCap is the sanity threshold for "this isn't a real memory limit,
+// it's node capacity leaked from cAdvisor".
+const memCap = float64(int64(1) << 60)
+
+// promRange builds a promv1.Range from a source.TimeRange. End is
+// truncated to the step boundary so independent per-kind queries return
+// the same wall-clock timestamps (x-axis alignment).
+func promRange(r source.TimeRange) promv1.Range {
+	step := r.Step()
+	end := r.To.UTC().Truncate(step)
+	start := r.From.UTC().Truncate(step)
+	return promv1.Range{Start: start, End: end, Step: step}
+}
+
+type queryPoint struct {
+	Time  time.Time
+	Value float64
+}
+
+type queryPodSeries struct {
+	Pod    string
+	Points []queryPoint
+}
+
+// queryLimitInstant runs an instant query whose PromQL already
+// aggregates to a single max-across-pods scalar.
 func (p *Prometheus) queryLimitInstant(ctx context.Context, q string) (float64, error) {
 	val, _, err := p.api.Query(ctx, q, time.Now())
 	if err != nil {
@@ -154,74 +195,52 @@ func (p *Prometheus) queryLimitInstant(ctx context.Context, q string) (float64, 
 	if !ok {
 		return 0, fmt.Errorf("prometheus limit: unexpected result type %T", val)
 	}
-	var total float64
-	for _, s := range vec {
-		v := float64(s.Value)
-		if !isFinite(v) || v <= 0 {
-			continue
-		}
-		total += v
+	if len(vec) == 0 {
+		return 0, nil
 	}
-	return total, nil
+	v := float64(vec[0].Value)
+	if !isFinite(v) || v <= 0 {
+		return 0, nil
+	}
+	return v, nil
 }
 
-// queryWithBreakdown runs a `sum by (pod)` style range query and
-// returns both the aggregate timeline (summed across pods at each
-// timestamp) and the per-pod breakdown. Used by CPU + Memory.
-func (p *Prometheus) queryWithBreakdown(ctx context.Context, q string, rng promv1.Range) ([]source.Point, []source.PodSeries, error) {
+// queryPerPod runs a per-pod range query and returns one queryPodSeries
+// per pod.
+func (p *Prometheus) queryPerPod(ctx context.Context, q string, rng promv1.Range) ([]queryPodSeries, error) {
 	val, _, err := p.api.QueryRange(ctx, q, rng)
 	if err != nil {
-		return nil, nil, fmt.Errorf("prometheus query: %w", err)
+		return nil, fmt.Errorf("prometheus query: %w", err)
 	}
 	matrix, ok := val.(model.Matrix)
 	if !ok {
-		return nil, nil, fmt.Errorf("prometheus: unexpected result type %T", val)
+		return nil, fmt.Errorf("prometheus: unexpected result type %T", val)
 	}
-	byPod := make([]source.PodSeries, 0, len(matrix))
+	out := make([]queryPodSeries, 0, len(matrix))
 	for _, ss := range matrix {
 		pod := string(ss.Metric["pod"])
 		if pod == "" {
 			continue
 		}
-		pts := make([]source.Point, 0, len(ss.Values))
+		pts := make([]queryPoint, 0, len(ss.Values))
 		for _, sp := range ss.Values {
 			f := float64(sp.Value)
 			if !isFinite(f) {
 				continue
 			}
-			pts = append(pts, source.Point{
+			pts = append(pts, queryPoint{
 				Time:  time.UnixMilli(int64(sp.Timestamp)).UTC(),
 				Value: f,
 			})
 		}
-		byPod = append(byPod, source.PodSeries{Pod: pod, Points: pts})
+		out = append(out, queryPodSeries{Pod: pod, Points: pts})
 	}
-	return sumByTime(matrix), byPod, nil
-}
-
-func scalePoints(pts []source.Point, k float64) {
-	for i := range pts {
-		pts[i].Value *= k
-	}
-}
-
-// stripResourcePrefix drops the redundant "<resource>-" leading
-// substring from each pod name (e.g., "nginx-69b6f5fc87-gpq5n" →
-// "69b6f5fc87-gpq5n"). The drawer already shows the resource name in
-// the surrounding chrome; the per-pod tooltip only needs the unique
-// suffix.
-func stripResourcePrefix(byPod []source.PodSeries, resource string) {
-	prefix := resource + "-"
-	for i := range byPod {
-		byPod[i].Pod = strings.TrimPrefix(byPod[i].Pod, prefix)
-	}
+	return out, nil
 }
 
 // queryAggregated runs a single PromQL range query and aggregates all
-// returned series at each timestamp via sum. Callers pass queries that
-// either return one aggregate series or multiple per-pod series — both
-// collapse to a single timeline for the workload-level view.
-func (p *Prometheus) queryAggregated(ctx context.Context, q string, rng promv1.Range) ([]source.Point, error) {
+// returned series at each timestamp via sum.
+func (p *Prometheus) queryAggregated(ctx context.Context, q string, rng promv1.Range) ([]queryPoint, error) {
 	val, _, err := p.api.QueryRange(ctx, q, rng)
 	if err != nil {
 		return nil, fmt.Errorf("prometheus query: %w", err)
@@ -234,9 +253,8 @@ func (p *Prometheus) queryAggregated(ctx context.Context, q string, rng promv1.R
 }
 
 // queryWithFallback tries the primary query first and only invokes the
-// fallback when primary returned zero series. Used for RED metrics
-// (semconv → legacy).
-func (p *Prometheus) queryWithFallback(ctx context.Context, primary, fallback string, rng promv1.Range) ([]source.Point, error) {
+// fallback when primary returned zero series. Used for RED metrics.
+func (p *Prometheus) queryWithFallback(ctx context.Context, primary, fallback string, rng promv1.Range) ([]queryPoint, error) {
 	pts, err := p.queryAggregated(ctx, primary, rng)
 	if err != nil {
 		return nil, err
@@ -247,25 +265,19 @@ func (p *Prometheus) queryWithFallback(ctx context.Context, primary, fallback st
 	return p.queryAggregated(ctx, fallback, rng)
 }
 
-func (p *Prometheus) queryLatency(ctx context.Context, vars queryVars, rng promv1.Range) ([]source.LatencyPoint, error) {
-	p50, err := p.queryAggregated(ctx, expand(latencyQuantile(0.50), vars), rng)
-	if err != nil {
-		return nil, err
+// stripResourcePrefix drops the redundant "<resource>-" leading
+// substring from each pod name. The drawer chrome already shows the
+// resource name; per-pod identifiers only need the unique suffix.
+func stripResourcePrefix(byPod []queryPodSeries, resource string) {
+	prefix := resource + "-"
+	for i := range byPod {
+		byPod[i].Pod = strings.TrimPrefix(byPod[i].Pod, prefix)
 	}
-	p95, err := p.queryAggregated(ctx, expand(latencyQuantile(0.95), vars), rng)
-	if err != nil {
-		return nil, err
-	}
-	p99, err := p.queryAggregated(ctx, expand(latencyQuantile(0.99), vars), rng)
-	if err != nil {
-		return nil, err
-	}
-	return mergeLatency(p50, p95, p99), nil
 }
 
-// sumByTime collapses a matrix to []Point by summing all series at each
-// timestamp. NaN values are skipped.
-func sumByTime(m model.Matrix) []source.Point {
+// sumByTime collapses a matrix to []queryPoint by summing all series at
+// each timestamp. NaN values are skipped.
+func sumByTime(m model.Matrix) []queryPoint {
 	if len(m) == 0 {
 		return nil
 	}
@@ -280,9 +292,9 @@ func sumByTime(m model.Matrix) []source.Point {
 			sum[t] += f
 		}
 	}
-	out := make([]source.Point, 0, len(sum))
+	out := make([]queryPoint, 0, len(sum))
 	for t, v := range sum {
-		out = append(out, source.Point{
+		out = append(out, queryPoint{
 			Time:  time.UnixMilli(t).UTC(),
 			Value: v,
 		})
@@ -292,10 +304,10 @@ func sumByTime(m model.Matrix) []source.Point {
 }
 
 // mergeLatency joins three quantile timelines into LatencyPoint slices
-// indexed by timestamp. Missing quantiles for a timestamp default to 0.
-func mergeLatency(p50, p95, p99 []source.Point) []source.LatencyPoint {
+// indexed by timestamp. Missing quantiles default to 0.
+func mergeLatency(p50, p95, p99 []queryPoint) []source.LatencyPoint {
 	idx := map[int64]*source.LatencyPoint{}
-	get := func(p source.Point) *source.LatencyPoint {
+	get := func(p queryPoint) *source.LatencyPoint {
 		k := p.Time.UnixMilli()
 		lp, ok := idx[k]
 		if !ok {
@@ -323,8 +335,7 @@ func mergeLatency(p50, p95, p99 []source.Point) []source.LatencyPoint {
 
 func isFinite(f float64) bool { return !math.IsNaN(f) && !math.IsInf(f, 0) }
 
-func sortPoints(p []source.Point) {
-	// insertion sort — small N typical for our ranges and step sizes
+func sortPoints(p []queryPoint) {
 	for i := 1; i < len(p); i++ {
 		j := i
 		for j > 0 && p[j-1].Time.After(p[j].Time) {

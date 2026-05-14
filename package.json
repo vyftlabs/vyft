@@ -15,9 +15,9 @@
     "db:generate": "nx run @vyft/backend:db:generate --outputStyle stream",
     "spec:build": "pnpm --filter @vyft/spec build",
     "spec:gen": "pnpm spec:build && pnpm --filter web gen:api && nx run @vyft/backend:api:generate --outputStyle stream",
-    "cluster:up": "mkdir -p .kube && docker compose up -d k3s && until [ -s .kube/config ]; do sleep 1; done",
-    "cluster:down": "docker compose down k3s",
-    "cluster:reset": "docker compose down -v k3s k3s-seed"
+    "cluster:up": "bash cluster/up.sh",
+    "cluster:down": "bash cluster/down.sh",
+    "cluster:reset": "bash cluster/down.sh && bash cluster/up.sh"
   },
   "pnpm": {
     "overrides": {

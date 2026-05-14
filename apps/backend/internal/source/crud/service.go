@@ -24,6 +24,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
+	"github.com/vyftlabs/vyft/apps/backend/internal/source"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/loki"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/prometheus"
 )
@@ -531,7 +532,7 @@ func testPrometheusConfig(ctx context.Context, p parsedCreate) (TestResult, erro
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if _, err := src.Probe(probeCtx, []string{"up"}); err != nil {
+	if _, err := src.Probe(probeCtx, source.ResourceSelector{}, []string{"up"}); err != nil {
 		return TestResult{OK: false, Error: err.Error()}, nil
 	}
 	return TestResult{OK: true}, nil

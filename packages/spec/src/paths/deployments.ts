@@ -5,6 +5,8 @@ import {
   itemErrors,
   ProjectAndIdScope,
   ProjectScope,
+  ResourceAndIdScope,
+  ResourceScope,
 } from "../models/common.ts";
 import { Deployment, DeploymentCreate } from "../models/deployment.ts";
 
@@ -46,6 +48,20 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
       },
     },
   },
+  "/projects/{projectId}/discard": {
+    post: {
+      operationId: "discardProjectChanges",
+      summary: "Discard staged project changes",
+      description:
+        "Reverts all current project state (resources, routes, variables) back to the latest applied deployment. Used to throw away staged changes without deploying. 409 if no applied deployment exists yet.",
+      tags: ["Deployments"],
+      requestParams: { path: ProjectScope },
+      responses: {
+        204: { description: "Discarded" },
+        ...itemErrors,
+      },
+    },
+  },
   "/projects/{projectId}/deployments/{id}": {
     get: {
       operationId: "getDeployment",
@@ -57,6 +73,35 @@ export const deploymentPaths: ZodOpenApiPathsObject = {
           description: "Deployment",
           content: { "application/json": { schema: Deployment } },
         },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/deployments": {
+    get: {
+      operationId: "listResourceDeployments",
+      summary: "List deployments that changed a service",
+      tags: ["Deployments"],
+      requestParams: { path: ResourceScope, query: ListQuery },
+      responses: {
+        200: {
+          description: "Deployments",
+          content: { "application/json": { schema: z.array(Deployment) } },
+        },
+        ...collectionErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/deployments/{id}/restore": {
+    post: {
+      operationId: "restoreResourceDeployment",
+      summary: "Stage service config from this deployment",
+      description:
+        "Reverts the service's spec, routes, and resource-scoped variables to match this deployment's snapshot. Does not deploy — caller must trigger a deployment afterwards. Secret variable values are not in the snapshot and are preserved as-is when the variable still exists.",
+      tags: ["Deployments"],
+      requestParams: { path: ResourceAndIdScope },
+      responses: {
+        204: { description: "Restored" },
         ...itemErrors,
       },
     },
