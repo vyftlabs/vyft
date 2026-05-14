@@ -42,6 +42,7 @@ export default function Projects() {
             <ProjectCard
               key={project.id}
               name={project.name}
+              slug={project.slug}
               services={[]}
               href={`/projects/${project.slug}`}
             />

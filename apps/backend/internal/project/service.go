@@ -22,9 +22,15 @@ import (
 // don't block project deletion. nil = no-op (dev mode without cluster).
 type ClusterCleanupFn func(ctx context.Context, slug string)
 
+// ClusterEnsureFn provisions cluster-side resources for a newly created
+// project (namespace + registry pull-secrets). Best-effort: errors are
+// logged but don't fail the API call.
+type ClusterEnsureFn func(ctx context.Context, project sqlc.Project)
+
 type Service struct {
 	db             *db.DB
 	clusterCleanup ClusterCleanupFn
+	clusterEnsure  ClusterEnsureFn
 }
 
 func New(d *db.DB) *Service { return &Service{db: d} }
@@ -35,6 +41,13 @@ func New(d *db.DB) *Service { return &Service{db: d} }
 func (s *Service) WithClusterCleanup(fn ClusterCleanupFn) *Service {
 	cp := *s
 	cp.clusterCleanup = fn
+	return &cp
+}
+
+// WithClusterEnsure attaches the hook called after a project is created.
+func (s *Service) WithClusterEnsure(fn ClusterEnsureFn) *Service {
+	cp := *s
+	cp.clusterEnsure = fn
 	return &cp
 }
 
@@ -84,6 +97,11 @@ func (s *Service) Create(ctx context.Context, body openapi.ProjectCreate) (sqlc.
 			return sqlc.Project{}, apierr.Conflict("project with this slug already exists")
 		}
 		return sqlc.Project{}, apierr.Internal(err)
+	}
+	if s.clusterEnsure != nil {
+		// Async so the API response isn't blocked by cluster latency. Reads
+		// of namespace/registry-secrets must tolerate brief lag.
+		go s.clusterEnsure(context.Background(), p)
 	}
 	return p, nil
 }

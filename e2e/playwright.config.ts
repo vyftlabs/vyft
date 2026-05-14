@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
+import { BACKEND_URL, BASIC_AUTH, WEB_URL } from "./config.ts";
+
 export default defineConfig({
   testDir: "./src/specs",
   fullyParallel: false,
@@ -8,15 +10,30 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   retries: 0,
   reporter: "list",
-  webServer: {
-    command: "pnpm exec nx dev web",
-    cwd: "..",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: "pnpm exec nx dev web",
+      cwd: "..",
+      url: WEB_URL,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      command: "go run ./cmd/backend",
+      cwd: "../apps/backend",
+      url: `${BACKEND_URL}/healthz`,
+      reuseExistingServer: true,
+      timeout: 120_000,
+      env: {
+        KUBECONFIG: "../../.kube/config",
+        BASIC_AUTH_USER: BASIC_AUTH.username,
+        BASIC_AUTH_PASS: BASIC_AUTH.password,
+      },
+    },
+  ],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: WEB_URL,
+    httpCredentials: BASIC_AUTH,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

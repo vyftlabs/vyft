@@ -26,6 +26,12 @@ func NamespaceFor(slug, env string) string {
 	return fmt.Sprintf("vyft-%s-%s", slug, env)
 }
 
+// EnsureNamespace is the public entry point for non-deploy callers (project
+// create, registry sync). Delegates to ensureNamespace.
+func EnsureNamespace(ctx context.Context, cs kubernetes.Interface, ns string, p deployment.Project, env string) error {
+	return ensureNamespace(ctx, cs, ns, p, env)
+}
+
 // ensureNamespace SSAs the namespace with project/env labels. Idempotent.
 func ensureNamespace(ctx context.Context, cs kubernetes.Interface, ns string, p deployment.Project, env string) error {
 	cfg := corev1ac.Namespace(ns).

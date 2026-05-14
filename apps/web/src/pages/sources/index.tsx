@@ -291,10 +291,19 @@ function SourceDialog({
   const [testResult, setTestResult] = useState<
     { ok: boolean; message: string } | null
   >(null);
+  const [testing, setTesting] = useState(false);
+
+  // After a test result shows, revert the button to its original label after
+  // a short window so the UI doesn't latch on a stale state.
+  useEffect(() => {
+    if (!testResult) return;
+    const timer = setTimeout(() => setTestResult(null), 3_000);
+    return () => clearTimeout(timer);
+  }, [testResult]);
   const create = useMutation(api.sources.create);
   const patch = useMutation(api.sources.patch);
   const test = useMutation(api.sources.test);
-  const { register, handleSubmit, watch, reset, getValues } = useForm<FormValues>({
+  const { register, handleSubmit, watch, reset, getValues, setValue } = useForm<FormValues>({
     defaultValues: defaultsFor(editing ?? undefined),
   });
 
@@ -429,11 +438,7 @@ function SourceDialog({
                     <Select
                       value={authType}
                       onValueChange={(v) => {
-                        if (v)
-                          reset(
-                            { ...watch(), authType: v as FormValues["authType"] },
-                            { keepValues: true },
-                          );
+                        if (v) setValue("authType", v as FormValues["authType"]);
                       }}
                     >
                       <SelectTrigger>
@@ -484,57 +489,70 @@ function SourceDialog({
             </div>
 
             <DialogFooter className="flex-col items-stretch px-6 py-4 border-t mx-0 mb-0 rounded-none gap-2 sm:flex-col sm:items-stretch">
-              {testResult && (
-                <p
-                  className={
-                    testResult.ok
-                      ? "inline-flex items-center gap-1 text-xs text-primary"
-                      : "inline-flex items-start gap-1 text-xs text-destructive"
-                  }
-                >
-                  {testResult.ok ? (
-                    <CheckIcon className="size-3.5 shrink-0 mt-0.5" />
-                  ) : (
-                    <XIcon className="size-3.5 shrink-0 mt-0.5" />
-                  )}
-                  <span className="break-all">{testResult.message}</span>
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={test.isPending || !selected}
-                  onClick={() => {
-                    if (!selected) return;
-                    const body = toCreateBody(selected.id, getValues());
-                    if (!body) return;
-                    setTestResult(null);
-                    test.mutate(body, {
-                      onSuccess: (r) =>
-                        setTestResult({
-                          ok: r.ok,
-                          message: r.ok
-                            ? "Reachable"
-                            : (r.error ?? "Unreachable"),
-                        }),
-                      onError: (err: Error) =>
-                        setTestResult({ ok: false, message: err.message }),
+              <Button
+                type="button"
+                variant="outline"
+                disabled={testing || !selected}
+                onClick={async () => {
+                  if (!selected) return;
+                  const body = toCreateBody(selected.id, getValues());
+                  if (!body) return;
+                  setTestResult(null);
+                  setTesting(true);
+                  // TODO(dev): drop the artificial delay before shipping.
+                  const fakeDelay = new Promise((r) => setTimeout(r, 1500));
+                  try {
+                    const [r] = await Promise.all([
+                      test.mutateAsync(body),
+                      fakeDelay,
+                    ]);
+                    setTestResult({
+                      ok: r.ok,
+                      message: r.ok ? "Reachable" : (r.error ?? "Unreachable"),
                     });
-                  }}
-                >
-                  {test.isPending ? "Testing..." : "Test connection"}
-                </Button>
-                <Button type="submit" className="flex-1" disabled={submitting}>
-                  {submitting
-                    ? editing
-                      ? "Saving..."
-                      : "Adding..."
-                    : editing
-                      ? "Save"
-                      : "Add source"}
-                </Button>
-              </div>
+                  } catch (err) {
+                    setTestResult({
+                      ok: false,
+                      message: err instanceof Error ? err.message : "failed",
+                    });
+                  } finally {
+                    setTesting(false);
+                  }
+                }}
+                className={
+                  testResult?.ok
+                    ? "border-severity-success/40 bg-severity-success/10 text-severity-success-text hover:bg-severity-success/15 hover:text-severity-success-text"
+                    : testResult
+                      ? "border-severity-critical/40 bg-severity-critical/10 text-severity-critical-text hover:bg-severity-critical/15 hover:text-severity-critical-text"
+                      : undefined
+                }
+              >
+                {testing ? (
+                  "Testing…"
+                ) : testResult ? (
+                  <>
+                    {testResult.ok ? (
+                      <CheckIcon className="size-3.5" />
+                    ) : (
+                      <XIcon className="size-3.5" />
+                    )}
+                    <span className="truncate">
+                      {testResult.ok ? "Working" : testResult.message}
+                    </span>
+                  </>
+                ) : (
+                  "Test"
+                )}
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting
+                  ? editing
+                    ? "Saving..."
+                    : "Adding..."
+                  : editing
+                    ? "Save"
+                    : "Add source"}
+              </Button>
             </DialogFooter>
           </form>
         )}

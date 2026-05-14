@@ -178,6 +178,7 @@ const statusBadgeClass: Record<ProjectStatus, string> = {
 
 export interface ProjectCardProps {
   name: string;
+  slug?: string;
   status?: ProjectStatus;
   statusMessage?: string;
   services?: ProjectServiceSummary[];
@@ -187,6 +188,7 @@ export interface ProjectCardProps {
 
 export function ProjectCard({
   name,
+  slug,
   status,
   statusMessage,
   services = [],
@@ -226,13 +228,24 @@ export function ProjectCard({
   );
   if (href) {
     return (
-      <Link to={href} className={shellClass}>
+      <Link
+        to={href}
+        className={shellClass}
+        data-testid="project-card"
+        data-slug={slug}
+      >
         {inner}
       </Link>
     );
   }
   return (
-    <button type="button" className={shellClass} onClick={onClick}>
+    <button
+      type="button"
+      className={shellClass}
+      onClick={onClick}
+      data-testid="project-card"
+      data-slug={slug}
+    >
       {inner}
     </button>
   );

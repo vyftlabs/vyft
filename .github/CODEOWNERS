@@ -1,2 +1,5 @@
-# Default owner for all files
 * @bytekai
+
+/.github/workflows/   @bytekai
+/.github/dependabot.yml   @bytekai
+/.github/CODEOWNERS   @bytekai

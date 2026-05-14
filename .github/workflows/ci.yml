@@ -31,8 +31,70 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --dir e2e exec playwright install --with-deps chromium
-
       - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
 
-      - run: pnpm nx affected -t lint -t build -t test -t e2e --parallel=3
+      - run: pnpm nx affected -t lint -t build -t test --parallel=3
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vyft
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vyft"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
+
+      - name: install kind
+        env:
+          KIND_VERSION: v0.31.0
+        run: |
+          curl -fsSL -o /tmp/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          kind version
+
+      - name: create kind cluster
+        run: |
+          mkdir -p .kube
+          kind create cluster --name vyft-ci --kubeconfig "$GITHUB_WORKSPACE/.kube/config" --wait 120s
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --dir e2e exec playwright install --with-deps chromium
+
+      - name: run e2e
+        run: pnpm test:e2e
+
+      - name: upload playwright traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces
+          path: e2e/test-results
+          retention-days: 7

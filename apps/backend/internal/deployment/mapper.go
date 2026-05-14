@@ -32,3 +32,26 @@ func toWire(d sqlc.Deployment, envSlug string) openapi.Deployment {
 	}
 	return out
 }
+
+// ProjectFromRow converts a sqlc.Project to the runtime Project struct that
+// non-deploy callers (project create, registry sync) can pass into the k8s
+// runtime helpers.
+func ProjectFromRow(p sqlc.Project) Project {
+	return Project{
+		ID:   uuid.UUID(p.ID.Bytes),
+		Slug: p.Slug,
+		Name: p.Name,
+	}
+}
+
+// RegistryFromRow converts a sqlc.Registry to the runtime Registry struct.
+// TODO: real decryption once PasswordEncrypted carries ciphertext.
+func RegistryFromRow(r sqlc.Registry) Registry {
+	return Registry{
+		ID:       uuid.UUID(r.ID.Bytes),
+		Name:     r.Name,
+		URL:      r.Url,
+		Username: r.Username,
+		Password: string(r.PasswordEncrypted),
+	}
+}

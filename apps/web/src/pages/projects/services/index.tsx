@@ -333,8 +333,8 @@ function ServicesCanvas() {
                 setCreatingService(false);
                 setCreatePosition(null);
               }}
-              onCreated={(id) => {
-                setSelectedId(id);
+              onCreated={() => {
+                setSelectedId(null);
                 setCreatingService(false);
                 setCreatePosition(null);
               }}

@@ -1,5 +1,16 @@
-import { test } from "@playwright/test";
+import { k8s, project, test } from "../lib/index.ts";
 
-test("smoke", async ({ page }) => {
-  await page.goto("/");
+test("create project, add nginx, deploy → namespace + pod running", async ({ page, slug }) => {
+  const proj = await project
+    .create(page, { slug, name: `smoke ${slug}` })
+    .createImageService({
+      name: "nginx",
+      image: "nginx:alpine",
+      port: 80,
+      env: { LOG_LEVEL: "info" },
+    })
+    .deploy();
+
+  await k8s.assert.namespace(proj);
+  await k8s.assert.pod(proj, { resource: "nginx", image: "nginx:alpine" });
 });

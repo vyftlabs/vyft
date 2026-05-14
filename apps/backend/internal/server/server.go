@@ -16,7 +16,9 @@ import (
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	vdb "github.com/vyftlabs/vyft/apps/backend/internal/db"
+	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 	"github.com/vyftlabs/vyft/apps/backend/internal/deployment"
+	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/httpx"
@@ -42,8 +44,8 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
-	rt, cs, mcs, projectClusterCleanup := buildRuntime(config)
-	server, depSvc := New(config, pool, rt, cs, mcs, projectClusterCleanup)
+	rt, cs, mcs, hooks := buildRuntime(config, pool)
+	server, depSvc := New(config, pool, rt, cs, mcs, hooks)
 
 	// Boot recovery: re-fire goroutines for any deployment row stuck in
 	// pending/applying (process crashed mid-apply).
@@ -82,15 +84,10 @@ func Run(ctx context.Context) error {
 	}
 }
 
-// projectClusterCleanup deletes namespaces for a deleted project. nil = no-op
-// (when no kube client is available). Wired in NewAPI so the project service
-// can call it on Delete.
-type projectClusterCleanup func(ctx context.Context, slug string)
-
-func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, cleanup projectClusterCleanup) (*http.Server, *deployment.Service) {
+func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, hooks ClusterHooks) (*http.Server, *deployment.Service) {
 	database := vdb.New(pool)
 
-	api, depSvc := NewAPI(database, rt, cs, mcs, cleanup)
+	api, depSvc := NewAPI(database, rt, cs, mcs, hooks)
 	strict := openapi.NewStrictHandler(api, nil)
 	apiHandler := openapi.HandlerWithOptions(strict, openapi.StdHTTPServerOptions{
 		ErrorHandlerFunc: writeError,
@@ -112,23 +109,24 @@ func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes
 
 // buildRuntime picks a Runtime based on config. KUBECONFIG path → use it.
 // In-cluster config available → use that. Neither → StubRuntime (dev/test).
-// Also returns the kube clientset (needed by the kube-logs source) and
-// the metrics-server client; either may be nil if unavailable.
-func buildRuntime(cfg Config) (deployment.Runtime, kubernetes.Interface, metricsclient.Interface, projectClusterCleanup) {
+// Also returns the kube clientset (needed by the kube-logs source), the
+// metrics-server client (may be nil), and the cluster hooks used by non-
+// deploy paths.
+func buildRuntime(cfg Config, pool *pgxpool.Pool) (deployment.Runtime, kubernetes.Interface, metricsclient.Interface, ClusterHooks) {
 	restCfg, err := loadKubeConfig(cfg.KubeconfigPath)
 	if err != nil {
 		slog.Warn("k8s runtime unavailable, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, nil
+		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
 	}
 	cs, err := kubernetes.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("kubernetes client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, nil
+		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
 	}
 	dyn, err := dynamic.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("dynamic client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, nil
+		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
 	}
 	mcs, err := metricsclient.NewForConfig(restCfg)
 	if err != nil {
@@ -136,12 +134,64 @@ func buildRuntime(cfg Config) (deployment.Runtime, kubernetes.Interface, metrics
 		mcs = nil
 	}
 	rt := k8srt.New(cs, dyn)
-	cleanup := func(ctx context.Context, slug string) {
-		if err := k8srt.DeleteProjectNamespaces(ctx, cs, slug); err != nil {
-			slog.Warn("project ns cleanup failed", "slug", slug, "error", err)
-		}
+	hooks := buildClusterHooks(cs, pool)
+	return rt, cs, mcs, hooks
+}
+
+// buildClusterHooks wires every non-deploy path that reaches into the cluster.
+// All hooks are best-effort: errors logged, not returned to the caller.
+func buildClusterHooks(cs kubernetes.Interface, pool *pgxpool.Pool) ClusterHooks {
+	database := vdb.New(pool)
+	return ClusterHooks{
+		ProjectCleanup: func(ctx context.Context, slug string) {
+			if err := k8srt.DeleteProjectNamespaces(ctx, cs, slug); err != nil {
+				slog.Warn("project ns cleanup failed", "slug", slug, "error", err)
+			}
+		},
+		ProjectEnsure: func(ctx context.Context, p sqlc.Project) {
+			project := deployment.ProjectFromRow(p)
+			ns := k8srt.NamespaceFor(project.Slug, environment.DefaultSlug)
+			if err := k8srt.EnsureNamespace(ctx, cs, ns, project, environment.DefaultSlug); err != nil {
+				slog.Warn("project ensure namespace failed", "slug", project.Slug, "error", err)
+				return
+			}
+			regs, err := database.Q.ListRegistries(ctx)
+			if err != nil {
+				slog.Warn("project ensure: list registries", "slug", project.Slug, "error", err)
+				return
+			}
+			for _, r := range regs {
+				if err := k8srt.ApplyRegistrySecret(ctx, cs, ns, project, deployment.RegistryFromRow(r)); err != nil {
+					slog.Warn("project ensure: apply registry secret", "slug", project.Slug, "registry", r.Name, "error", err)
+				}
+			}
+		},
+		RegistrySync: func(ctx context.Context, r sqlc.Registry) {
+			reg := deployment.RegistryFromRow(r)
+			nss, err := k8srt.ListProjectNamespaces(ctx, cs)
+			if err != nil {
+				slog.Warn("registry sync: list project namespaces", "registry", r.Name, "error", err)
+				return
+			}
+			for _, pn := range nss {
+				if err := k8srt.ApplyRegistrySecret(ctx, cs, pn.Namespace, deployment.Project{Slug: pn.Slug}, reg); err != nil {
+					slog.Warn("registry sync: apply secret", "namespace", pn.Namespace, "registry", r.Name, "error", err)
+				}
+			}
+		},
+		RegistryDelete: func(ctx context.Context, registryName string) {
+			nss, err := k8srt.ListProjectNamespaces(ctx, cs)
+			if err != nil {
+				slog.Warn("registry delete: list project namespaces", "registry", registryName, "error", err)
+				return
+			}
+			for _, pn := range nss {
+				if err := k8srt.DeleteRegistrySecretInNamespace(ctx, cs, pn.Namespace, registryName); err != nil {
+					slog.Warn("registry delete: drop secret", "namespace", pn.Namespace, "registry", registryName, "error", err)
+				}
+			}
+		},
 	}
-	return rt, cs, mcs, cleanup
 }
 
 func loadKubeConfig(path string) (*rest.Config, error) {

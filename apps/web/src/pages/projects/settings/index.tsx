@@ -44,7 +44,7 @@ function Section({
 // ─── General Tab ────────────────────────────────────────────────────
 
 function GeneralTab() {
-  const { project: slug } = useParams();
+  const { project: slug } = useParams<{ project: string }>();
   const navigate = useNavigate();
   const { data: projectData } = useQuery({
     ...api.projects.bySlug(slug ?? ""),
@@ -59,7 +59,6 @@ function GeneralTab() {
   }
 
   const updateProject = useMutation(api.projects.update);
-
   const deleteProject = useMutation(api.projects.remove);
 
   return (
