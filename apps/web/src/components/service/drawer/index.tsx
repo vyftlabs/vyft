@@ -905,9 +905,13 @@ function useServiceDrawerTabs(
   }
 
   // staleTime on prefetch makes repeated hovers a no-op when cached.
-  const prefetch = (
-    opts: Parameters<typeof qc.prefetchQuery>[0],
-  ) => qc.prefetchQuery({ ...opts, staleTime: 60_000 });
+  // Cast at the call site: queryOptions() returns mutable queryKey;
+  // prefetchQuery wants readonly. The runtime data is identical.
+  const prefetch = (opts: { queryKey: readonly unknown[] }) =>
+    qc.prefetchQuery({
+      ...(opts as unknown as Parameters<typeof qc.prefetchQuery>[0]),
+      staleTime: 60_000,
+    });
 
   return {
     defaultTab: "overview",

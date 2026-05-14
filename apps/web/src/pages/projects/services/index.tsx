@@ -193,10 +193,16 @@ function ServicesCanvas() {
           status: { state: "running" },
           onHover: () => {
             // staleTime on prefetchQuery makes it a no-op when cached
-            // data is still fresh — repeated hovers don't re-fetch.
-            const prefetch = (
-              opts: Parameters<typeof queryClient.prefetchQuery>[0],
-            ) => queryClient.prefetchQuery({ ...opts, staleTime: 60_000 });
+            // data is still fresh — repeated hovers don't re-fetch. Cast
+            // at the call site: queryOptions() yields a mutable queryKey
+            // signature that doesn't widen to prefetchQuery's readonly.
+            const prefetch = (opts: { queryKey: readonly unknown[] }) =>
+              queryClient.prefetchQuery({
+                ...(opts as unknown as Parameters<
+                  typeof queryClient.prefetchQuery
+                >[0]),
+                staleTime: 60_000,
+              });
             prefetch(api.resources.byId(projectId, r.id));
             prefetch(api.observability.events(projectId, r.id));
             prefetch(api.observability.logsCapabilities(projectId, r.id));

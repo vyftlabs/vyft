@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vyft-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vyft
+  namespace: vyft-system
+---
+# Dev-only: cluster-admin is intentional. Backend creates namespaces +
+# deployments + secrets across the cluster for user-deployed services.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vyft-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: vyft
+    namespace: vyft-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: vyft-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17
+          env:
+            - { name: POSTGRES_USER, value: postgres }
+            - { name: POSTGRES_PASSWORD, value: postgres }
+            - { name: POSTGRES_DB, value: vyft }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres"] }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: vyft-system
+spec:
+  selector: { app: postgres }
+  ports:
+    - { port: 5432, targetPort: 5432 }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vyft-provisioning
+  namespace: vyft-system
+data:
+  example.yaml: |
+    apiVersion: v1
+    sources:
+      - name: prometheus
+        kind: prometheus
+        domain: metrics
+        config:
+          url: http://kps-prometheus.observability.svc.cluster.local:9090
+          auth: { type: none }
+
+      - name: loki
+        kind: loki
+        domain: logs
+        config:
+          url: http://loki.observability.svc.cluster.local:3100
+          auth: { type: none }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vyft
+  namespace: vyft-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vyft }
+  template:
+    metadata:
+      labels: { app: vyft }
+    spec:
+      serviceAccountName: vyft
+      containers:
+        - name: vyft
+          image: vyft:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: ADDR, value: ":8080" }
+            - name: DATABASE_URL
+              value: postgres://postgres:postgres@postgres.vyft-system.svc.cluster.local:5432/vyft?sslmode=disable
+            - { name: VYFT_PROVISIONING_DIR, value: /etc/vyft/provisioning }
+          ports: [{ containerPort: 8080 }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 5
+          volumeMounts:
+            - name: provisioning
+              mountPath: /etc/vyft/provisioning/sources
+      volumes:
+        - name: provisioning
+          configMap:
+            name: vyft-provisioning
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vyft
+  namespace: vyft-system
+spec:
+  selector: { app: vyft }
+  ports:
+    - { port: 8080, targetPort: 8080 }

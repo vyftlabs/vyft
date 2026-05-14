@@ -195,9 +195,9 @@ function buildRangeQuery<P extends PointWithTimestamp>(
 export const cpuMetrics = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "cpu", projectId, resourceId],
-    refetchInterval: (q) =>
+    refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
-    retry: (_count, err) => !is404(err),
+    retry: (_count: number, err: unknown) => !is404(err),
     structuralSharing: (oldData, newData) =>
       mergeSeries(
         oldData as ResourceMetrics | undefined,
@@ -226,9 +226,9 @@ export const cpuMetrics = (projectId: string, resourceId: string) =>
 export const memoryMetrics = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "memory", projectId, resourceId],
-    refetchInterval: (q) =>
+    refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
-    retry: (_count, err) => !is404(err),
+    retry: (_count: number, err: unknown) => !is404(err),
     structuralSharing: (oldData, newData) =>
       mergeSeries(
         oldData as ResourceMetrics | undefined,
@@ -257,9 +257,9 @@ export const memoryMetrics = (projectId: string, resourceId: string) =>
 export const requestRateMetrics = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "requestRate", projectId, resourceId],
-    refetchInterval: (q) =>
+    refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
-    retry: (_count, err) => !is404(err),
+    retry: (_count: number, err: unknown) => !is404(err),
     structuralSharing: (oldData, newData) =>
       mergeSeries(
         oldData as RateMetrics | undefined,
@@ -288,9 +288,9 @@ export const requestRateMetrics = (projectId: string, resourceId: string) =>
 export const errorRateMetrics = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "errorRate", projectId, resourceId],
-    refetchInterval: (q) =>
+    refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
-    retry: (_count, err) => !is404(err),
+    retry: (_count: number, err: unknown) => !is404(err),
     structuralSharing: (oldData, newData) =>
       mergeSeries(
         oldData as RateMetrics | undefined,
@@ -319,9 +319,9 @@ export const errorRateMetrics = (projectId: string, resourceId: string) =>
 export const latencyMetrics = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "latency", projectId, resourceId],
-    refetchInterval: (q) =>
+    refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
-    retry: (_count, err) => !is404(err),
+    retry: (_count: number, err: unknown) => !is404(err),
     structuralSharing: (oldData, newData) =>
       mergeSeries(
         oldData as LatencyMetrics | undefined,
