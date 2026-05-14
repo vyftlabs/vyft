@@ -70,16 +70,15 @@ jobs:
           go-version-file: apps/backend/go.mod
           cache-dependency-path: apps/backend/go.sum
 
-      - name: start k3s
+      - name: install kind + helm
         run: |
-          mkdir -p .kube
-          docker compose up -d k3s
-          for i in $(seq 1 60); do
-            [ -s .kube/config ] && break
-            sleep 2
-          done
-          test -s .kube/config
-          chmod 644 .kube/config
+          curl -sSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sudo bash
+
+      - name: start kind cluster + observability
+        run: bash cluster/up.sh
 
       - run: pnpm install --frozen-lockfile
 
