@@ -1,5 +1,8 @@
 node_modules/
 dist/
+!apps/backend/internal/web/dist/
+apps/backend/internal/web/dist/*
+!apps/backend/internal/web/dist/.gitkeep
 .astro/
 .vyft/
 .nx/cache/

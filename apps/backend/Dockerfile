@@ -16,7 +16,7 @@ COPY apps/backend/go.mod ./
 RUN go mod download
 
 COPY apps/backend ./
-COPY --from=web-build /src/apps/web/dist ./internal/server/static/dist
+COPY --from=web-build /src/apps/web/dist ./internal/web/dist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend ./cmd/backend
 

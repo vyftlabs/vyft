@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Registry } from "@vyft/spec";
 import { ArrowLeftIcon, LoaderIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -140,14 +140,15 @@ function AddRegistryDialog({
   const preset =
     step !== "picker" ? registryPresets.find((p) => p.id === step) : undefined;
 
-  // Reset on re-open, not on close — otherwise the dialog flashes back to the
+  // Reset on re-open (not on close) so the dialog doesn't flash back to the
   // picker during its close animation.
-  useEffect(() => {
-    if (open) setStep("picker");
-  }, [open]);
+  const handleOpenChange = (v: boolean) => {
+    if (v) setStep("picker");
+    onOpenChange(v);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="p-0 gap-0 overflow-hidden">
         {preset ? (
           <RegistryForm

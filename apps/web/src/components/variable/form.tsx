@@ -1,5 +1,5 @@
 import { CheckIcon, CopyIcon, DicesIcon, LockIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ServiceIcon } from "@/components/service/node";
 import { Button } from "@/components/ui/button";
@@ -218,10 +218,7 @@ function SuggestionInput({
   const filteredGroups = filterGroups(groups, filterText);
   const flatCount = filteredGroups.reduce((n, g) => n + g.items.length, 0);
   const showDropdown = focused && flatCount > 0;
-
-  useEffect(() => {
-    if (!showDropdown) setHighlight(-1);
-  }, [showDropdown]);
+  const effectiveHighlight = showDropdown ? highlight : -1;
 
   const flatItem = (idx: number): VariableSuggestion | undefined => {
     let off = 0;
@@ -240,9 +237,9 @@ function SuggestionInput({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlight((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && highlight >= 0) {
+    } else if (e.key === "Enter" && effectiveHighlight >= 0) {
       e.preventDefault();
-      const item = flatItem(highlight);
+      const item = flatItem(effectiveHighlight);
       if (item) {
         onPick(item);
         setFocused(false);
@@ -284,7 +281,7 @@ function SuggestionInput({
       {showDropdown && (
         <SuggestionDropdown
           groups={filteredGroups}
-          highlight={highlight}
+          highlight={effectiveHighlight}
           setHighlight={setHighlight}
           onPick={(s) => {
             onPick(s);
