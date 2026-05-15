@@ -48,14 +48,15 @@ UPDATE sources
 -- by name (unique) so the deterministic ID from the loader is recorded
 -- on first insert and stable across restarts. is_default is left alone
 -- on update so an operator's PromoteDefault choice survives reloads.
-INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted, provisioned)
-VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted, provisioned, editable)
+VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8)
 ON CONFLICT (name) DO UPDATE
   SET kind           = EXCLUDED.kind,
       domain         = EXCLUDED.domain,
       config         = EXCLUDED.config,
       auth_encrypted = EXCLUDED.auth_encrypted,
-      provisioned    = true
+      provisioned    = true,
+      editable       = EXCLUDED.editable
 RETURNING *;
 
 -- name: DeleteProvisionedSourcesNotIn :exec

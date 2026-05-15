@@ -1453,6 +1453,7 @@ type Source0 struct {
 	Config      PrometheusConfigSafe `json:"config"`
 	CreatedAt   time.Time            `json:"createdAt"`
 	Domain      SourceDomain         `json:"domain"`
+	Editable    bool                 `json:"editable"`
 	Id          openapi_types.UUID   `json:"id"`
 	IsDefault   bool                 `json:"isDefault"`
 	Kind        Source0Kind          `json:"kind"`
@@ -1469,6 +1470,7 @@ type Source1 struct {
 	Config      MetricsServerConfigOutput `json:"config"`
 	CreatedAt   time.Time                 `json:"createdAt"`
 	Domain      SourceDomain              `json:"domain"`
+	Editable    bool                      `json:"editable"`
 	Id          openapi_types.UUID        `json:"id"`
 	IsDefault   bool                      `json:"isDefault"`
 	Kind        Source1Kind               `json:"kind"`
@@ -1485,6 +1487,7 @@ type Source2 struct {
 	Config      LokiConfigSafe     `json:"config"`
 	CreatedAt   time.Time          `json:"createdAt"`
 	Domain      SourceDomain       `json:"domain"`
+	Editable    bool               `json:"editable"`
 	Id          openapi_types.UUID `json:"id"`
 	IsDefault   bool               `json:"isDefault"`
 	Kind        Source2Kind        `json:"kind"`
@@ -1501,6 +1504,7 @@ type Source3 struct {
 	Config      KubeLogsConfigOutput `json:"config"`
 	CreatedAt   time.Time            `json:"createdAt"`
 	Domain      SourceDomain         `json:"domain"`
+	Editable    bool                 `json:"editable"`
 	Id          openapi_types.UUID   `json:"id"`
 	IsDefault   bool                 `json:"isDefault"`
 	Kind        Source3Kind          `json:"kind"`

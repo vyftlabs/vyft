@@ -45,7 +45,7 @@ func (q *Queries) CountSourcesInDomain(ctx context.Context, domain SourceDomain)
 const createSource = `-- name: CreateSource :one
 INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned
+RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable
 `
 
 type CreateSourceParams struct {
@@ -80,6 +80,7 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 		&i.Created,
 		&i.Updated,
 		&i.Provisioned,
+		&i.Editable,
 	)
 	return i, err
 }
@@ -108,7 +109,7 @@ func (q *Queries) DeleteSource(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getDefaultSource = `-- name: GetDefaultSource :one
-SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned FROM sources WHERE domain = $1 AND is_default = true
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable FROM sources WHERE domain = $1 AND is_default = true
 `
 
 func (q *Queries) GetDefaultSource(ctx context.Context, domain SourceDomain) (Source, error) {
@@ -125,12 +126,13 @@ func (q *Queries) GetDefaultSource(ctx context.Context, domain SourceDomain) (So
 		&i.Created,
 		&i.Updated,
 		&i.Provisioned,
+		&i.Editable,
 	)
 	return i, err
 }
 
 const getSource = `-- name: GetSource :one
-SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned FROM sources WHERE id = $1
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable FROM sources WHERE id = $1
 `
 
 func (q *Queries) GetSource(ctx context.Context, id pgtype.UUID) (Source, error) {
@@ -147,12 +149,13 @@ func (q *Queries) GetSource(ctx context.Context, id pgtype.UUID) (Source, error)
 		&i.Created,
 		&i.Updated,
 		&i.Provisioned,
+		&i.Editable,
 	)
 	return i, err
 }
 
 const listSources = `-- name: ListSources :many
-SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned FROM sources ORDER BY name
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable FROM sources ORDER BY name
 `
 
 func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
@@ -175,6 +178,7 @@ func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
 			&i.Created,
 			&i.Updated,
 			&i.Provisioned,
+			&i.Editable,
 		); err != nil {
 			return nil, err
 		}
@@ -187,7 +191,7 @@ func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
 }
 
 const listSourcesByDomain = `-- name: ListSourcesByDomain :many
-SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned FROM sources WHERE domain = $1 ORDER BY name
+SELECT id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable FROM sources WHERE domain = $1 ORDER BY name
 `
 
 func (q *Queries) ListSourcesByDomain(ctx context.Context, domain SourceDomain) ([]Source, error) {
@@ -210,6 +214,7 @@ func (q *Queries) ListSourcesByDomain(ctx context.Context, domain SourceDomain) 
 			&i.Created,
 			&i.Updated,
 			&i.Provisioned,
+			&i.Editable,
 		); err != nil {
 			return nil, err
 		}
@@ -238,7 +243,7 @@ const updateSource = `-- name: UpdateSource :one
 UPDATE sources
    SET name = $2, config = $3, auth_encrypted = $4
  WHERE id = $1
-RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned
+RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable
 `
 
 type UpdateSourceParams struct {
@@ -267,20 +272,22 @@ func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (Sou
 		&i.Created,
 		&i.Updated,
 		&i.Provisioned,
+		&i.Editable,
 	)
 	return i, err
 }
 
 const upsertProvisionedSource = `-- name: UpsertProvisionedSource :one
-INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted, provisioned)
-VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+INSERT INTO sources (id, kind, domain, name, is_default, config, auth_encrypted, provisioned, editable)
+VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8)
 ON CONFLICT (name) DO UPDATE
   SET kind           = EXCLUDED.kind,
       domain         = EXCLUDED.domain,
       config         = EXCLUDED.config,
       auth_encrypted = EXCLUDED.auth_encrypted,
-      provisioned    = true
-RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned
+      provisioned    = true,
+      editable       = EXCLUDED.editable
+RETURNING id, kind, domain, name, is_default, config, auth_encrypted, created, updated, provisioned, editable
 `
 
 type UpsertProvisionedSourceParams struct {
@@ -291,6 +298,7 @@ type UpsertProvisionedSourceParams struct {
 	IsDefault     bool         `json:"is_default"`
 	Config        []byte       `json:"config"`
 	AuthEncrypted []byte       `json:"auth_encrypted"`
+	Editable      bool         `json:"editable"`
 }
 
 // Idempotent write for sources sourced from /etc/vyft/provisioning. Match
@@ -306,6 +314,7 @@ func (q *Queries) UpsertProvisionedSource(ctx context.Context, arg UpsertProvisi
 		arg.IsDefault,
 		arg.Config,
 		arg.AuthEncrypted,
+		arg.Editable,
 	)
 	var i Source
 	err := row.Scan(
@@ -319,6 +328,7 @@ func (q *Queries) UpsertProvisionedSource(ctx context.Context, arg UpsertProvisi
 		&i.Created,
 		&i.Updated,
 		&i.Provisioned,
+		&i.Editable,
 	)
 	return i, err
 }

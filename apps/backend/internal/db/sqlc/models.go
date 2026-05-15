@@ -310,6 +310,7 @@ type Source struct {
 	Created       pgtype.Timestamptz `json:"created"`
 	Updated       pgtype.Timestamptz `json:"updated"`
 	Provisioned   bool               `json:"provisioned"`
+	Editable      bool               `json:"editable"`
 }
 
 type Variable struct {

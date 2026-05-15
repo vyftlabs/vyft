@@ -9,10 +9,9 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   CheckIcon,
-  LoaderIcon,
-  PencilIcon,
+  LockIcon,
+  MoreHorizontalIcon,
   PlusIcon,
-  Trash2Icon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,7 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   List,
@@ -54,6 +59,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import * as api from "@/lib/api";
 import { sourcePresets } from "@/lib/source-presets";
 
@@ -161,22 +171,36 @@ function SourceRow({
   const Icon = preset?.icon;
   const remove = useMutation(api.sources.remove);
   const promote = useMutation(api.sources.promoteDefault);
+  const locked = source.provisioned && !source.editable;
 
   return (
-    <ListItem>
+    <ListItem
+      className="cursor-pointer"
+      onClick={onEdit}
+    >
       {Icon && (
         <ListIcon>
           <Icon />
         </ListIcon>
       )}
       <ListContent>
-        <ListTitle className="flex items-center gap-2">
+        <ListTitle className="flex items-center gap-1.5">
           {source.name}
           {source.isDefault && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-primary">
-              <CheckCircle2Icon className="size-3" />
-              Default
-            </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={<CheckCircle2Icon className="size-3 text-primary" />}
+              />
+              <TooltipContent>Default for {source.domain}</TooltipContent>
+            </Tooltip>
+          )}
+          {locked && (
+            <Tooltip>
+              <TooltipTrigger
+                render={<LockIcon className="size-3 text-muted-foreground" />}
+              />
+              <TooltipContent>Provisioned · read-only</TooltipContent>
+            </Tooltip>
           )}
         </ListTitle>
         <ListDescription className="font-mono">
@@ -184,46 +208,52 @@ function SourceRow({
           {source.kind === "prometheus" && ` · ${source.config.url}`}
         </ListDescription>
       </ListContent>
-      <ListAction className="opacity-0 group-hover/list-item:opacity-100 flex gap-1">
-        {!source.isDefault && (
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={promote.isPending}
-            onClick={() =>
-              promote.mutate(source.id, {
-                onError: (err: Error) => toast.error(err.message),
-              })
+      <ListAction
+        className="opacity-0 group-hover/list-item:opacity-100 flex gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {(!source.isDefault || !locked) && (
+          <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="text-muted-foreground"
+                disabled={remove.isPending || promote.isPending}
+              />
             }
           >
-            Make default
-          </Button>
+            <MoreHorizontalIcon className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!source.isDefault && (
+              <DropdownMenuItem
+                onClick={() =>
+                  promote.mutate(source.id, {
+                    onError: (err: Error) => toast.error(err.message),
+                  })
+                }
+              >
+                Make default
+              </DropdownMenuItem>
+            )}
+            {!locked && (
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={remove.isPending}
+                onClick={() =>
+                  remove.mutate(source.id, {
+                    onError: (err: Error) => toast.error(err.message),
+                  })
+                }
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
         )}
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={onEdit}
-        >
-          <PencilIcon className="size-3.5" />
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          className="text-muted-foreground hover:text-destructive"
-          disabled={remove.isPending}
-          onClick={() =>
-            remove.mutate(source.id, {
-              onError: (err: Error) => toast.error(err.message),
-            })
-          }
-        >
-          {remove.isPending ? (
-            <LoaderIcon className="size-3.5 animate-spin" />
-          ) : (
-            <Trash2Icon className="size-3.5" />
-          )}
-        </Button>
       </ListAction>
     </ListItem>
   );
@@ -287,6 +317,7 @@ function SourceDialog({
 }) {
   const open = mode.type !== "closed";
   const editing = mode.type === "edit" ? mode.source : null;
+  const locked = !!editing && editing.provisioned && !editing.editable;
   const [page, setPage] = useState<"picker" | SourceKind>("picker");
   const [testResult, setTestResult] = useState<{ ok: boolean } | null>(null);
   const [testing, setTesting] = useState(false);
@@ -301,9 +332,20 @@ function SourceDialog({
   const create = useMutation(api.sources.create);
   const patch = useMutation(api.sources.patch);
   const test = useMutation(api.sources.test);
-  const { register, handleSubmit, watch, reset, getValues, setValue } = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { isDirty, errors, isSubmitted },
+  } = useForm<FormValues>({
     defaultValues: defaultsFor(editing ?? undefined),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
+  const showError = (field: keyof FormValues): boolean =>
+    isSubmitted && !!errors[field];
 
   useEffect(() => {
     if (mode.type === "edit") {
@@ -406,30 +448,53 @@ function SourceDialog({
                   <ArrowLeftIcon className="size-4" />
                 </Button>
               )}
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
                 {editing ? `Edit ${editing.name}` : selected.name}
+                {locked && (
+                  <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                    <LockIcon className="size-3.5" />
+                    Read-only
+                  </span>
+                )}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-3 px-6 py-4">
-              <Field>
-                <FieldLabel>Name</FieldLabel>
+              <Field data-invalid={showError("name") && !!errors.name}>
+                <FieldLabel htmlFor="source-name">Name</FieldLabel>
                 <Input
-                  {...register("name", { required: true })}
+                  id="source-name"
+                  {...register("name", {
+                    required: "Name is required",
+                    maxLength: { value: 100, message: "Max 100 characters" },
+                  })}
                   placeholder={namePlaceholder(selected.id)}
                   autoFocus
+                  readOnly={locked}
+                  aria-invalid={showError("name") && !!errors.name}
                 />
+                {showError("name") && <FieldError errors={[errors.name]} />}
               </Field>
 
               {URL_KINDS.includes(selected.id) && (
                 <>
-                  <Field>
-                    <FieldLabel>URL</FieldLabel>
+                  <Field data-invalid={showError("url") && !!errors.url}>
+                    <FieldLabel htmlFor="source-url">URL</FieldLabel>
                     <Input
-                      {...register("url", { required: true })}
+                      id="source-url"
+                      {...register("url", {
+                        required: "URL is required",
+                        pattern: {
+                          value: /^https?:\/\/.+/i,
+                          message: "Must start with http:// or https://",
+                        },
+                      })}
                       placeholder={urlPlaceholder(selected.id)}
                       className="font-mono"
+                      readOnly={locked}
+                      aria-invalid={showError("url") && !!errors.url}
                     />
+                    {showError("url") && <FieldError errors={[errors.url]} />}
                   </Field>
                   <Field>
                     <FieldLabel>Auth</FieldLabel>
@@ -438,6 +503,7 @@ function SourceDialog({
                       onValueChange={(v) => {
                         if (v) setValue("authType", v as FormValues["authType"]);
                       }}
+                      disabled={locked}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -451,28 +517,72 @@ function SourceDialog({
                   </Field>
                   {authType === "basic" && (
                     <>
-                      <Field>
-                        <FieldLabel>Username</FieldLabel>
-                        <Input {...register("username", { required: true })} />
-                      </Field>
-                      <Field>
-                        <FieldLabel>Password</FieldLabel>
+                      <Field
+                        data-invalid={
+                          showError("username") && !!errors.username
+                        }
+                      >
+                        <FieldLabel htmlFor="source-username">
+                          Username
+                        </FieldLabel>
                         <Input
-                          {...register("password", { required: !editing })}
+                          id="source-username"
+                          {...register("username", {
+                            required: "Username is required",
+                          })}
+                          readOnly={locked}
+                          aria-invalid={
+                            showError("username") && !!errors.username
+                          }
+                        />
+                        {showError("username") && (
+                          <FieldError errors={[errors.username]} />
+                        )}
+                      </Field>
+                      <Field
+                        data-invalid={
+                          showError("password") && !!errors.password
+                        }
+                      >
+                        <FieldLabel htmlFor="source-password">
+                          Password
+                        </FieldLabel>
+                        <Input
+                          id="source-password"
+                          {...register("password", {
+                            required: editing
+                              ? false
+                              : "Password is required",
+                          })}
                           type="password"
                           placeholder={editing ? "(unchanged)" : ""}
+                          readOnly={locked}
+                          aria-invalid={
+                            showError("password") && !!errors.password
+                          }
                         />
+                        {showError("password") && (
+                          <FieldError errors={[errors.password]} />
+                        )}
                       </Field>
                     </>
                   )}
                   {authType === "bearer" && (
-                    <Field>
-                      <FieldLabel>Token</FieldLabel>
+                    <Field data-invalid={showError("token") && !!errors.token}>
+                      <FieldLabel htmlFor="source-token">Token</FieldLabel>
                       <Input
-                        {...register("token", { required: !editing })}
+                        id="source-token"
+                        {...register("token", {
+                          required: editing ? false : "Token is required",
+                        })}
                         type="password"
                         placeholder={editing ? "(unchanged)" : ""}
+                        readOnly={locked}
+                        aria-invalid={showError("token") && !!errors.token}
                       />
+                      {showError("token") && (
+                        <FieldError errors={[errors.token]} />
+                      )}
                     </Field>
                   )}
                 </>
@@ -491,9 +601,9 @@ function SourceDialog({
                 type="button"
                 variant="outline"
                 disabled={testing || !selected}
-                onClick={async () => {
+                onClick={handleSubmit(async (data) => {
                   if (!selected) return;
-                  const body = toCreateBody(selected.id, getValues());
+                  const body = toCreateBody(selected.id, data);
                   if (!body) return;
                   setTestResult(null);
                   setTesting(true);
@@ -516,7 +626,7 @@ function SourceDialog({
                   } finally {
                     setTesting(false);
                   }
-                }}
+                })}
                 className={
                   testResult?.ok
                     ? "border-severity-success/40 bg-severity-success/10 text-severity-success-text hover:bg-severity-success/15 hover:text-severity-success-text"
@@ -542,15 +652,20 @@ function SourceDialog({
                   "Test"
                 )}
               </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting
-                  ? editing
-                    ? "Saving..."
-                    : "Adding..."
-                  : editing
-                    ? "Save"
-                    : "Add source"}
-              </Button>
+              {!locked && (
+                <Button
+                  type="submit"
+                  disabled={submitting || (!!editing && !isDirty)}
+                >
+                  {submitting
+                    ? editing
+                      ? "Saving..."
+                      : "Adding..."
+                    : editing
+                      ? "Save"
+                      : "Add source"}
+                </Button>
+              )}
             </DialogFooter>
           </form>
         )}

@@ -89,8 +89,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, body openapi.SourceC
 		}
 		return sqlc.Source{}, apierr.Internal(err)
 	}
-	if existing.Provisioned {
-		return sqlc.Source{}, apierr.Conflict("source is provisioned; edit etc/vyft/provisioning/sources")
+	if existing.Provisioned && !existing.Editable {
+		return sqlc.Source{}, apierr.Conflict("source is provisioned; edit etc/vyft/provisioning/sources or set editable: true on the entry")
 	}
 	parsed, err := parseCreate(body)
 	if err != nil {
@@ -136,8 +136,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		}
 		return apierr.Internal(err)
 	}
-	if existing.Provisioned {
-		return apierr.Conflict("source is provisioned; remove from etc/vyft/provisioning/sources")
+	if existing.Provisioned && !existing.Editable {
+		return apierr.Conflict("source is provisioned; remove from etc/vyft/provisioning/sources or set editable: true on the entry")
 	}
 	if err := s.db.Q.DeleteSource(ctx, pgxid.PgUUID(id)); err != nil {
 		return apierr.Internal(err)
@@ -214,6 +214,7 @@ type parsedCreate struct {
 	name       string
 	configJSON []byte
 	authSecret []byte // nil for none / metrics-server
+	editable   bool   // only set by provisioning loader; ignored for API creates
 }
 
 func parseCreate(body openapi.SourceCreate) (parsedCreate, error) {
@@ -365,6 +366,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Name:        row.Name,
 			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
+			Editable:    row.Editable,
 			Config:      safe,
 		}); err != nil {
 			return openapi.Source{}, err
@@ -379,6 +381,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Name:        row.Name,
 			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
+			Editable:    row.Editable,
 			Config:      openapi.MetricsServerConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err
@@ -401,6 +404,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Name:        row.Name,
 			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
+			Editable:    row.Editable,
 			Config:      safe,
 		}); err != nil {
 			return openapi.Source{}, err
@@ -415,6 +419,7 @@ func toWire(row sqlc.Source) (openapi.Source, error) {
 			Name:        row.Name,
 			IsDefault:   row.IsDefault,
 			Provisioned: row.Provisioned,
+			Editable:    row.Editable,
 			Config:      openapi.KubeLogsConfigOutput{},
 		}); err != nil {
 			return openapi.Source{}, err

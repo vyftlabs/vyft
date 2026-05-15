@@ -10,7 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -105,12 +110,18 @@ export function RoutesForm({
   const [form, setForm] = useState<RouteDialogState>(
     initialDialogState(defaultPort ?? 8080),
   );
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const domainInvalid = !form.domain.trim();
+  const showDomainError = domainInvalid && submitAttempted;
 
   const update = (patch: Partial<RouteDialogState>) =>
     setForm((f) => ({ ...f, ...patch }));
 
   const handleAdd = () => {
-    if (!form.domain.trim()) return;
+    if (domainInvalid) {
+      setSubmitAttempted(true);
+      return;
+    }
     const route: NestedRouteCreate = {
       domain: form.domain.trim(),
       path: form.path || "/",
@@ -121,6 +132,7 @@ export function RoutesForm({
     };
     onChange([...routes, route]);
     setForm(initialDialogState(defaultPort ?? 8080));
+    setSubmitAttempted(false);
     setDialogOpen(false);
   };
 
@@ -217,15 +229,20 @@ export function RoutesForm({
                 value="general"
                 className="flex-1 overflow-y-auto mt-4 px-6 pb-6 space-y-4"
               >
-                <Field>
-                  <FieldLabel>Domain</FieldLabel>
+                <Field data-invalid={showDomainError}>
+                  <FieldLabel htmlFor="route-domain">Domain</FieldLabel>
                   <Input
+                    id="route-domain"
                     value={form.domain}
                     onChange={(e) => update({ domain: e.target.value })}
                     placeholder="example.com"
                     autoFocus
                     data-testid="service.form.routes.dialog.domain"
+                    aria-invalid={showDomainError}
                   />
+                  {showDomainError && (
+                    <FieldError errors={[{ message: "Domain is required" }]} />
+                  )}
                 </Field>
 
                 <div className="flex items-end gap-3">
@@ -447,7 +464,7 @@ export function RoutesForm({
               <Button
                 type="button"
                 className="w-full"
-                disabled={!form.domain.trim()}
+                disabled={domainInvalid}
                 onClick={handleAdd}
                 data-testid="service.form.routes.dialog.submit"
               >

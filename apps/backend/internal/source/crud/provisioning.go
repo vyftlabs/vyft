@@ -56,10 +56,11 @@ type provisionedFile struct {
 }
 
 type provisionedSource struct {
-	Name   string          `json:"name"`
-	Kind   string          `json:"kind"`
-	Domain string          `json:"domain"`
-	Config json.RawMessage `json:"config"`
+	Name     string          `json:"name"`
+	Kind     string          `json:"kind"`
+	Domain   string          `json:"domain"`
+	Editable bool            `json:"editable,omitempty"`
+	Config   json.RawMessage `json:"config"`
 }
 
 // SyncProvisioning loads every YAML file under <dir>/sources/, upserts
@@ -117,6 +118,7 @@ func loadProvisioning(dir string) ([]parsedCreate, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s entry %d: %w", path, i, err)
 			}
+			parsed.editable = entry.Editable
 			if prev, ok := seen[parsed.name]; ok {
 				return nil, fmt.Errorf("duplicate provisioned source name %q in %s (also in %s)", parsed.name, path, prev)
 			}
@@ -142,6 +144,7 @@ func upsertProvisioned(ctx context.Context, database *db.DB, p parsedCreate) (sq
 		IsDefault:     count == 0,
 		Config:        p.configJSON,
 		AuthEncrypted: p.authSecret,
+		Editable:      p.editable,
 	})
 }
 

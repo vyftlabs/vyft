@@ -6,7 +6,14 @@ CLUSTER=vyft
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${DIR}/.." && pwd)"
 
-if ! kind get clusters | grep -q "^${CLUSTER}$"; then
+if kind get clusters | grep -q "^${CLUSTER}$"; then
+  if ! docker inspect -f '{{.State.Running}}' "${CLUSTER}-control-plane" 2>/dev/null | grep -q true; then
+    if ! docker start "${CLUSTER}-control-plane" >/dev/null 2>&1; then
+      kind delete cluster --name "${CLUSTER}"
+      kind create cluster --config "${DIR}/kind.yaml"
+    fi
+  fi
+else
   kind create cluster --config "${DIR}/kind.yaml"
 fi
 

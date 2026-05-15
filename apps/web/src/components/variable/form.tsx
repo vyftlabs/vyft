@@ -42,10 +42,18 @@ export function VariableForm({
   isPending,
   onSubmit,
 }: VariableFormProps) {
-  const { control, handleSubmit, reset, setValue, watch } =
-    useForm<VariableFormValues>({
-      defaultValues: { key: "", value: "", secret: true },
-    });
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { isSubmitted },
+  } = useForm<VariableFormValues>({
+    defaultValues: { key: "", value: "", secret: true },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+  });
 
   // `linked` is the source variable picked from suggestions. When set, the
   // value field shows a chip instead of a free-form input, and the secret
@@ -78,27 +86,30 @@ export function VariableForm({
           name="key"
           control={control}
           rules={{ required: "Key is required" }}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid || undefined}>
-              <FieldLabel htmlFor={field.name}>Key</FieldLabel>
-              <SuggestionInput
-                id={field.name}
-                value={field.value}
-                onChange={(v) => field.onChange(v.toUpperCase())}
-                onBlur={field.onBlur}
-                placeholder="DATABASE_URL"
-                groups={suggestionGroups}
-                filterText={keyValue}
-                onPick={(s) => {
-                  setValue("key", s.key);
-                  setLinked(s);
-                }}
-                testId="service.form.variables.dialog.key"
-                autoFocus
-              />
-              <FieldError errors={[fieldState.error]} />
-            </Field>
-          )}
+          render={({ field, fieldState }) => {
+            const show = isSubmitted && fieldState.invalid;
+            return (
+              <Field data-invalid={show || undefined}>
+                <FieldLabel htmlFor={field.name}>Key</FieldLabel>
+                <SuggestionInput
+                  id={field.name}
+                  value={field.value}
+                  onChange={(v) => field.onChange(v.toUpperCase())}
+                  onBlur={field.onBlur}
+                  placeholder="DATABASE_URL"
+                  groups={suggestionGroups}
+                  filterText={keyValue}
+                  onPick={(s) => {
+                    setValue("key", s.key);
+                    setLinked(s);
+                  }}
+                  testId="service.form.variables.dialog.key"
+                  autoFocus
+                />
+                {show && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            );
+          }}
         />
 
         {linked ? (
@@ -117,22 +128,32 @@ export function VariableForm({
             name="value"
             control={control}
             rules={{ required: "Value is required" }}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>Value</FieldLabel>
-                <ValueInput
-                  id={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  isSecret={watch("secret")}
-                  groups={suggestionGroups}
-                  filterText={valueValue}
-                  onPick={(s) => setLinked(s)}
-                />
-                <FieldError errors={[fieldState.error]} />
-              </Field>
-            )}
+            render={({ field, fieldState }) => {
+              const show = isSubmitted && fieldState.invalid;
+              return (
+                <Field data-invalid={show || undefined}>
+                  <FieldLabel htmlFor={field.name}>Value</FieldLabel>
+                  <ValueInput
+                    id={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    onGenerate={(v) =>
+                      setValue("value", v, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      })
+                    }
+                    isSecret={watch("secret")}
+                    groups={suggestionGroups}
+                    filterText={valueValue}
+                    onPick={(s) => setLinked(s)}
+                  />
+                  {show && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              );
+            }}
           />
         )}
 
@@ -184,6 +205,7 @@ interface SuggestionInputProps {
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
+  onFocus?: () => void;
   placeholder?: string;
   groups: SuggestionGroup[];
   filterText: string;
@@ -201,6 +223,7 @@ function SuggestionInput({
   value,
   onChange,
   onBlur,
+  onFocus,
   placeholder,
   groups,
   filterText,
@@ -265,6 +288,7 @@ function SuggestionInput({
         onFocus={() => {
           setFocused(true);
           setHighlight(0);
+          onFocus?.();
         }}
         // Defer blur close so onClick on dropdown items can fire first.
         onBlur={() => {
@@ -303,6 +327,8 @@ interface ValueInputProps {
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
+  onFocus?: () => void;
+  onGenerate: (v: string) => void;
   isSecret: boolean;
   groups: SuggestionGroup[];
   filterText: string;
@@ -314,6 +340,8 @@ function ValueInput({
   value,
   onChange,
   onBlur,
+  onFocus,
+  onGenerate,
   isSecret,
   groups,
   filterText,
@@ -326,6 +354,7 @@ function ValueInput({
         type="button"
         className="text-muted-foreground hover:text-foreground"
         title="Copy value"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           navigator.clipboard.writeText(value);
           setCopied(true);
@@ -342,13 +371,14 @@ function ValueInput({
         type="button"
         className="text-muted-foreground hover:text-foreground"
         title="Generate random value"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           const arr = new Uint8Array(24);
           crypto.getRandomValues(arr);
           const generated = btoa(String.fromCharCode(...arr))
             .replace(/[+/=]/g, "")
             .slice(0, 32);
-          onChange(generated);
+          onGenerate(generated);
         }}
       >
         <DicesIcon className="size-3.5" />
@@ -361,6 +391,7 @@ function ValueInput({
       value={value}
       onChange={onChange}
       onBlur={onBlur}
+      onFocus={onFocus}
       placeholder={isSecret ? "••••••••" : "value"}
       groups={groups}
       filterText={filterText}

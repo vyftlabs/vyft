@@ -25,7 +25,8 @@ function attach(p: Promise<ProjectHandle>, page: Page): ProjectChain {
     createImageService(input: ImageInput): ProjectChain {
       return attach(
         p.then(async (h) => {
-          await actions.createImageService(page, input);
+          const res = await actions.createImageService(page, input);
+          h.resources[res.name] = res;
           return h;
         }),
         page,

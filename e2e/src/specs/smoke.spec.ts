@@ -12,5 +12,5 @@ test("create project, add nginx, deploy → namespace + pod running", async ({ p
     .deploy();
 
   await k8s.assert.namespace(proj);
-  await k8s.assert.pod(proj, { resource: "nginx", image: "nginx:alpine" });
+  await k8s.assert.pod(proj, { resource: proj.resources.nginx.slug, image: "nginx:alpine" });
 });

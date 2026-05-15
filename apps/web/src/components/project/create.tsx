@@ -46,11 +46,15 @@ export function CreateProjectDialog({
     handleSubmit,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", slug: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
+  const showError = (field: keyof FormValues): boolean =>
+    isSubmitted && !!errors[field];
 
   const name = useWatch({ control, name: "name" });
 
@@ -84,7 +88,7 @@ export function CreateProjectDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <Field data-invalid={errors.name ? true : undefined}>
+            <Field data-invalid={showError("name") && !!errors.name}>
               <FieldLabel htmlFor="name">Project name</FieldLabel>
               <Input
                 {...register("name")}
@@ -92,13 +96,19 @@ export function CreateProjectDialog({
                 placeholder="My Project"
                 autoFocus
                 data-testid="project-name-input"
+                aria-invalid={showError("name") && !!errors.name}
               />
-              <FieldError errors={[errors.name]} />
+              {showError("name") && <FieldError errors={[errors.name]} />}
             </Field>
-            <Field data-invalid={errors.slug ? true : undefined}>
+            <Field data-invalid={showError("slug") && !!errors.slug}>
               <FieldLabel htmlFor="slug">Slug</FieldLabel>
-              <Input {...register("slug")} id="slug" placeholder="my-project" />
-              <FieldError errors={[errors.slug]} />
+              <Input
+                {...register("slug")}
+                id="slug"
+                placeholder="my-project"
+                aria-invalid={showError("slug") && !!errors.slug}
+              />
+              {showError("slug") && <FieldError errors={[errors.slug]} />}
             </Field>
           </div>
           <DialogFooter>

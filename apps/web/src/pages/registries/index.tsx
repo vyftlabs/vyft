@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   List,
@@ -207,9 +207,17 @@ function RegistryForm({
   onSuccess: () => void;
 }) {
   const isCustom = preset.id === "custom";
-  const { register, handleSubmit } = useForm<RegistryFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitted },
+  } = useForm<RegistryFormValues>({
     defaultValues: { customName: "", customUrl: "", username: "", password: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
+  const showError = (field: keyof RegistryFormValues): boolean =>
+    isSubmitted && !!errors[field];
   const createRegistry = useMutation(api.registries.create);
 
   const onSubmit = handleSubmit((data) => {
@@ -239,43 +247,69 @@ function RegistryForm({
       <div className="space-y-3 px-6 py-4">
         {isCustom && (
           <>
-            <Field>
-              <FieldLabel>Name</FieldLabel>
+            <Field data-invalid={showError("customName") && !!errors.customName}>
+              <FieldLabel htmlFor="registry-name">Name</FieldLabel>
               <Input
-                {...register("customName", { required: true })}
+                id="registry-name"
+                {...register("customName", {
+                  required: "Name is required",
+                })}
                 placeholder="My registry"
                 autoFocus
                 data-testid="registry-form-name"
+                aria-invalid={showError("customName") && !!errors.customName}
               />
+              {showError("customName") && (
+                <FieldError errors={[errors.customName]} />
+              )}
             </Field>
-            <Field>
-              <FieldLabel>URL</FieldLabel>
+            <Field data-invalid={showError("customUrl") && !!errors.customUrl}>
+              <FieldLabel htmlFor="registry-url">URL</FieldLabel>
               <Input
-                {...register("customUrl", { required: true })}
+                id="registry-url"
+                {...register("customUrl", {
+                  required: "URL is required",
+                  pattern: {
+                    value: /^https?:\/\/.+/i,
+                    message: "Must start with http:// or https://",
+                  },
+                })}
                 placeholder="https://registry.example.com"
                 className="font-mono"
                 data-testid="registry-form-url"
+                aria-invalid={showError("customUrl") && !!errors.customUrl}
               />
+              {showError("customUrl") && (
+                <FieldError errors={[errors.customUrl]} />
+              )}
             </Field>
           </>
         )}
-        <Field>
-          <FieldLabel>Username</FieldLabel>
+        <Field data-invalid={showError("username") && !!errors.username}>
+          <FieldLabel htmlFor="registry-username">Username</FieldLabel>
           <Input
-            {...register("username", { required: true })}
+            id="registry-username"
+            {...register("username", { required: "Username is required" })}
             placeholder="username"
             autoFocus={!isCustom}
             data-testid="registry-form-username"
+            aria-invalid={showError("username") && !!errors.username}
           />
+          {showError("username") && <FieldError errors={[errors.username]} />}
         </Field>
-        <Field>
-          <FieldLabel>Password / Token</FieldLabel>
+        <Field data-invalid={showError("password") && !!errors.password}>
+          <FieldLabel htmlFor="registry-password">Password / Token</FieldLabel>
           <Input
-            {...register("password", { required: true })}
+            id="registry-password"
+            {...register("password", {
+              required: "Password or token is required",
+            })}
             type="password"
             placeholder="••••••••"
             data-testid="registry-form-password"
+            aria-invalid={showError("password") && !!errors.password}
           />
+          {showError("password") && <FieldError errors={[errors.password]} />}
         </Field>
       </div>
 

@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
@@ -245,10 +245,12 @@ function SettingsTab({
     control,
     handleSubmit,
     reset,
-    formState: { isDirty },
+    formState: { isDirty, isSubmitted },
   } = useForm<ResourceAppCreate>({
     resolver: zodResolver(ResourceAppCreate),
     defaultValues: fromResource(resource),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
 
   useEffect(() => {
@@ -413,7 +415,11 @@ function SettingsTab({
                     : "Changes trigger a new deployment"
                 }
               />
-              <GeneralForm control={control} showName={isCreating} />
+              <GeneralForm
+                control={control}
+                showName={isCreating}
+                isSubmitted={isSubmitted}
+              />
             </div>
 
             {isCreating && (
@@ -439,7 +445,7 @@ function SettingsTab({
                 title="Resources"
                 description="Service is restarted when limits are exceeded"
               />
-              <ScalingForm control={control} />
+              <ScalingForm control={control} isSubmitted={isSubmitted} />
             </div>
 
             <div id="health" className="space-y-5 scroll-mt-6">
@@ -447,7 +453,7 @@ function SettingsTab({
                 title="Health check"
                 description="Determines when to restart unhealthy containers"
               />
-              <HealthForm control={control} />
+              <HealthForm control={control} isSubmitted={isSubmitted} />
             </div>
 
             <div id="routes" className="space-y-5 scroll-mt-6">
@@ -519,6 +525,8 @@ function closestDiskIndex(mb: number): number {
   return best;
 }
 
+type DiskFormValues = { name: string; size: number; path: string };
+
 function AddDiskDialog({
   open,
   onOpenChange,
@@ -528,55 +536,56 @@ function AddDiskDialog({
   onOpenChange: (open: boolean) => void;
   onAdd: (disk: DiskCreate) => void;
 }) {
-  const [name, setName] = useState("");
-  const [size, setSize] = useState<number>(DEFAULT_DISK_MB);
-  const [path, setPath] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitted },
+  } = useForm<DiskFormValues>({
+    defaultValues: { name: "", size: DEFAULT_DISK_MB, path: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+  });
+  const showError = (field: keyof DiskFormValues): boolean =>
+    isSubmitted && !!errors[field];
 
-  const cleanup = () => {
-    setName("");
-    setSize(DEFAULT_DISK_MB);
-    setPath("");
-    onOpenChange(false);
-  };
+  useEffect(() => {
+    if (open) reset({ name: "", size: DEFAULT_DISK_MB, path: "" });
+  }, [open, reset]);
 
-  const handleAdd = () => {
-    if (!name.trim() || !path.trim()) return;
-    onAdd({ name: name.trim(), size, path: path.trim() });
-    cleanup();
-  };
-
+  const size = watch("size");
   const currentIdx = closestDiskIndex(size);
   const currentGib = DISK_GIB_STEPS[currentIdx] ?? 1;
 
+  const onSubmit = handleSubmit((data) => {
+    onAdd({ name: data.name.trim(), size: data.size, path: data.path.trim() });
+    onOpenChange(false);
+  });
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) cleanup();
-        else onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAdd();
-          }}
-        >
+        <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Add disk</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Field>
+            <Field data-invalid={showError("name") && !!errors.name}>
               <FieldLabel htmlFor="disk-name">Name</FieldLabel>
               <Input
                 id="disk-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register("name", {
+                  required: "Name is required",
+                  validate: (v) => v.trim().length > 0 || "Name is required",
+                })}
                 placeholder="data"
                 autoFocus
                 data-testid="service.form.disks.dialog.name"
+                aria-invalid={showError("name") && !!errors.name}
               />
+              {showError("name") && <FieldError errors={[errors.name]} />}
             </Field>
 
             <div className="grid gap-2">
@@ -594,7 +603,7 @@ function AddDiskDialog({
                 onValueChange={([i]) => {
                   if (i === undefined) return;
                   const gib = DISK_GIB_STEPS[i];
-                  if (gib !== undefined) setSize(gib * 1024);
+                  if (gib !== undefined) setValue("size", gib * 1024);
                 }}
                 min={0}
                 max={DISK_GIB_STEPS.length - 1}
@@ -602,23 +611,27 @@ function AddDiskDialog({
               />
             </div>
 
-            <Field>
+            <Field data-invalid={showError("path") && !!errors.path}>
               <FieldLabel htmlFor="disk-path">Path</FieldLabel>
               <Input
                 id="disk-path"
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
+                {...register("path", {
+                  required: "Path is required",
+                  validate: (v) =>
+                    v.trim().startsWith("/") || "Path must start with /",
+                })}
                 placeholder="/data"
                 className="font-mono"
                 data-testid="service.form.disks.dialog.path"
+                aria-invalid={showError("path") && !!errors.path}
               />
+              {showError("path") && <FieldError errors={[errors.path]} />}
             </Field>
           </div>
           <DialogFooter>
             <Button
               type="submit"
               className="w-full"
-              disabled={!name.trim() || !path.trim()}
               data-testid="service.form.disks.dialog.submit"
             >
               Add
@@ -1006,7 +1019,6 @@ export function ServiceDrawer({
 }) {
   const isOpen = !!resourceId || !!creating;
   const isCreating = !resourceId && !!creating;
-
   const { data: resource } = useQuery({
     ...api.resources.byId(projectId, resourceId ?? ""),
     enabled: !!resourceId,

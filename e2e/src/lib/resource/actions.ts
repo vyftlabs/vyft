@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
+import type { ResourceHandle } from "../types.ts";
+
 export type EnvVar = {
   key: string;
   value: string;
@@ -17,7 +19,7 @@ export type ImageInput = {
  * Drive the "Add resource → container image" flow and submit the
  * create-service drawer. Must be called on a project page.
  */
-export async function createImage(page: Page, input: ImageInput): Promise<void> {
+export async function createImage(page: Page, input: ImageInput): Promise<ResourceHandle> {
   const picker = page.getByTestId("service.picker.image");
   const addBtn = page.getByTestId("service.canvas.add");
   // Empty projects auto-open the resource picker; existing ones expose an
@@ -40,8 +42,13 @@ export async function createImage(page: Page, input: ImageInput): Promise<void> 
     await addEnvVar(page, drawer, v);
   }
 
+  const createResponse = page.waitForResponse(
+    (r) => /\/api\/projects\/[^/]+\/resources$/.test(r.url()) && r.request().method() === "POST" && r.status() === 201,
+  );
   await page.getByTestId("service.drawer.create-submit").click();
+  const body = await (await createResponse).json();
   await expect(drawer).toBeHidden();
+  return { name: input.name, slug: body.slug };
 }
 
 function normalizeEnv(env: ImageInput["env"]): EnvVar[] {

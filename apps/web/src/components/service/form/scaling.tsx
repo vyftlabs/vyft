@@ -85,9 +85,11 @@ function ResourceStep({
 export function ScalingForm({
   control,
   showInstances = true,
+  isSubmitted = false,
 }: {
   control: Control<ResourceAppCreate>;
   showInstances?: boolean;
+  isSubmitted?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -97,8 +99,9 @@ export function ScalingForm({
           control={control}
           render={({ field, fieldState }) => {
             const value = Number.isFinite(field.value) ? field.value : 1;
+            const show = isSubmitted && fieldState.invalid;
             return (
-              <Field data-invalid={fieldState.invalid || undefined}>
+              <Field data-invalid={show || undefined}>
                 <FieldLabel htmlFor={field.name}>Instances</FieldLabel>
                 <InputGroup>
                   <InputGroupAddon align="inline-start">
@@ -131,7 +134,7 @@ export function ScalingForm({
                     </InputGroupButton>
                   </InputGroupAddon>
                 </InputGroup>
-                <FieldError errors={[fieldState.error]} />
+                {show && <FieldError errors={[fieldState.error]} />}
               </Field>
             );
           }}

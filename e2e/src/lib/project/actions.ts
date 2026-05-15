@@ -30,7 +30,7 @@ export async function create(page: Page, input: CreateInput): Promise<ProjectHan
   await page.locator(`[data-testid="project-card"][data-slug="${input.slug}"]`).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${input.slug}`));
 
-  return { slug: input.slug, name, namespace: namespaceFor(input.slug) };
+  return { slug: input.slug, name, namespace: namespaceFor(input.slug), resources: {} };
 }
 
 /**

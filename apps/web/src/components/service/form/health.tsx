@@ -142,19 +142,26 @@ function HealthEditor({
 
 export function HealthForm({
   control,
+  isSubmitted = false,
 }: {
   control: Control<ResourceAppCreate>;
+  isSubmitted?: boolean;
 }) {
   return (
     <Controller
       name="config.spec.healthCheck"
       control={control}
-      render={({ field, fieldState }) => (
-        <div className="space-y-2">
-          <HealthEditor value={field.value} onChange={field.onChange} />
-          {fieldState.error && <FieldError errors={[fieldState.error]} />}
-        </div>
-      )}
+      render={({ field, fieldState }) => {
+        const show = isSubmitted && fieldState.invalid;
+        return (
+          <div className="space-y-2">
+            <HealthEditor value={field.value} onChange={field.onChange} />
+            {show && fieldState.error && (
+              <FieldError errors={[fieldState.error]} />
+            )}
+          </div>
+        );
+      }}
     />
   );
 }
