@@ -10,13 +10,13 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@fontsource/geist-mono": "^5.2.7",
+    "@fontsource/geist-mono": "^5.2.8",
     "@fontsource/geist-sans": "^5.2.5",
-    "@tailwindcss/vite": "^4.2.4",
-    "astro": "^6.2.1",
-    "tailwindcss": "^4.2.4"
+    "@tailwindcss/vite": "^4.3.0",
+    "astro": "^6.3.7",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
-    "vite": "^7.3.2"
+    "vite": "^8.0.14"
   }
 }
