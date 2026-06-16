@@ -246,7 +246,7 @@ function ServicesCanvas() {
   }, [nodes, edges, setNodes, updateResource, fitView, projectId]);
 
   const onNodeDragStop = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (_: MouseEvent | TouchEvent, node: Node) => {
       updateResource.mutate({
         projectId,
         id: node.id,
