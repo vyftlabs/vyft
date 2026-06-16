@@ -3,6 +3,7 @@
 import { Command as CommandPrimitive } from "cmdk";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -91,21 +92,60 @@ function CommandList({
   children,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  // Bottom fade as a "more below" affordance: visible only while the list
+  // overflows AND the user hasn't scrolled to the end. ScrollArea wraps
+  // base-ui; its scrollable element is the inner viewport slot.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [atBottom, setAtBottom] = useState(true);
+
+  useEffect(() => {
+    const el = rootRef.current?.querySelector<HTMLElement>(
+      "[data-slot=scroll-area-viewport]",
+    );
+    if (!el) return;
+    const update = () => {
+      const overflowed = el.scrollHeight - el.clientHeight > 1;
+      const reachedBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight < 1;
+      setAtBottom(!overflowed || reachedBottom);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // Recompute when the list grows/shrinks (filtering, async content).
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
   return (
-    <ScrollArea
-      className={cn(
-        "max-h-72 **:data-[slot=scroll-area-scrollbar]:hidden",
-        className,
-      )}
-    >
-      <CommandPrimitive.List
-        data-slot="command-list"
-        className="scroll-py-1 outline-none"
-        {...props}
+    <div className="relative">
+      <ScrollArea
+        ref={rootRef}
+        className={cn(
+          "max-h-72 **:data-[slot=scroll-area-scrollbar]:hidden",
+          className,
+        )}
       >
-        {children}
-      </CommandPrimitive.List>
-    </ScrollArea>
+        <CommandPrimitive.List
+          data-slot="command-list"
+          className="scroll-py-1 outline-none"
+          {...props}
+        >
+          {children}
+        </CommandPrimitive.List>
+      </ScrollArea>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-popover to-transparent transition-opacity duration-150",
+          atBottom ? "opacity-0" : "opacity-100",
+        )}
+      />
+    </div>
   );
 }
 
