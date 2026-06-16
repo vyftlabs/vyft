@@ -7,9 +7,17 @@ updates:
     cooldown:
       default-days: 7
     groups:
-      dependencies:
+      npm-minor:
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
+      npm-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
 
   - package-ecosystem: github-actions
     directory: /
@@ -29,6 +37,14 @@ updates:
     cooldown:
       default-days: 7
     groups:
-      gomod:
+      gomod-minor:
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
+      gomod-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
