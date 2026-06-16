@@ -4,19 +4,19 @@ import { BACKEND_URL, BASIC_AUTH, WEB_URL } from "./config.ts";
 
 export default defineConfig({
   testDir: "./src/specs",
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
+  workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : undefined,
   timeout: 180_000,
   expect: { timeout: 10_000 },
   retries: 0,
   reporter: "list",
   webServer: [
     {
-      command: "pnpm exec nx dev web",
+      command: "pnpm exec nx build web && pnpm exec nx preview web",
       cwd: "..",
       url: WEB_URL,
       reuseExistingServer: true,
-      timeout: 120_000,
+      timeout: 300_000,
     },
     {
       command: "go run ./cmd/backend",

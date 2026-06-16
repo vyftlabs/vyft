@@ -26,8 +26,7 @@ export async function create(page: Page, input: CreateInput): Promise<ProjectHan
   await page.getByTestId("project-create-submit").click();
   await createResponse;
 
-  await page.goto("/");
-  await page.locator(`[data-testid="project-card"][data-slug="${input.slug}"]`).click();
+  await page.goto(`/projects/${input.slug}`);
   await expect(page).toHaveURL(new RegExp(`/projects/${input.slug}`));
 
   return { slug: input.slug, name, namespace: namespaceFor(input.slug), resources: {} };
