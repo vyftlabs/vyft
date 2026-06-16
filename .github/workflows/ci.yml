@@ -70,12 +70,13 @@ jobs:
           go-version-file: apps/backend/go.mod
           cache-dependency-path: apps/backend/go.sum
 
-      - name: install kind + helm
+      - name: install kind
         run: |
           curl -sSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
           chmod +x /tmp/kind
           sudo mv /tmp/kind /usr/local/bin/kind
-          curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sudo bash
+
+      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
 
       - name: start kind cluster + observability
         run: bash cluster/up.sh
