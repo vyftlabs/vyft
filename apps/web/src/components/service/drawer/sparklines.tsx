@@ -212,7 +212,8 @@ export function Sparkline({
 export interface MultiSeries {
   key: string;
   label: string;
-  points: { time: string; value: number }[];
+  // value is null at gap buckets; the per-pod line breaks there.
+  points: { time: string; value: number | null }[];
 }
 
 const PALETTE = [
@@ -235,7 +236,7 @@ export function MultiSparkline({
   tooltipExtra?: (time: string) => React.ReactNode;
 }) {
   // Pivot to recharts shape: [{ time, <k1>: v, <k2>: v, ... }].
-  const byTime = new Map<string, Record<string, number | string>>();
+  const byTime = new Map<string, Record<string, number | string | null>>();
   for (const s of series) {
     for (const p of s.points) {
       const row = byTime.get(p.time) ?? { time: p.time };
@@ -342,8 +343,13 @@ export function LatencySparkline({
 }) {
   const sloKey = keys.find((k) => k.label === "P95") ?? keys[0];
   if (!sloKey) return null;
-  const sloValues = data.map((d) => (d[sloKey.dataKey] as number) ?? 0);
-  const headline = percentile(sloValues, 95);
+  // Real (non-gap) values for a key — nulls are excluded so they don't
+  // skew the percentile/headline/scale toward zero.
+  const nums = (dataKey: string) =>
+    data
+      .map((d) => d[dataKey] as number | null)
+      .filter((v): v is number => v != null);
+  const headline = percentile(nums(sloKey.dataKey), 95);
   const headlineLevel = severity(headline, sloKey.threshold);
   const headlineFmt = formatHeadline
     ? formatHeadline(headline)
@@ -352,14 +358,11 @@ export function LatencySparkline({
     .filter((k) => k !== sloKey)
     .map((k) => ({
       label: k.label,
-      value: percentile(
-        data.map((d) => (d[k.dataKey] as number) ?? 0),
-        95,
-      ),
+      value: percentile(nums(k.dataKey), 95),
       threshold: k.threshold,
     }));
   const allMax = Math.max(
-    ...keys.flatMap((k) => data.map((d) => (d[k.dataKey] as number) ?? 0)),
+    ...keys.flatMap((k) => nums(k.dataKey)),
     ...keys.map((k) => k.threshold?.critical ?? 0),
   );
 

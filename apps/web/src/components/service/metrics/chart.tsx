@@ -30,13 +30,15 @@ const CHART_HEIGHT = 176; // h-44
 export interface ChartSeries {
   key: string;
   label: string;
-  points: { time: string; value: number }[];
+  // value is null at gap buckets the metrics source had no sample for; the
+  // chart breaks the line there (connectNulls={false}).
+  points: { time: string; value: number | null }[];
 }
 
 // Pivoted recharts row: numeric timestamp `t` plus one column per series key.
 interface ChartRow {
   t: number;
-  [key: string]: number;
+  [key: string]: number | null;
 }
 
 function fmtClock(ms: number): string {
@@ -97,6 +99,7 @@ function summarize(series: ChartSeries[]): {
   let latestT = -Infinity;
   for (const s of series) {
     for (const p of s.points) {
+      if (p.value == null) continue; // gap bucket — not a real sample
       sum += p.value;
       count++;
       if (p.value > max) max = p.value;
@@ -240,6 +243,7 @@ export function DetailChart({
               return (
                 <div className="rounded-md bg-popover px-2 py-1.5 text-xs font-mono shadow-md ring-1 ring-foreground/10 space-y-0.5">
                   {payload.map((entry) => {
+                    if (entry.value == null) return null;
                     const s = series.find((x) => x.key === entry.dataKey);
                     const f = format(entry.value as number);
                     return (
@@ -298,7 +302,13 @@ export function DetailLatencyChart({
   windowMs,
   format,
 }: {
-  rows: { time: string; p50: number; p95: number; p99: number }[];
+  // p50/p95/p99 are null at gap buckets; the chart breaks each line there.
+  rows: {
+    time: string;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+  }[];
   windowMs: number;
   format: (v: number) => Formatted;
 }) {
@@ -318,8 +328,10 @@ export function DetailLatencyChart({
     .filter((r) => r.t >= min)
     .sort((a, b) => a.t - b.t);
 
-  const latest = data.at(-1);
-  const headline = latest ? format(latest.p95) : format(0);
+  // Headline/summary track the most recent real sample, skipping trailing
+  // gap buckets (null).
+  const latest = [...data].reverse().find((r) => r.p95 != null);
+  const headline = latest ? format(latest.p95 ?? 0) : format(0);
 
   return (
     <ChartFrame
@@ -327,7 +339,7 @@ export function DetailLatencyChart({
       headline={<Headline f={headline} />}
       summary={
         latest
-          ? `P50 ${fmtPair(format(latest.p50))} · P95 ${fmtPair(format(latest.p95))} · P99 ${fmtPair(format(latest.p99))}`
+          ? `P50 ${fmtPair(format(latest.p50 ?? 0))} · P95 ${fmtPair(format(latest.p95 ?? 0))} · P99 ${fmtPair(format(latest.p99 ?? 0))}`
           : undefined
       }
       legend={
@@ -376,7 +388,7 @@ export function DetailLatencyChart({
                 <div className="rounded-md bg-popover px-2 py-1.5 text-xs font-mono shadow-md ring-1 ring-foreground/10 space-y-0.5">
                   {LATENCY_KEYS.map((k) => {
                     const entry = payload.find((p) => p.dataKey === k.key);
-                    if (!entry) return null;
+                    if (!entry || entry.value == null) return null;
                     return (
                       <div
                         key={k.key}

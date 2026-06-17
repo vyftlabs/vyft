@@ -201,7 +201,7 @@ function PodBreakdown({
   time,
   format,
 }: {
-  byPod: { pod: string; points: { time: string; value: number }[] }[];
+  byPod: { pod: string; points: { time: string; value: number | null }[] }[];
   time: string;
   format: (v: number) => { value: string; unit: string };
 }) {
@@ -232,14 +232,19 @@ function PodBreakdown({
 }
 
 function nearestPoint(
-  points: { time: string; value: number }[],
+  points: { time: string; value: number | null }[],
   targetMs: number,
 ): { time: string; value: number } | null {
-  if (points.length === 0) return null;
-  let best = points[0]!;
+  // Gap buckets (null) aren't real samples — ignore them so the breakdown
+  // shows the nearest pod value that actually exists.
+  const real = points.filter(
+    (p): p is { time: string; value: number } => p.value != null,
+  );
+  if (real.length === 0) return null;
+  let best = real[0]!;
   let bestDiff = Math.abs(new Date(best.time).getTime() - targetMs);
   const maxDriftMs = 60 * 1000;
-  for (const p of points) {
+  for (const p of real) {
     const diff = Math.abs(new Date(p.time).getTime() - targetMs);
     if (diff < bestDiff) {
       best = p;

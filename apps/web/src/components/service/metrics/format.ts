@@ -39,7 +39,10 @@ export function formatBytes(b: number): Formatted {
   for (const [div, unit] of units) {
     if (abs >= div) return { value: fmtTrim(b / div), unit };
   }
-  return { value: Math.round(b).toString(), unit: "B" };
+  // Raw bytes: round to int at >=10 B (and exact 0), but keep decimals for
+  // sub-10 B values so small throughput doesn't all collapse to "0 B/s".
+  if (b === 0 || abs >= 10) return { value: Math.round(b).toString(), unit: "B" };
+  return { value: fmtTrim(b), unit: "B" };
 }
 
 // formatBytesPerSec scales bytes/second through the same binary ladder,

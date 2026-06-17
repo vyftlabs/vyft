@@ -71,10 +71,14 @@ export const MetricRange = z
 // disk reuses ResourcePoint/ResourceMetrics: `value` is used bytes,
 // `limit` is the PVC capacity, and the series `id` is the disk name.
 
+// A null value marks a gap: a step bucket the metrics source had no
+// sample for. The chart breaks its line there instead of bridging across
+// (recharts connectNulls={false}). Real samples are always finite.
+
 export const ResourcePoint = z
   .object({
     timestamp: z.number().int(),
-    value: z.number(),
+    value: z.number().nullable(),
     limit: z.number().optional(),
     request: z.number().optional(),
   })
@@ -83,16 +87,16 @@ export const ResourcePoint = z
 export const RatePoint = z
   .object({
     timestamp: z.number().int(),
-    value: z.number(),
+    value: z.number().nullable(),
   })
   .meta({ id: "RatePoint" });
 
 export const LatencyPoint = z
   .object({
     timestamp: z.number().int(),
-    p50: z.number(),
-    p95: z.number(),
-    p99: z.number(),
+    p50: z.number().nullable(),
+    p95: z.number().nullable(),
+    p99: z.number().nullable(),
   })
   .meta({ id: "LatencyPoint" });
 
@@ -100,8 +104,8 @@ export const LatencyPoint = z
 export const NetworkPoint = z
   .object({
     timestamp: z.number().int(),
-    rx: z.number(),
-    tx: z.number(),
+    rx: z.number().nullable(),
+    tx: z.number().nullable(),
   })
   .meta({ id: "NetworkPoint" });
 

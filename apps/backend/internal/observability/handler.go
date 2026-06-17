@@ -260,7 +260,7 @@ func (h *Handler) GetResourceCpuMetrics(ctx context.Context, req openapi.GetReso
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceCpuMetrics200JSONResponse(toResourceMetrics(series)), nil
+	return openapi.GetResourceCpuMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
 }
 
 // GetResourceMemoryMetrics serves /metrics/memory — per-pod memory in bytes.
@@ -273,7 +273,7 @@ func (h *Handler) GetResourceMemoryMetrics(ctx context.Context, req openapi.GetR
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceMemoryMetrics200JSONResponse(toResourceMetrics(series)), nil
+	return openapi.GetResourceMemoryMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
 }
 
 // GetResourceDiskMetrics serves /metrics/disk — per-PVC usage in bytes,
@@ -287,7 +287,7 @@ func (h *Handler) GetResourceDiskMetrics(ctx context.Context, req openapi.GetRes
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceDiskMetrics200JSONResponse(toResourceMetrics(series)), nil
+	return openapi.GetResourceDiskMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
 }
 
 // GetResourceNetworkMetrics serves /metrics/network — per-pod rx + tx in
@@ -301,7 +301,7 @@ func (h *Handler) GetResourceNetworkMetrics(ctx context.Context, req openapi.Get
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceNetworkMetrics200JSONResponse(toNetworkMetrics(series)), nil
+	return openapi.GetResourceNetworkMetrics200JSONResponse(toNetworkMetrics(series, r.Step())), nil
 }
 
 // GetResourceRequestRateMetrics serves /metrics/requestRate — req/sec.
@@ -314,7 +314,7 @@ func (h *Handler) GetResourceRequestRateMetrics(ctx context.Context, req openapi
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceRequestRateMetrics200JSONResponse(toRateMetrics(s)), nil
+	return openapi.GetResourceRequestRateMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
 }
 
 // GetResourceErrorRateMetrics serves /metrics/errorRate — fraction 0..1.
@@ -327,7 +327,7 @@ func (h *Handler) GetResourceErrorRateMetrics(ctx context.Context, req openapi.G
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceErrorRateMetrics200JSONResponse(toRateMetrics(s)), nil
+	return openapi.GetResourceErrorRateMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
 }
 
 // GetResourceLatencyMetrics serves /metrics/latency — p50/p95/p99 in seconds.
@@ -340,31 +340,37 @@ func (h *Handler) GetResourceLatencyMetrics(ctx context.Context, req openapi.Get
 	if err != nil {
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
-	return openapi.GetResourceLatencyMetrics200JSONResponse(toLatencyMetrics(s)), nil
+	return openapi.GetResourceLatencyMetrics200JSONResponse(toLatencyMetrics(s, r.Step())), nil
 }
 
 // toResourceMetrics converts internal ResourceSeries slices to the
 // generated wire shape. Empty/zero Limit/Request are omitted from the
 // payload.
-func toResourceMetrics(in []source.ResourceSeries) openapi.ResourceMetrics {
+func toResourceMetrics(in []source.ResourceSeries, step time.Duration) openapi.ResourceMetrics {
 	out := openapi.ResourceMetrics{Series: make([]openapi.ResourceSeries, len(in))}
 	for i, s := range in {
 		points := make([]openapi.ResourcePoint, len(s.Points))
 		for j, p := range s.Points {
+			v := float32(p.Value)
 			rp := openapi.ResourcePoint{
 				Timestamp: int(p.Time.UnixMilli()),
-				Value:     float32(p.Value),
+				Value:     &v,
 			}
 			if p.Limit > 0 {
-				v := float32(p.Limit)
-				rp.Limit = &v
+				lv := float32(p.Limit)
+				rp.Limit = &lv
 			}
 			if p.Request > 0 {
-				v := float32(p.Request)
-				rp.Request = &v
+				rv := float32(p.Request)
+				rp.Request = &rv
 			}
 			points[j] = rp
 		}
+		points = fillGrid(points, step,
+			func(p openapi.ResourcePoint) int { return p.Timestamp },
+			func(ms int) openapi.ResourcePoint {
+				return openapi.ResourcePoint{Timestamp: ms, Value: nil}
+			})
 		entry := openapi.ResourceSeries{Points: points}
 		if s.ID != "" {
 			id := s.ID
@@ -375,14 +381,20 @@ func toResourceMetrics(in []source.ResourceSeries) openapi.ResourceMetrics {
 	return out
 }
 
-func toRateMetrics(in source.RateSeries) openapi.RateMetrics {
+func toRateMetrics(in source.RateSeries, step time.Duration) openapi.RateMetrics {
 	points := make([]openapi.RatePoint, len(in.Points))
 	for j, p := range in.Points {
+		v := float32(p.Value)
 		points[j] = openapi.RatePoint{
 			Timestamp: int(p.Time.UnixMilli()),
-			Value:     float32(p.Value),
+			Value:     &v,
 		}
 	}
+	points = fillGrid(points, step,
+		func(p openapi.RatePoint) int { return p.Timestamp },
+		func(ms int) openapi.RatePoint {
+			return openapi.RatePoint{Timestamp: ms, Value: nil}
+		})
 	entry := openapi.RateSeries{Points: points}
 	if in.ID != "" {
 		id := in.ID
@@ -391,16 +403,22 @@ func toRateMetrics(in source.RateSeries) openapi.RateMetrics {
 	return openapi.RateMetrics{Series: []openapi.RateSeries{entry}}
 }
 
-func toLatencyMetrics(in source.LatencySeries) openapi.LatencyMetrics {
+func toLatencyMetrics(in source.LatencySeries, step time.Duration) openapi.LatencyMetrics {
 	points := make([]openapi.LatencyPoint, len(in.Points))
 	for j, p := range in.Points {
+		p50, p95, p99 := float32(p.P50), float32(p.P95), float32(p.P99)
 		points[j] = openapi.LatencyPoint{
 			Timestamp: int(p.Time.UnixMilli()),
-			P50:       float32(p.P50),
-			P95:       float32(p.P95),
-			P99:       float32(p.P99),
+			P50:       &p50,
+			P95:       &p95,
+			P99:       &p99,
 		}
 	}
+	points = fillGrid(points, step,
+		func(p openapi.LatencyPoint) int { return p.Timestamp },
+		func(ms int) openapi.LatencyPoint {
+			return openapi.LatencyPoint{Timestamp: ms, P50: nil, P95: nil, P99: nil}
+		})
 	entry := openapi.LatencySeries{Points: points}
 	if in.ID != "" {
 		id := in.ID
@@ -409,17 +427,23 @@ func toLatencyMetrics(in source.LatencySeries) openapi.LatencyMetrics {
 	return openapi.LatencyMetrics{Series: []openapi.LatencySeries{entry}}
 }
 
-func toNetworkMetrics(in []source.NetworkSeries) openapi.NetworkMetrics {
+func toNetworkMetrics(in []source.NetworkSeries, step time.Duration) openapi.NetworkMetrics {
 	out := openapi.NetworkMetrics{Series: make([]openapi.NetworkSeries, len(in))}
 	for i, s := range in {
 		points := make([]openapi.NetworkPoint, len(s.Points))
 		for j, p := range s.Points {
+			rx, tx := float32(p.Rx), float32(p.Tx)
 			points[j] = openapi.NetworkPoint{
 				Timestamp: int(p.Time.UnixMilli()),
-				Rx:        float32(p.Rx),
-				Tx:        float32(p.Tx),
+				Rx:        &rx,
+				Tx:        &tx,
 			}
 		}
+		points = fillGrid(points, step,
+			func(p openapi.NetworkPoint) int { return p.Timestamp },
+			func(ms int) openapi.NetworkPoint {
+				return openapi.NetworkPoint{Timestamp: ms, Rx: nil, Tx: nil}
+			})
 		entry := openapi.NetworkSeries{Points: points}
 		if s.ID != "" {
 			id := s.ID

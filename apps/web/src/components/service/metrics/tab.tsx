@@ -244,18 +244,32 @@ function NetworkPanel({
   }
 
   const data = q.data as NetworkMetrics;
-  const rx = new Map<number, number>();
-  const tx = new Map<number, number>();
+  // Aggregate per-pod into total in/out. A timestamp is a gap (null) only
+  // when no pod reported a value there — otherwise sum the pods that did.
+  type Acc = { sum: number; any: boolean };
+  const rx = new Map<number, Acc>();
+  const tx = new Map<number, Acc>();
+  const add = (m: Map<number, Acc>, t: number, v: number | null) => {
+    const e = m.get(t) ?? { sum: 0, any: false };
+    if (v != null) {
+      e.sum += v;
+      e.any = true;
+    }
+    m.set(t, e);
+  };
   for (const s of data.series) {
     for (const p of s.points) {
-      rx.set(p.timestamp, (rx.get(p.timestamp) ?? 0) + p.rx);
-      tx.set(p.timestamp, (tx.get(p.timestamp) ?? 0) + p.tx);
+      add(rx, p.timestamp, p.rx);
+      add(tx, p.timestamp, p.tx);
     }
   }
-  const toPoints = (m: Map<number, number>) =>
+  const toPoints = (m: Map<number, Acc>) =>
     [...m.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([t, v]) => ({ time: new Date(t).toISOString(), value: v }));
+      .map(([t, e]) => ({
+        time: new Date(t).toISOString(),
+        value: e.any ? e.sum : null,
+      }));
   const series: ChartSeries[] = [
     { key: "rx", label: "In", points: toPoints(rx) },
     { key: "tx", label: "Out", points: toPoints(tx) },

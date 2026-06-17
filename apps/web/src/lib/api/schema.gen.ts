@@ -1072,7 +1072,7 @@ export interface components {
         };
         ResourcePoint: {
             timestamp: number;
-            value: number;
+            value: number | null;
             limit?: number;
             request?: number;
         };
@@ -1085,8 +1085,8 @@ export interface components {
         };
         NetworkPoint: {
             timestamp: number;
-            rx: number;
-            tx: number;
+            rx: number | null;
+            tx: number | null;
         };
         RateMetrics: {
             series: components["schemas"]["RateSeries"][];
@@ -1097,7 +1097,7 @@ export interface components {
         };
         RatePoint: {
             timestamp: number;
-            value: number;
+            value: number | null;
         };
         LatencyMetrics: {
             series: components["schemas"]["LatencySeries"][];
@@ -1108,9 +1108,9 @@ export interface components {
         };
         LatencyPoint: {
             timestamp: number;
-            p50: number;
-            p95: number;
-            p99: number;
+            p50: number | null;
+            p95: number | null;
+            p99: number | null;
         };
         Source: {
             /** Format: uuid */

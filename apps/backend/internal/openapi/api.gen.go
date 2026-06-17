@@ -1023,10 +1023,10 @@ type LatencyMetrics struct {
 
 // LatencyPoint defines model for LatencyPoint.
 type LatencyPoint struct {
-	P50       float32 `json:"p50"`
-	P95       float32 `json:"p95"`
-	P99       float32 `json:"p99"`
-	Timestamp int     `json:"timestamp"`
+	P50       *float32 `json:"p50"`
+	P95       *float32 `json:"p95"`
+	P99       *float32 `json:"p99"`
+	Timestamp int      `json:"timestamp"`
 }
 
 // LatencySeries defines model for LatencySeries.
@@ -1094,9 +1094,9 @@ type NetworkMetrics struct {
 
 // NetworkPoint defines model for NetworkPoint.
 type NetworkPoint struct {
-	Rx        float32 `json:"rx"`
-	Timestamp int     `json:"timestamp"`
-	Tx        float32 `json:"tx"`
+	Rx        *float32 `json:"rx"`
+	Timestamp int      `json:"timestamp"`
+	Tx        *float32 `json:"tx"`
 }
 
 // NetworkSeries defines model for NetworkSeries.
@@ -1166,8 +1166,8 @@ type RateMetrics struct {
 
 // RatePoint defines model for RatePoint.
 type RatePoint struct {
-	Timestamp int     `json:"timestamp"`
-	Value     float32 `json:"value"`
+	Timestamp int      `json:"timestamp"`
+	Value     *float32 `json:"value"`
 }
 
 // RateSeries defines model for RateSeries.
@@ -1269,7 +1269,7 @@ type ResourcePoint struct {
 	Limit     *float32 `json:"limit,omitempty"`
 	Request   *float32 `json:"request,omitempty"`
 	Timestamp int      `json:"timestamp"`
-	Value     float32  `json:"value"`
+	Value     *float32 `json:"value"`
 }
 
 // ResourceRef defines model for ResourceRef.
