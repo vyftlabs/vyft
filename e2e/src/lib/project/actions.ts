@@ -33,6 +33,20 @@ export async function create(page: Page, input: CreateInput): Promise<ProjectHan
 }
 
 /**
+ * Assert the project has no pending changes. Reloads and waits for the
+ * deployments query to settle first, since the Deploy button gate stays
+ * hidden until the baseline is known — asserting too early passes spuriously.
+ */
+export async function expectNoPendingChanges(page: Page): Promise<void> {
+  const deployments = page.waitForResponse(
+    (r) => /\/api\/projects\/[^/]+\/deployments(\?|$)/.test(r.url()) && r.request().method() === "GET",
+  );
+  await page.reload();
+  await deployments;
+  await expect(page.getByTestId("deploy-button")).toBeHidden();
+}
+
+/**
  * Click the deploy button and wait for the deployment to complete. The
  * button unmounts once `applied` (no pending changes), so success is
  * detected by `Deploying` → element hidden.

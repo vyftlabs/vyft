@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type Deployment,
   type DiskCreate,
   type Resource,
   ResourceAppCreate,
 } from "@vyft/spec";
-import { LoaderIcon, RotateCcwIcon } from "lucide-react";
+import { LoaderIcon, MoreHorizontalIcon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Control,
@@ -25,8 +26,25 @@ import {
   Variables,
   VariablesSection,
 } from "@/components/service/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DangerZone } from "@/components/ui/danger-zone";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -38,14 +56,22 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
+import { Spinner } from "@/components/ui/spinner";
 import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
 import { getAppSpec } from "@/lib/resource";
+import { type CurrentUser, useCurrentUser, userInitials } from "@/lib/user";
 import { cn } from "@/lib/utils";
 import { LogsPanel } from "../logs/panel";
 import { MetricsGrid } from "../metrics/grid";
+import {
+  DEFAULT_METRICS_WINDOW_MS,
+  MetricsTab,
+  RangeSelector,
+} from "../metrics/tab";
 import { ServiceIcon } from "../node";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
+import { formatDuration, timeAgo } from "./timeline";
 
 type ResourceData = Resource;
 
@@ -63,18 +89,145 @@ function OverviewTab({
         <MetricsGrid projectId={projectId} resourceId={resourceId} />
       }
       logsArea={<LogsPanel projectId={projectId} resourceId={resourceId} />}
+      deploymentsArea={
+        <RecentDeployments projectId={projectId} resourceId={resourceId} />
+      }
     />
   );
 }
 
 
-function formatDeploymentTime(ts: string): string {
-  return new Date(ts).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+// Minimal: status word is the title (in-progress gets an animated spinner),
+// hash sits beside it in a lower shade. Color is reserved for failure.
+const deploymentStatusLabel: Record<Deployment["status"], string> = {
+  pending: "Queued",
+  applying: "Deploying",
+  applied: "Deployed",
+  failed: "Failed",
+};
+
+function deploymentRefetchInterval(query: {
+  state: { data?: Deployment[] };
+}): number | false {
+  const status = query.state.data?.[0]?.status;
+  return status === "pending" || status === "applying" ? 1000 : false;
+}
+
+function DeploymentRow({
+  d,
+  user,
+  onRestore,
+}: {
+  d: Deployment;
+  user: CurrentUser;
+  onRestore?: (d: Deployment) => void;
+}) {
+  const duration = formatDuration(d.createdAt, d.appliedAt ?? undefined);
+  const failed = d.status === "failed";
+  const inProgress = d.status === "pending" || d.status === "applying";
+  return (
+    <div className="group flex gap-2 py-3">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {inProgress && (
+            <LoaderIcon className="size-3.5 text-muted-foreground animate-spin shrink-0" />
+          )}
+          <span
+            className={cn(
+              "text-sm font-medium",
+              failed && "text-severity-critical-text",
+            )}
+          >
+            {deploymentStatusLabel[d.status]}
+          </span>
+          <span className="text-xs font-mono text-muted-foreground/60">
+            {d.id.slice(0, 7)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
+          <Avatar size="sm" className="size-4 shrink-0">
+            {user.avatarUrl && (
+              <AvatarImage src={user.avatarUrl} alt={user.name} />
+            )}
+            <AvatarFallback className="text-[8px]">
+              {userInitials(user.name)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="truncate">{user.name}</span>
+          {duration && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{duration}</span>
+            </>
+          )}
+        </div>
+        {d.error && (
+          <p className="text-[10px] text-severity-critical-text mt-2 leading-snug">
+            {d.error}
+          </p>
+        )}
+      </div>
+      {/* right column: ⋯ over time, aligned to the same edge */}
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        {onRestore && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Deployment actions"
+                  className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-muted hover:text-foreground transition-colors"
+                />
+              }
+            >
+              <MoreHorizontalIcon className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onRestore(d)}>
+                <RotateCcwIcon className="size-3.5" />
+                Restore
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <span
+          className="text-xs text-muted-foreground tabular-nums pr-1"
+          title={new Date(d.createdAt).toLocaleString()}
+        >
+          {timeAgo(d.createdAt)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Compact, read-only recent-deployments list for the Overview tab.
+function RecentDeployments({
+  resourceId,
+  projectId,
+}: {
+  resourceId: string;
+  projectId: string;
+}) {
+  const { data: deployments = [] } = useQuery({
+    ...api.deployments.listByResource(projectId, resourceId),
+    refetchInterval: deploymentRefetchInterval,
   });
+  const user = useCurrentUser();
+  return (
+    <div>
+      <p className="text-xs font-medium mb-2">Deployments</p>
+      {deployments.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">No deployments yet.</p>
+      ) : (
+        <div className="divide-y">
+          {deployments.slice(0, 8).map((d) => (
+            <DeploymentRow key={d.id} d={d} user={user} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DeploymentsTab({
@@ -86,12 +239,11 @@ function DeploymentsTab({
 }) {
   const { data: deployments = [] } = useQuery({
     ...api.deployments.listByResource(projectId, resourceId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.[0]?.status;
-      return status === "pending" || status === "applying" ? 1000 : false;
-    },
+    refetchInterval: deploymentRefetchInterval,
   });
   const restore = useMutation(api.deployments.restoreResource);
+  const [confirm, setConfirm] = useState<Deployment | null>(null);
+  const user = useCurrentUser();
 
   if (deployments.length === 0) {
     return (
@@ -101,49 +253,63 @@ function DeploymentsTab({
     );
   }
 
+  const doRestore = (d: Deployment) => {
+    restore.mutate(
+      { projectId, resourceId, id: d.id },
+      {
+        onSuccess: () => {
+          toast.success("Deployment restored — deploy to apply.");
+          setConfirm(null);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      },
+    );
+  };
+
   return (
-    <div className="divide-y">
-      {deployments.map((d) => {
-        const isRestoringThis =
-          restore.isPending && restore.variables?.id === d.id;
-        return (
-          <div key={d.id} className="group py-2.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="text-xs font-mono text-foreground shrink-0">
-                {d.id.slice(0, 7)}
-              </span>
-              <span className="text-xs text-muted-foreground flex-1 truncate tabular-nums">
-                {formatDeploymentTime(d.createdAt)}
-              </span>
-              {(d.status === "pending" || d.status === "applying") && (
-                <LoaderIcon className="size-3 text-muted-foreground animate-spin shrink-0" />
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px] gap-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                disabled={restore.isPending}
-                onClick={() =>
-                  restore.mutate({ projectId, resourceId, id: d.id })
-                }
-              >
-                {isRestoringThis ? (
-                  <LoaderIcon className="size-3 animate-spin" />
-                ) : (
-                  <RotateCcwIcon className="size-3" />
-                )}
-                Restore
-              </Button>
-            </div>
-            {d.error && (
-              <p className="text-[10px] text-severity-critical-text mt-1 leading-snug">
-                {d.error}
-              </p>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <div className="divide-y [&>*:first-child]:pt-0">
+        {deployments.map((d) => (
+          <DeploymentRow key={d.id} d={d} user={user} onRestore={setConfirm} />
+        ))}
+      </div>
+
+      <AlertDialog
+        open={confirm !== null}
+        onOpenChange={(v) => {
+          if (!restore.isPending && !v) setConfirm(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Restore deployment {confirm?.id.slice(0, 7)}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Stages this deployment's image, settings, routes, and variables
+              onto the service. You'll need to deploy to apply. Disks and data
+              are not affected; secret values aren't restored and must be
+              re-entered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restore.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={restore.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirm) doRestore(confirm);
+              }}
+            >
+              {restore.isPending && <Spinner className="size-4" />}
+              Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -226,6 +392,7 @@ const settingsSections = [
 
 function SettingsTab({
   resource,
+  project,
   projectId,
   createProps,
   onClose,
@@ -343,11 +510,10 @@ function SettingsTab({
   const visibleSections = useMemo(
     () =>
       settingsSections.filter((s) => {
-        if (s.id === "variables") return isCreating;
         if (s.id === "danger") return !!resource;
         return true;
       }),
-    [isCreating, resource],
+    [resource],
   );
 
   const [activeSection, setActiveSection] = useState(
@@ -422,15 +588,21 @@ function SettingsTab({
               />
             </div>
 
-            {isCreating && (
-              <div id="variables" className="space-y-5 scroll-mt-6">
-                <SectionHeader
-                  title="Variables"
-                  description="Environment variables passed to the container"
-                />
+            <div id="variables" className="space-y-5 scroll-mt-6">
+              <SectionHeader
+                title="Variables"
+                description="Environment variables passed to the container"
+              />
+              {isCreating ? (
                 <VariablesSection control={control} projectId={projectId} />
-              </div>
-            )}
+              ) : resource ? (
+                <VariablesTab
+                  resourceId={resource.id}
+                  project={project}
+                  projectId={projectId}
+                />
+              ) : null}
+            </div>
 
             <div id="disks" className="space-y-5 scroll-mt-6">
               <SectionHeader
@@ -896,6 +1068,7 @@ function useServiceDrawerTabs(
   onClose?: () => void,
 ): { tabs: DrawerTab[]; defaultTab: string } {
   const qc = useQueryClient();
+  const [metricsWindow, setMetricsWindow] = useState(DEFAULT_METRICS_WINDOW_MS);
   const isCreating = !resource;
 
   if (isCreating) {
@@ -960,19 +1133,44 @@ function useServiceDrawerTabs(
         ),
       },
       {
-        id: "variables",
-        label: "Variables",
+        id: "metrics",
+        label: "Metrics",
+        headerRight: (
+          <RangeSelector value={metricsWindow} onChange={setMetricsWindow} />
+        ),
         onHover: () => {
-          prefetch(api.variables.project.list(projectId));
-          prefetch(api.variables.resource.list(projectId, resource.id));
-          prefetch(api.resources.list(projectId));
+          // Warm the currently-selected window so the first paint has data.
+          const w = metricsWindow;
+          prefetch(api.observability.cpuMetrics(projectId, resource.id, w));
+          prefetch(api.observability.memoryMetrics(projectId, resource.id, w));
+          prefetch(api.observability.diskMetrics(projectId, resource.id, w));
+          prefetch(api.observability.networkMetrics(projectId, resource.id, w));
+          prefetch(
+            api.observability.requestRateMetrics(projectId, resource.id, w),
+          );
+          prefetch(
+            api.observability.errorRateMetrics(projectId, resource.id, w),
+          );
+          prefetch(api.observability.latencyMetrics(projectId, resource.id, w));
         },
         content: (
-          <VariablesTab
+          <MetricsTab
             resourceId={resource.id}
-            project={project}
             projectId={projectId}
+            windowMs={metricsWindow}
           />
+        ),
+      },
+      {
+        id: "logs",
+        label: "Logs",
+        onHover: () => {
+          prefetch(api.observability.logsCapabilities(projectId, resource.id));
+        },
+        content: (
+          <div className="h-full min-h-0">
+            <LogsPanel resourceId={resource.id} projectId={projectId} />
+          </div>
         ),
       },
       {
@@ -980,6 +1178,9 @@ function useServiceDrawerTabs(
         label: "Settings",
         onHover: () => {
           prefetch(api.routes.list(projectId));
+          prefetch(api.variables.project.list(projectId));
+          prefetch(api.variables.resource.list(projectId, resource.id));
+          prefetch(api.resources.list(projectId));
         },
         content: (
           <SettingsTab

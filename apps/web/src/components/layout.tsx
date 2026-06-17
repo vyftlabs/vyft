@@ -60,7 +60,11 @@ function DeployButton({ projectId }: { projectId: string }) {
         ? await snapshotHash(latest.snapshot)
         : null;
       if (cancelled) return;
-      setHasChanges(deployedHash == null || deployedHash !== currentHash);
+      const isEmpty =
+        resources.length === 0 && routes.length === 0 && variables.length === 0;
+      setHasChanges(
+        deployedHash == null ? !isEmpty : deployedHash !== currentHash,
+      );
       if (
         import.meta.env.DEV &&
         deployedHash != null &&

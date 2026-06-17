@@ -1,5 +1,6 @@
+import { Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface DrawerTab {
@@ -7,6 +8,9 @@ export interface DrawerTab {
   label: string;
   content: React.ReactNode;
   onHover?: () => void;
+  // Optional control rendered right-aligned in the tab bar while this tab
+  // is active (e.g. the Metrics range selector).
+  headerRight?: React.ReactNode;
 }
 
 export interface ServiceDrawerShellProps {
@@ -48,19 +52,30 @@ export type DetailView = "events" | "logs" | "metrics" | null;
 export interface OverviewProps {
   metricsArea?: React.ReactNode;
   logsArea?: React.ReactNode;
+  deploymentsArea?: React.ReactNode;
 }
 
-export function Overview({ metricsArea, logsArea }: OverviewProps) {
+export function Overview({
+  metricsArea,
+  logsArea,
+  deploymentsArea,
+}: OverviewProps) {
   const showLogs = logsArea !== undefined;
   return (
     <div className="flex flex-col gap-5 h-full">
       {metricsArea && (
-        <div className="space-y-2 shrink-0">
-          <p className="text-xs font-medium">Metrics</p>
-          {metricsArea}
+        <div className="shrink-0 border-b pb-5">{metricsArea}</div>
+      )}
+      {showLogs && (
+        <div className="flex-1 min-h-0 flex gap-5">
+          <div className="flex-1 min-w-0">{logsArea}</div>
+          {deploymentsArea && (
+            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+              {deploymentsArea}
+            </div>
+          )}
         </div>
       )}
-      {showLogs && <div className="flex-1 min-h-0">{logsArea}</div>}
     </div>
   );
 }
@@ -88,6 +103,23 @@ export function ServiceDrawerShell({
   onClose,
 }: ServiceDrawerShellProps) {
   const initialTab = defaultTab ?? tabs[0]?.id;
+  // Internal full-screen toggle (the header maximize button). Distinct from
+  // the external `expanded` prop, which swaps in `expandedContent` wholesale.
+  const [fullscreen, setFullscreen] = useState(false);
+  const isFull = expanded || fullscreen;
+
+  // Animate maxWidth in pixels: motion can't interpolate calc()/min() CSS
+  // strings, which caused the width to snap/overshoot mid-transition. Track
+  // the viewport width and resolve the docked cap (min(72rem, vw - 2rem)).
+  const [vw, setVw] = useState(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth,
+  );
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const dockedMaxW = Math.min(1152, vw - 32); // 72rem, 2rem gutter
 
   return (
     <>
@@ -97,7 +129,7 @@ export function ServiceDrawerShell({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        onClick={expanded ? undefined : onClose}
+        onClick={isFull ? undefined : onClose}
       />
 
       <motion.div
@@ -114,14 +146,14 @@ export function ServiceDrawerShell({
                 bottom: 0,
                 right: 0,
                 width: "100%",
-                maxWidth: "min(72rem, calc(100vw - 2rem))",
+                maxWidth: dockedMaxW,
                 height: "80%",
                 borderTopLeftRadius: 8,
                 borderWidth: 1,
               }
         }
         animate={
-          expanded
+          isFull
             ? {
                 opacity: 1,
                 scale: 1,
@@ -129,10 +161,8 @@ export function ServiceDrawerShell({
                 y: 0,
                 bottom: 0,
                 right: 0,
-                left: 0,
-                top: 0,
                 width: "100%",
-                maxWidth: "100%",
+                maxWidth: vw,
                 height: "100%",
                 borderTopLeftRadius: 0,
                 borderWidth: 0,
@@ -145,7 +175,7 @@ export function ServiceDrawerShell({
                 bottom: 0,
                 right: 0,
                 width: "100%",
-                maxWidth: "min(72rem, calc(100vw - 2rem))",
+                maxWidth: dockedMaxW,
                 height: "80%",
                 borderTopLeftRadius: 8,
                 borderWidth: 1,
@@ -163,7 +193,7 @@ export function ServiceDrawerShell({
           expandedContent
         ) : (
           <>
-            <div className="flex items-center px-6 py-4 shrink-0">
+            <div className="flex items-center gap-2 px-6 py-4 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 {icon && (
                   <div className="shrink-0 text-foreground/70">{icon}</div>
@@ -174,6 +204,19 @@ export function ServiceDrawerShell({
                   name
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setFullscreen((v) => !v)}
+                aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+                data-testid="service.drawer.fullscreen"
+                className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                {fullscreen ? (
+                  <Minimize2Icon className="size-4" />
+                ) : (
+                  <Maximize2Icon className="size-4" />
+                )}
+              </button>
             </div>
 
             {tabs.length > 0 && (
@@ -203,6 +246,7 @@ function ServiceDrawerTabs({
   banner?: React.ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const headerRight = tabs.find((t) => t.id === activeTab)?.headerRight;
 
   return (
     <Tabs
@@ -226,6 +270,9 @@ function ServiceDrawerTabs({
               {tab.label}
             </TabsTrigger>
           ))}
+          {headerRight && (
+            <div className="ml-auto self-end !mb-1.5">{headerRight}</div>
+          )}
         </TabsList>
       )}
       {banner}

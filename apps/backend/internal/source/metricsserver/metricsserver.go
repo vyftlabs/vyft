@@ -98,3 +98,7 @@ func (m *MetricsServer) QueryRate(_ context.Context, kind source.MetricKind, _ s
 func (m *MetricsServer) QueryLatency(_ context.Context, _ source.ResourceSelector, _ source.TimeRange) (source.LatencySeries, error) {
 	return source.LatencySeries{}, fmt.Errorf("metrics-server does not support latency")
 }
+
+func (m *MetricsServer) QueryNetwork(_ context.Context, _ source.ResourceSelector, _ source.TimeRange) ([]source.NetworkSeries, error) {
+	return nil, fmt.Errorf("metrics-server does not support network")
+}

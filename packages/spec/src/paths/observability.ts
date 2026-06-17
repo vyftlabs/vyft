@@ -10,6 +10,7 @@ import {
   LogLine,
   LogsCapabilities,
   MetricRange,
+  NetworkMetrics,
   RateMetrics,
   ResourceMetrics,
   ServiceEvent,
@@ -122,6 +123,36 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
         200: {
           description: "Series",
           content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/disk": {
+    get: {
+      operationId: "getResourceDiskMetrics",
+      summary: "Disk usage timeseries, per-PVC (value=used, limit=capacity)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/network": {
+    get: {
+      operationId: "getResourceNetworkMetrics",
+      summary: "Network throughput timeseries, per-pod (rx + tx, bytes/sec)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: NetworkMetrics } },
         },
         ...itemErrors,
       },

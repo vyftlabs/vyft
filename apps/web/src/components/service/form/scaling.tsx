@@ -104,7 +104,7 @@ export function ScalingForm({
               <Field data-invalid={show || undefined}>
                 <FieldLabel htmlFor={field.name}>Instances</FieldLabel>
                 <InputGroup>
-                  <InputGroupAddon align="inline-start">
+                  <InputGroupAddon align="inline-start" className="!py-0">
                     <InputGroupButton
                       size="icon-xs"
                       disabled={value <= 1}
@@ -125,7 +125,7 @@ export function ScalingForm({
                     data-testid="service.form.instances"
                     className="text-center font-mono [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
-                  <InputGroupAddon align="inline-end">
+                  <InputGroupAddon align="inline-end" className="!py-0">
                     <InputGroupButton
                       size="icon-xs"
                       onClick={() => field.onChange(value + 1)}

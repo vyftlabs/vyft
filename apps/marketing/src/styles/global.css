@@ -132,6 +132,7 @@ html {
 
 body {
   position: relative;
+  overflow-x: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);

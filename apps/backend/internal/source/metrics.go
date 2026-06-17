@@ -12,9 +12,13 @@ type Prober interface {
 // kind family has its own query method returning the appropriate series
 // type — no discriminated union, no scaling, canonical units throughout.
 //
-//	QueryResource:  cpu, memory      → per-pod series with optional limit/request per point
+//	QueryResource:  cpu, memory, disk → per-series with optional limit/request per point
 //	QueryRate:      requestRate, errorRate → single aggregate series
 //	QueryLatency:   latency          → single series with p50/p95/p99 per point
+//	QueryNetwork:   network          → per-pod series with rx + tx per point
+//
+// disk rides QueryResource: per-PVC series, value = used bytes, limit =
+// PVC capacity, series ID = disk name.
 //
 // Implementations should return empty slices (not errors) when there's
 // no data — the handler maps that to 200 with an empty body. They should
@@ -33,4 +37,5 @@ type MetricsCapable interface {
 	QueryResource(ctx context.Context, kind MetricKind, sel ResourceSelector, r TimeRange) ([]ResourceSeries, error)
 	QueryRate(ctx context.Context, kind MetricKind, sel ResourceSelector, r TimeRange) (RateSeries, error)
 	QueryLatency(ctx context.Context, sel ResourceSelector, r TimeRange) (LatencySeries, error)
+	QueryNetwork(ctx context.Context, sel ResourceSelector, r TimeRange) ([]NetworkSeries, error)
 }

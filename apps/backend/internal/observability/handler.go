@@ -276,6 +276,34 @@ func (h *Handler) GetResourceMemoryMetrics(ctx context.Context, req openapi.GetR
 	return openapi.GetResourceMemoryMetrics200JSONResponse(toResourceMetrics(series)), nil
 }
 
+// GetResourceDiskMetrics serves /metrics/disk — per-PVC usage in bytes,
+// limit = PVC capacity. Rides QueryResource like cpu/memory.
+func (h *Handler) GetResourceDiskMetrics(ctx context.Context, req openapi.GetResourceDiskMetricsRequestObject) (openapi.GetResourceDiskMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindDisk, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindDisk, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceDiskMetrics200JSONResponse(toResourceMetrics(series)), nil
+}
+
+// GetResourceNetworkMetrics serves /metrics/network — per-pod rx + tx in
+// bytes/second.
+func (h *Handler) GetResourceNetworkMetrics(ctx context.Context, req openapi.GetResourceNetworkMetricsRequestObject) (openapi.GetResourceNetworkMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindNetwork, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryNetwork(ctx, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceNetworkMetrics200JSONResponse(toNetworkMetrics(series)), nil
+}
+
 // GetResourceRequestRateMetrics serves /metrics/requestRate — req/sec.
 func (h *Handler) GetResourceRequestRateMetrics(ctx context.Context, req openapi.GetResourceRequestRateMetricsRequestObject) (openapi.GetResourceRequestRateMetricsResponseObject, error) {
 	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindRequestRate, req.Params.From, req.Params.To)
@@ -379,6 +407,27 @@ func toLatencyMetrics(in source.LatencySeries) openapi.LatencyMetrics {
 		entry.Id = &id
 	}
 	return openapi.LatencyMetrics{Series: []openapi.LatencySeries{entry}}
+}
+
+func toNetworkMetrics(in []source.NetworkSeries) openapi.NetworkMetrics {
+	out := openapi.NetworkMetrics{Series: make([]openapi.NetworkSeries, len(in))}
+	for i, s := range in {
+		points := make([]openapi.NetworkPoint, len(s.Points))
+		for j, p := range s.Points {
+			points[j] = openapi.NetworkPoint{
+				Timestamp: int(p.Time.UnixMilli()),
+				Rx:        float32(p.Rx),
+				Tx:        float32(p.Tx),
+			}
+		}
+		entry := openapi.NetworkSeries{Points: points}
+		if s.ID != "" {
+			id := s.ID
+			entry.Id = &id
+		}
+		out.Series[i] = entry
+	}
+	return out
 }
 
 func (s *Service) buildSelector(ctx context.Context, resourceID uuid.UUID) (source.ResourceSelector, error) {

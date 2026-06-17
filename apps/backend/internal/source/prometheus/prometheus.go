@@ -39,6 +39,8 @@ func (p *Prometheus) Supports() []source.MetricKind {
 	return []source.MetricKind{
 		source.KindCpu,
 		source.KindMemory,
+		source.KindDisk,
+		source.KindNetwork,
 		source.KindRequestRate,
 		source.KindErrorRate,
 		source.KindLatency,
@@ -54,6 +56,10 @@ func (p *Prometheus) ProbeMetricNames(kind source.MetricKind) []string {
 		return []string{"container_cpu_usage_seconds_total"}
 	case source.KindMemory:
 		return []string{"container_memory_working_set_bytes"}
+	case source.KindDisk:
+		return []string{"kubelet_volume_stats_used_bytes"}
+	case source.KindNetwork:
+		return []string{"container_network_receive_bytes_total"}
 	case source.KindRequestRate, source.KindErrorRate:
 		return []string{
 			"http_server_request_duration_seconds_count",
@@ -70,6 +76,10 @@ func (p *Prometheus) ProbeMetricNames(kind source.MetricKind) []string {
 // the limit is a workload-level cap). Values in canonical units (cores
 // or bytes) — no scaling.
 func (p *Prometheus) QueryResource(ctx context.Context, kind source.MetricKind, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
+	if kind == source.KindDisk {
+		return p.queryDisk(ctx, sel, r)
+	}
+
 	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
 	rng := promRange(r)
 
@@ -158,6 +168,57 @@ func (p *Prometheus) QueryLatency(ctx context.Context, sel source.ResourceSelect
 	return source.LatencySeries{Points: mergeLatency(p50, p95, p99)}, nil
 }
 
+// queryDisk serves the disk kind: one ResourceSeries per PVC, value =
+// used bytes, limit = that PVC's capacity. Series ID is the disk name
+// (the "<resource>-" PVC prefix is stripped, mirroring per-pod naming).
+func (p *Prometheus) queryDisk(ctx context.Context, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+
+	byPVC, err := p.queryPerSeries(ctx, expand(diskUsedPerPVCTmpl, vars), rng, "persistentvolumeclaim")
+	if err != nil {
+		return nil, err
+	}
+	stripResourcePrefix(byPVC, sel.ResourceName)
+
+	caps, err := p.queryInstantByLabel(ctx, expand(diskCapPerPVCTmpl, vars), "persistentvolumeclaim")
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]source.ResourceSeries, len(byPVC))
+	for i, ps := range byPVC {
+		// caps is keyed by the raw PVC name; ps.Pod is already stripped.
+		limit := caps[sel.ResourceName+"-"+ps.Pod]
+		points := make([]source.ResourcePoint, len(ps.Points))
+		for j, pt := range ps.Points {
+			points[j] = source.ResourcePoint{Time: pt.Time, Value: pt.Value, Limit: limit}
+		}
+		out[i] = source.ResourceSeries{ID: ps.Pod, Points: points}
+	}
+	return out, nil
+}
+
+// QueryNetwork serves the network kind: per-pod rx + tx throughput in
+// bytes/second. rx and tx are queried independently and merged by
+// (pod, timestamp).
+func (p *Prometheus) QueryNetwork(ctx context.Context, sel source.ResourceSelector, r source.TimeRange) ([]source.NetworkSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+
+	rx, err := p.queryPerSeries(ctx, expand(netRxPerPodTmpl, vars), rng, "pod")
+	if err != nil {
+		return nil, err
+	}
+	tx, err := p.queryPerSeries(ctx, expand(netTxPerPodTmpl, vars), rng, "pod")
+	if err != nil {
+		return nil, err
+	}
+	stripResourcePrefix(rx, sel.ResourceName)
+	stripResourcePrefix(tx, sel.ResourceName)
+	return mergeNetwork(rx, tx), nil
+}
+
 // --- helpers -----------------------------------------------------------
 
 // memCap is the sanity threshold for "this isn't a real memory limit,
@@ -208,6 +269,13 @@ func (p *Prometheus) queryLimitInstant(ctx context.Context, q string) (float64, 
 // queryPerPod runs a per-pod range query and returns one queryPodSeries
 // per pod.
 func (p *Prometheus) queryPerPod(ctx context.Context, q string, rng promv1.Range) ([]queryPodSeries, error) {
+	return p.queryPerSeries(ctx, q, rng, "pod")
+}
+
+// queryPerSeries runs a range query and returns one queryPodSeries per
+// distinct value of the given identity label (e.g. "pod" or
+// "persistentvolumeclaim"). The label value is stored in queryPodSeries.Pod.
+func (p *Prometheus) queryPerSeries(ctx context.Context, q string, rng promv1.Range, label model.LabelName) ([]queryPodSeries, error) {
 	val, _, err := p.api.QueryRange(ctx, q, rng)
 	if err != nil {
 		return nil, fmt.Errorf("prometheus query: %w", err)
@@ -218,8 +286,8 @@ func (p *Prometheus) queryPerPod(ctx context.Context, q string, rng promv1.Range
 	}
 	out := make([]queryPodSeries, 0, len(matrix))
 	for _, ss := range matrix {
-		pod := string(ss.Metric["pod"])
-		if pod == "" {
+		id := string(ss.Metric[label])
+		if id == "" {
 			continue
 		}
 		pts := make([]queryPoint, 0, len(ss.Values))
@@ -233,7 +301,34 @@ func (p *Prometheus) queryPerPod(ctx context.Context, q string, rng promv1.Range
 				Value: f,
 			})
 		}
-		out = append(out, queryPodSeries{Pod: pod, Points: pts})
+		out = append(out, queryPodSeries{Pod: id, Points: pts})
+	}
+	return out, nil
+}
+
+// queryInstantByLabel runs an instant query and returns a map from the
+// given identity label's value to the sample value. Used for per-PVC
+// disk capacity (the limit varies by PVC, unlike cpu/memory caps).
+func (p *Prometheus) queryInstantByLabel(ctx context.Context, q string, label model.LabelName) (map[string]float64, error) {
+	val, _, err := p.api.Query(ctx, q, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("prometheus instant query: %w", err)
+	}
+	vec, ok := val.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("prometheus instant: unexpected result type %T", val)
+	}
+	out := make(map[string]float64, len(vec))
+	for _, sample := range vec {
+		id := string(sample.Metric[label])
+		if id == "" {
+			continue
+		}
+		f := float64(sample.Value)
+		if !isFinite(f) || f <= 0 {
+			continue
+		}
+		out[id] = f
 	}
 	return out, nil
 }
@@ -333,6 +428,52 @@ func mergeLatency(p50, p95, p99 []queryPoint) []source.LatencyPoint {
 	return out
 }
 
+// mergeNetwork joins per-pod rx and tx timelines into NetworkSeries. Pods
+// are unioned across both directions; each (pod, timestamp) carries
+// whichever of rx/tx exists (missing side defaults to 0).
+func mergeNetwork(rx, tx []queryPodSeries) []source.NetworkSeries {
+	type acc struct {
+		order  []int64
+		points map[int64]*source.NetworkPoint
+	}
+	byPod := map[string]*acc{}
+	get := func(pod string, t time.Time) *source.NetworkPoint {
+		a, ok := byPod[pod]
+		if !ok {
+			a = &acc{points: map[int64]*source.NetworkPoint{}}
+			byPod[pod] = a
+		}
+		k := t.UnixMilli()
+		np, ok := a.points[k]
+		if !ok {
+			np = &source.NetworkPoint{Time: t}
+			a.points[k] = np
+			a.order = append(a.order, k)
+		}
+		return np
+	}
+	for _, s := range rx {
+		for _, pt := range s.Points {
+			get(s.Pod, pt.Time).Rx = pt.Value
+		}
+	}
+	for _, s := range tx {
+		for _, pt := range s.Points {
+			get(s.Pod, pt.Time).Tx = pt.Value
+		}
+	}
+	out := make([]source.NetworkSeries, 0, len(byPod))
+	for pod, a := range byPod {
+		points := make([]source.NetworkPoint, 0, len(a.order))
+		for _, k := range a.order {
+			points = append(points, *a.points[k])
+		}
+		sortNetwork(points)
+		out = append(out, source.NetworkSeries{ID: pod, Points: points})
+	}
+	return out
+}
+
 func isFinite(f float64) bool { return !math.IsNaN(f) && !math.IsInf(f, 0) }
 
 func sortPoints(p []queryPoint) {
@@ -346,6 +487,16 @@ func sortPoints(p []queryPoint) {
 }
 
 func sortLatency(p []source.LatencyPoint) {
+	for i := 1; i < len(p); i++ {
+		j := i
+		for j > 0 && p[j-1].Time.After(p[j].Time) {
+			p[j-1], p[j] = p[j], p[j-1]
+			j--
+		}
+	}
+}
+
+func sortNetwork(p []source.NetworkPoint) {
 	for i := 1; i < len(p); i++ {
 		j := i
 		for j > 0 && p[j-1].Time.After(p[j].Time) {

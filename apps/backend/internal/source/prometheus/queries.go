@@ -31,6 +31,23 @@ const (
 	memoryLimitTmpl = `max(kube_pod_container_resource_limits{namespace="{namespace}",pod=~"{resource}-.*",resource="memory"} or container_spec_memory_limit_bytes{namespace="{namespace}",pod=~"{resource}-.*",container!="POD",container!=""})`
 )
 
+// Disk = PVC usage from kubelet volume stats (kube-prometheus-stack's
+// kubelet ServiceMonitor). Series keyed by persistentvolumeclaim; the UI
+// strips the "<resource>-" prefix to show the bare disk name (PVCs are
+// named "<resource>-<disk>" — see runtime/k8s/app.go pvcName).
+//   used → per-PVC range; capacity → per-PVC instant (the limit).
+const (
+	diskUsedPerPVCTmpl = `kubelet_volume_stats_used_bytes{namespace="{namespace}",persistentvolumeclaim=~"{resource}-.*"}`
+	diskCapPerPVCTmpl  = `max by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace="{namespace}",persistentvolumeclaim=~"{resource}-.*"})`
+)
+
+// Network = per-pod throughput from cAdvisor counters, rate'd over 5m and
+// summed across interfaces. These metrics carry no container label.
+const (
+	netRxPerPodTmpl = `sum by (pod) (rate(container_network_receive_bytes_total{namespace="{namespace}",pod=~"{resource}-.*"}[5m]))`
+	netTxPerPodTmpl = `sum by (pod) (rate(container_network_transmit_bytes_total{namespace="{namespace}",pod=~"{resource}-.*"}[5m]))`
+)
+
 // RED queries: semconv first (OTel HTTP server semantic conventions);
 // legacy fallback (community http_requests_total) used only when the
 // semconv query returns no series.

@@ -4,52 +4,38 @@ import "../styles/global.css";
 const logo =
   "M10.4916 3.47575C7.87926 5.50306 4.39535 11.0053 2.65381 15.3497C-0.829266 24.9066 -0.829244 73.2714 2.3633 121.925C4.39537 150.886 5.84718 157.546 13.1039 170.579C17.4585 179.267 26.7481 190.272 33.134 195.486C39.5208 200.698 93.2237 229.079 152.732 258.909C256.075 310.749 275.524 322.333 275.524 333.628C275.524 341.448 250.269 356.797 149.829 409.505C32.2633 471.769 22.1029 478.723 8.75002 506.814C1.49251 522.16 1.20281 524.771 0.331213 588.776C-0.539557 634.241 0.331212 657.7 2.65381 663.201C7.00848 673.629 17.168 678.26 28.7802 674.787C39.5208 671.601 178.278 599.779 466.825 448.022C538.528 410.374 557.104 388.364 559.425 338.841C562.042 284.685 543.458 256.592 486.273 227.922C209.919 89.7789 27.0378 0 21.8132 0C18.3293 0 13.1039 1.73829 10.4916 3.47575Z";
 
-const codeLines = [
+// What you can deploy: the primitives, persona-A framing (no infra jargon).
+const primitives = [
   {
-    n: 1,
-    html: `<span class="code-kw">import</span> <span class="code-punct">{</span> service<span class="code-punct">,</span> site<span class="code-punct">,</span> postgres<span class="code-punct">,</span> redis <span class="code-punct">}</span> <span class="code-kw">from</span> <span class="code-str">"vyft"</span><span class="code-punct">;</span>`,
-  },
-  { n: 2, html: `` },
-  {
-    n: 3,
-    html: `<span class="code-kw">const</span> db <span class="code-punct">=</span> <span class="code-fn">postgres</span><span class="code-punct">(</span><span class="code-str">"db"</span><span class="code-punct">);</span>`,
+    title: "Apps & services",
+    body: "Deploy any app or API from a container image. Set the port, scale the instances, add health checks.",
+    icon: `<rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />`,
   },
   {
-    n: 4,
-    html: `<span class="code-kw">const</span> cache <span class="code-punct">=</span> <span class="code-fn">redis</span><span class="code-punct">(</span><span class="code-str">"cache"</span><span class="code-punct">);</span>`,
-  },
-  { n: 5, html: `` },
-  {
-    n: 6,
-    html: `<span class="code-kw">export const</span> api <span class="code-punct">=</span> <span class="code-fn">service</span><span class="code-punct">(</span><span class="code-str">"api"</span><span class="code-punct">,</span> <span class="code-punct">{</span>`,
+    title: "Databases",
+    body: "Run Postgres, Redis, and more right next to your apps, with persistent disks that survive restarts.",
+    icon: `<ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0" />`,
   },
   {
-    n: 7,
-    html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com/api/*"</span><span class="code-punct">,</span>`,
+    title: "Static sites",
+    body: "Host front-ends and static sites on a custom domain, with automatic TLS out of the box.",
+    icon: `<circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20a15 15 0 0 1 0-20" />`,
   },
   {
-    n: 8,
-    html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/api"</span><span class="code-punct">,</span>`,
+    title: "Jobs & workers",
+    body: "Run background workers and scheduled cron jobs on the same platform as everything else.",
+    icon: `<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />`,
   },
   {
-    n: 9,
-    html: `  depends<span class="code-punct">:</span> <span class="code-punct">[</span>db<span class="code-punct">,</span> cache<span class="code-punct">],</span>`,
-  },
-  { n: 10, html: `<span class="code-punct">});</span>` },
-  { n: 11, html: `` },
-  {
-    n: 12,
-    html: `<span class="code-kw">export const</span> web <span class="code-punct">=</span> <span class="code-fn">site</span><span class="code-punct">(</span><span class="code-str">"web"</span><span class="code-punct">,</span> <span class="code-punct">{</span>`,
+    title: "Env & secrets",
+    body: "Manage environment variables once and share them across services. Link apps to their databases.",
+    icon: `<circle cx="8" cy="15" r="4" /><path d="M10.85 12.15 19 4M18 5l2 2M15 8l2 2" />`,
   },
   {
-    n: 13,
-    html: `  domain<span class="code-punct">:</span> <span class="code-str">"example.com"</span><span class="code-punct">,</span>`,
+    title: "Custom domains",
+    body: "Point a domain, get HTTPS automatically, and route traffic to the right service.",
+    icon: `<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />`,
   },
-  {
-    n: 14,
-    html: `  path<span class="code-punct">:</span> <span class="code-str">"./apps/web"</span><span class="code-punct">,</span>`,
-  },
-  { n: 15, html: `<span class="code-punct">});</span>` },
 ];
 ---
 
@@ -62,16 +48,16 @@ const codeLines = [
 		<meta name="theme-color" content="#252525" />
 		<meta
 			name="description"
-			content="Vyft — infrastructure as code for TypeScript. Define services, volumes, and jobs as code, then deploy with a single command."
+			content="Vyft is an open-source, self-hosted PaaS, a simpler alternative to Heroku and Railway. Deploy apps, databases, and sites to infrastructure you own. Built to scale when you do."
 		/>
-		<meta property="og:title" content="Vyft — Infrastructure as Code for TypeScript" />
-		<meta property="og:description" content="Define your services, volumes, and jobs as typed TypeScript code. Deploy with a single command." />
+		<meta property="og:title" content="Vyft: Self-host your apps, the simple way" />
+		<meta property="og:description" content="An open-source platform for deploying apps, databases, and sites to infrastructure you own. A clean dashboard, push-to-deploy, built to scale when you do." />
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content="https://vyft.dev" />
 		<meta name="twitter:card" content="summary" />
-		<meta name="twitter:title" content="Vyft — Infrastructure as Code for TypeScript" />
-		<meta name="twitter:description" content="Define your services, volumes, and jobs as typed TypeScript code. Deploy with a single command." />
-		<title>Vyft — Infrastructure as Code for TypeScript</title>
+		<meta name="twitter:title" content="Vyft: Self-host your apps, the simple way" />
+		<meta name="twitter:description" content="An open-source platform for deploying apps, databases, and sites to infrastructure you own. A clean dashboard, push-to-deploy, built to scale when you do." />
+		<title>Vyft: Self-host your apps · Open-source PaaS</title>
 	</head>
 	<body>
 		<!-- Vertical rail lines -->
@@ -113,7 +99,7 @@ const codeLines = [
 
 		<main>
 			<!-- ─── Hero ────────────────────────────────────────────── -->
-			<section class="relative z-10 flex flex-col items-center justify-center px-6 pt-44 pb-28 text-center">
+			<section class="relative z-10 flex flex-col items-center justify-center overflow-hidden px-6 pt-44 pb-32 text-center">
 				<div
 					class="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[800px]"
 					style="background: radial-gradient(ellipse at center, oklch(0.3 0 0 / 0.4) 0%, transparent 70%);"
@@ -125,14 +111,14 @@ const codeLines = [
 						class="mb-6 text-5xl font-bold leading-[1.08] sm:text-6xl lg:text-7xl"
 						style="color: var(--color-text); letter-spacing: -0.04em;"
 					>
-						Infrastructure as code<br />for TypeScript.
+						Self-host your apps,<br />the simple way.
 					</h1>
 
 					<p
-						class="mx-auto mb-10 max-w-md text-base leading-relaxed sm:text-lg"
+						class="mx-auto mb-10 max-w-xl text-base leading-relaxed sm:text-lg"
 						style="color: var(--color-muted);"
 					>
-						Define your services, volumes, and jobs as typed code. Deploy with a single command.
+						Vyft is an open-source platform for deploying apps, databases, and sites to infrastructure you own. A clean dashboard, push-to-deploy, built to scale when you do.
 					</p>
 
 					<div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -154,65 +140,102 @@ const codeLines = [
 							View on GitHub
 						</a>
 					</div>
+
+					<p
+						class="mt-8 text-xs"
+						style="color: var(--color-muted); font-family: var(--font-mono);"
+					>
+						Open source · Deploy in minutes · Scales with you
+					</p>
 				</div>
 			</section>
 
-			<!-- ─── Code ────────────────────────────────────────────── -->
+			<!-- ─── What you can deploy ─────────────────────────────── -->
 			<section class="section-rule relative z-10">
-					<div class="mx-auto max-w-5xl px-6 py-24">
-					<div class="flex flex-col items-center gap-14 lg:flex-row lg:items-start">
-						<div class="flex-1 text-center lg:text-left">
+				<div class="mx-auto max-w-5xl px-6 py-32">
+					<div class="mb-14 max-w-2xl">
+						<p
+							class="mb-3 text-xs font-medium uppercase tracking-widest"
+							style="color: var(--color-muted); font-family: var(--font-mono);"
+						>
+							Everything your app needs
+						</p>
+						<h2
+							class="text-3xl font-bold sm:text-4xl"
+							style="color: var(--color-text); letter-spacing: -0.03em;"
+						>
+							One platform for your whole stack.
+						</h2>
+					</div>
+
+					<div class="primitive-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+						{primitives.map((p) => (
+							<div class="primitive-cell">
+								<div
+									class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
+									style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
+								>
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={p.icon} />
+								</div>
+								<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
+									{p.title}
+								</h3>
+								<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
+									{p.body}
+								</p>
+							</div>
+						))}
+					</div>
+				</div>
+			</section>
+
+			<!-- ─── The wedge: built to scale ───────────────────────── -->
+			<section class="section-rule relative z-10">
+				<div class="mx-auto max-w-5xl px-6 py-32">
+					<div class="flex flex-col items-start gap-14 lg:flex-row lg:items-center">
+						<div class="flex-1">
 							<p
 								class="mb-3 text-xs font-medium uppercase tracking-widest"
 								style="color: var(--color-muted); font-family: var(--font-mono);"
 							>
-								See it in action
+								Built to scale
 							</p>
 							<h2
 								class="mb-4 text-3xl font-bold sm:text-4xl"
 								style="color: var(--color-text); letter-spacing: -0.03em;"
 							>
-								Your infrastructure.<br />Your language.
+								Start simple.<br />Never re-platform.
 							</h2>
 							<p
-								class="mx-auto max-w-sm text-sm leading-relaxed lg:mx-0"
+								class="max-w-md text-sm leading-relaxed sm:text-base"
 								style="color: var(--color-muted);"
 							>
-								Services, volumes, jobs, and cron schedules. Typed, composable, and colocated with your app.
+								Most platforms are easy until you outgrow them, then you rebuild everything on "real" infrastructure. Vyft starts you on the real thing, kept simple. When you grow, you scale up. You never start over.
 							</p>
 						</div>
 
-						<div class="w-full max-w-lg flex-shrink-0 lg:max-w-xl">
-							<div
-								class="overflow-hidden"
-								style="border: 1px solid var(--color-border);"
-							>
-								<div
-									class="flex items-center px-4 py-2"
-									style="border-bottom: 1px solid var(--color-border);"
-								>
-									<span
-										class="text-xs"
-										style="color: var(--color-muted); font-family: var(--font-mono);"
-									>vyft.config.ts</span>
+						<div class="w-full flex-shrink-0 lg:w-80">
+							<div class="scale-steps flex flex-col">
+								<div class="scale-step flex items-start gap-3 p-5">
+									<span class="mt-0.5 text-xs font-semibold" style="color: var(--color-muted); font-family: var(--font-mono);">01</span>
+									<div>
+										<h3 class="mb-1 text-sm font-semibold" style="color: var(--color-text);">Ship in minutes</h3>
+										<p class="text-sm leading-relaxed" style="color: var(--color-muted);">Deploy your first app from the dashboard, no setup ceremony.</p>
+									</div>
 								</div>
-								<div class="overflow-x-auto" style="font-family: var(--font-mono); font-size: 0.8125rem;">
-									<table class="w-full" style="border-collapse: collapse;">
-										<tbody>
-											{codeLines.map(({ n, html }, i) => (
-												<tr>
-													<td
-														class="select-none text-right align-top"
-														style={`color: oklch(1 0 0 / 15%); padding: ${i === 0 ? '1.25rem' : '0'} 1rem ${i === codeLines.length - 1 ? '1.25rem' : '0'} 1.25rem; width: 1%; white-space: nowrap; user-select: none;`}
-													>{n}</td>
-													<td
-														class="align-top"
-														style={`color: var(--color-text); padding: ${i === 0 ? '1.25rem' : '0'} 1.25rem ${i === codeLines.length - 1 ? '1.25rem' : '0'} 0; white-space: pre;`}
-													><Fragment set:html={html || '&nbsp;'} /></td>
-												</tr>
-											))}
-										</tbody>
-									</table>
+								<div class="scale-step flex items-start gap-3 p-5">
+									<span class="mt-0.5 text-xs font-semibold" style="color: var(--color-muted); font-family: var(--font-mono);">02</span>
+									<div>
+										<h3 class="mb-1 text-sm font-semibold" style="color: var(--color-text);">Grow without limits</h3>
+										<p class="text-sm leading-relaxed" style="color: var(--color-muted);">Add services, scale instances, and span servers as traffic climbs.</p>
+									</div>
+								</div>
+								<div class="scale-step flex items-start gap-3 p-5">
+									<span class="mt-0.5 text-xs font-semibold" style="color: var(--color-muted); font-family: var(--font-mono);">03</span>
+									<div>
+										<h3 class="mb-1 text-sm font-semibold" style="color: var(--color-text);">Keep control</h3>
+										<p class="text-sm leading-relaxed" style="color: var(--color-muted);">It's your infrastructure and standard underneath, yours to take over anytime.</p>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -220,61 +243,79 @@ const codeLines = [
 				</div>
 			</section>
 
-			<!-- ─── Features ────────────────────────────────────────── -->
+			<!-- ─── Self-host (open source) ─────────────────────────── -->
 			<section class="section-rule relative z-10">
-					<div class="mx-auto max-w-5xl px-6 py-24">
-					<div class="grid grid-cols-1 sm:grid-cols-3">
-						<div class="py-6 sm:pr-10 sm:py-0">
-							<div
-								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
-								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
+				<div class="mx-auto max-w-5xl px-6 py-32">
+					<div class="mb-8 max-w-2xl">
+						<p
+							class="mb-3 text-xs font-medium uppercase tracking-widest"
+							style="color: var(--color-muted); font-family: var(--font-mono);"
+						>
+							Open source
+						</p>
+						<h2
+							class="text-3xl font-bold sm:text-4xl"
+							style="color: var(--color-text); letter-spacing: -0.03em;"
+						>
+							Free to run. Yours to own.
+						</h2>
+					</div>
+
+					<div class="flex flex-col items-start gap-10 lg:flex-row lg:items-start">
+						<div class="flex-1">
+							<p
+								class="max-w-md text-sm leading-relaxed sm:text-base"
+								style="color: var(--color-muted);"
 							>
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
-									<polyline points="16 18 22 12 16 6" />
-									<polyline points="8 6 2 12 8 18" />
-								</svg>
-							</div>
-							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
-								TypeScript native
-							</h3>
-							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
-								Typed, autocompleted, colocated with your app. No YAML, no DSLs.
+								Install Vyft on your own cluster and own every byte. Free and open source, no seats, no lock-in. It's your infrastructure, and standard underneath. Up and running in one command.
 							</p>
 						</div>
 
-						<div class="feature-divider py-6 sm:px-10 sm:py-0">
-							<div
-								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
-								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
-							>
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
-									<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.611a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.16 8.84c.232-.232.32-.56.276-.837-.07-.471-.48-.802-.925-.968a2.501 2.501 0 1 1 3.214-3.214c.166.446.497.855.968.925.277.044.605-.044.837-.276l1.655-1.655A2.403 2.403 0 0 1 11.886 2c.618 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.969a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.968 1.02Z" stroke-linecap="round" stroke-linejoin="round" />
-								</svg>
-							</div>
-							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
-								Simple primitives
-							</h3>
-							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
-								Services, jobs, cron, and volumes. Compose them together, link services, mount data.
-							</p>
+						<div
+							class="w-full flex-shrink-0 overflow-x-auto rounded-md p-4 text-xs leading-relaxed lg:w-96"
+							style="background: var(--color-surface); border: 1px solid var(--color-border); font-family: var(--font-mono); color: var(--color-text);"
+						>
+							<div>helm repo add vyft https://charts.vyft.dev</div>
+							<div>helm install vyft vyft/vyft \</div>
+							<div>&nbsp;&nbsp;-n vyft --create-namespace</div>
 						</div>
+					</div>
+				</div>
+			</section>
 
-						<div class="py-6 sm:pl-10 sm:py-0">
-							<div
-								class="mb-4 flex h-9 w-9 items-center justify-center rounded-md"
-								style="background: oklch(1 0 0 / 5%); border: 1px solid var(--color-border);"
-							>
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="1.75" aria-hidden="true">
-									<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-								</svg>
-							</div>
-							<h3 class="mb-1.5 text-sm font-semibold" style="color: var(--color-text);">
-								Single command deploys
-							</h3>
-							<p class="text-sm leading-relaxed" style="color: var(--color-muted);">
-								<code style="font-family: var(--font-mono); font-size: 0.8125rem;">vyft deploy</code> diffs, orders, and executes. Preview changes before they land.
-							</p>
-						</div>
+			<!-- ─── Final CTA ───────────────────────────────────────── -->
+			<section class="section-rule relative z-10">
+				<div class="mx-auto max-w-5xl px-6 py-36 text-center">
+					<h2
+						class="mb-4 text-3xl font-bold sm:text-4xl"
+						style="color: var(--color-text); letter-spacing: -0.03em;"
+					>
+						Deploy your first app today.
+					</h2>
+					<p
+						class="mx-auto mb-10 max-w-md text-sm leading-relaxed sm:text-base"
+						style="color: var(--color-muted);"
+					>
+						Open source, self-hostable, and free to start. Spin it up on your own infrastructure in minutes.
+					</p>
+					<div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+						<a
+							href="/docs"
+							class="btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors duration-150"
+						>
+							Get Started
+							<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+								<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</a>
+						<a
+							href="https://github.com/vyftlabs/vyft"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="btn-ghost inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors duration-150"
+						>
+							View on GitHub
+						</a>
 					</div>
 				</div>
 			</section>
@@ -302,3 +343,71 @@ const codeLines = [
 		</footer>
 	</body>
 </html>
+
+<style>
+	/* Bordered grid with internal dividers only — no outer frame.
+	   Real borders (no background bleed), edges stripped per breakpoint
+	   so it stays crisp at every width. Full grid (6 cells) at each col count. */
+	.primitive-cell {
+		/* 1 col: full-width rows, so text sits flush to both section edges */
+		padding: 1.5rem 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.primitive-cell:last-child {
+		border-bottom: 0;
+	}
+
+	@media (min-width: 640px) {
+		.primitive-cell {
+			padding-left: 1.5rem;
+			padding-right: 1.5rem;
+			border-right: 1px solid var(--color-border);
+			border-bottom: 1px solid var(--color-border);
+		}
+		.primitive-cell:nth-child(2n + 1) {
+			padding-left: 0; /* first column: flush left */
+		}
+		.primitive-cell:nth-child(2n) {
+			padding-right: 0; /* last column: flush right */
+			border-right: 0;
+		}
+		.primitive-cell:nth-last-child(-n + 2) {
+			border-bottom: 0;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.primitive-cell {
+			padding-left: 1.5rem;
+			padding-right: 1.5rem;
+			border-right: 1px solid var(--color-border);
+			border-bottom: 1px solid var(--color-border);
+		}
+		/* reset the 2-col edges, then apply 3-col edges */
+		.primitive-cell:nth-child(2n + 1) {
+			padding-left: 1.5rem;
+		}
+		.primitive-cell:nth-child(2n) {
+			padding-right: 1.5rem;
+			border-right: 1px solid var(--color-border);
+		}
+		.primitive-cell:nth-child(3n + 1) {
+			padding-left: 0; /* first column: flush left */
+		}
+		.primitive-cell:nth-child(3n) {
+			padding-right: 0; /* last column: flush right */
+			border-right: 0;
+		}
+		.primitive-cell:nth-last-child(-n + 3) {
+			border-bottom: 0;
+		}
+	}
+
+	/* Vertical step list — dividers between, no outer border. */
+	.scale-step {
+		border-bottom: 1px solid var(--color-border);
+	}
+	.scale-step:last-child {
+		border-bottom: 0;
+	}
+</style>

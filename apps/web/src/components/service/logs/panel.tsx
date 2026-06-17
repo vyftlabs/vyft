@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { LogLine, LogLevel, SourceKind } from "@vyft/spec";
+import type { LogLine, LogLevel } from "@vyft/spec";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,6 @@ import { ApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 2_000;
-
-const SOURCE_LABELS: Record<SourceKind, string> = {
-  prometheus: "Prometheus",
-  metricsServer: "metrics-server",
-  loki: "Loki",
-  kubeLogs: "Kubernetes",
-};
 
 const levelClass: Record<LogLevel, string> = {
   error: "text-severity-critical-text",
@@ -75,14 +68,14 @@ export function LogsPanel({
   const lines = (tail.data ?? []) as LogLine[];
   if (lines.length === 0) {
     return (
-      <Header label="Logs" sub={SOURCE_LABELS[sk]}>
+      <Header label="Logs">
         <Status text="No recent log lines." />
       </Header>
     );
   }
 
   return (
-    <Header label="Logs" sub={SOURCE_LABELS[sk]}>
+    <Header label="Logs">
       <StickyScroll lines={lines} />
     </Header>
   );

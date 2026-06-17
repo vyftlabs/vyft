@@ -7,6 +7,8 @@ type MetricKind string
 const (
 	KindCpu         MetricKind = "cpu"
 	KindMemory      MetricKind = "memory"
+	KindDisk        MetricKind = "disk"
+	KindNetwork     MetricKind = "network"
 	KindRequestRate MetricKind = "requestRate"
 	KindErrorRate   MetricKind = "errorRate"
 	KindLatency     MetricKind = "latency"

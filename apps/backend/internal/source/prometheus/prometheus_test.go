@@ -3,6 +3,7 @@ package prometheus
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -182,11 +183,82 @@ func TestQueryLatency_MergesThreeQuantiles(t *testing.T) {
 	}
 }
 
-func TestSupports_ReturnsAllFiveKinds(t *testing.T) {
+func TestQueryNetwork_MergesRxTx(t *testing.T) {
+	tsec := ts(15)
+	fp := &fakeProm{
+		matrixByQuery: map[string][][2]float64{
+			"container_network_receive_bytes_total":  {{tsec, 100}},
+			"container_network_transmit_bytes_total": {{tsec, 50}},
+		},
+	}
+	p := newClient(t, fp)
+
+	series, err := p.QueryNetwork(context.Background(), sel(), tr())
+	if err != nil {
+		t.Fatalf("network: %v", err)
+	}
+	if len(series) != 1 {
+		t.Fatalf("got %d series, want 1", len(series))
+	}
+	// pod label "nginx-abc-1" → "abc-1" after prefix strip.
+	if series[0].ID != "abc-1" {
+		t.Errorf("id: got %q, want %q", series[0].ID, "abc-1")
+	}
+	if len(series[0].Points) != 1 {
+		t.Fatalf("got %d points, want 1", len(series[0].Points))
+	}
+	if pt := series[0].Points[0]; pt.Rx != 100 || pt.Tx != 50 {
+		t.Errorf("got rx=%v tx=%v, want 100 / 50", pt.Rx, pt.Tx)
+	}
+}
+
+func TestQueryDisk_PerPVCUsageAndCapacity(t *testing.T) {
+	usedTs := ts(30)
+	capTs := ts(0)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		q := r.Form.Get("query")
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(q, "kubelet_volume_stats_capacity_bytes") {
+			// instant vector — per-PVC capacity (the limit).
+			fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"persistentvolumeclaim":"nginx-data"},"value":[%s,"%s"]}]}}`,
+				floatStr(capTs), floatStr(1073741824))
+			return
+		}
+		// used → range matrix.
+		fmt.Fprintf(w, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"persistentvolumeclaim":"nginx-data"},"values":[[%s,"%s"]]}]}}`,
+			floatStr(usedTs), floatStr(524288000))
+	}))
+	t.Cleanup(srv.Close)
+	p, err := New(uuid.New(), "test", srv.URL, Auth{Type: AuthNone})
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+
+	series, err := p.QueryResource(context.Background(), source.KindDisk, sel(), tr())
+	if err != nil {
+		t.Fatalf("disk: %v", err)
+	}
+	if len(series) != 1 {
+		t.Fatalf("got %d series, want 1", len(series))
+	}
+	// PVC "nginx-data" → "data" after prefix strip; capacity → per-point limit.
+	if series[0].ID != "data" {
+		t.Errorf("id: got %q, want %q", series[0].ID, "data")
+	}
+	if len(series[0].Points) != 1 {
+		t.Fatalf("got %d points, want 1", len(series[0].Points))
+	}
+	if pt := series[0].Points[0]; pt.Value != 524288000 || pt.Limit != 1073741824 {
+		t.Errorf("got used=%v cap=%v, want 524288000 / 1073741824", pt.Value, pt.Limit)
+	}
+}
+
+func TestSupports_ReturnsAllKinds(t *testing.T) {
 	p, _ := New(uuid.New(), "test", "http://localhost", Auth{Type: AuthNone})
 	got := p.Supports()
-	if len(got) != 5 {
-		t.Fatalf("got %d kinds, want 5", len(got))
+	if len(got) != 7 {
+		t.Fatalf("got %d kinds, want 7", len(got))
 	}
 }
 
@@ -195,6 +267,8 @@ func TestProbeMetricNames(t *testing.T) {
 	cases := map[source.MetricKind][]string{
 		source.KindCpu:         {"container_cpu_usage_seconds_total"},
 		source.KindMemory:      {"container_memory_working_set_bytes"},
+		source.KindDisk:        {"kubelet_volume_stats_used_bytes"},
+		source.KindNetwork:     {"container_network_receive_bytes_total"},
 		source.KindRequestRate: {"http_server_request_duration_seconds_count", "http_requests_total"},
 		source.KindErrorRate:   {"http_server_request_duration_seconds_count", "http_requests_total"},
 		source.KindLatency:     {"http_server_request_duration_seconds_bucket"},

@@ -3,6 +3,7 @@ import type {
   LatencyMetrics,
   LogLine,
   MetricRange,
+  NetworkMetrics,
   RateMetrics,
   ResourceMetrics,
 } from "@vyft/spec";
@@ -125,7 +126,9 @@ export const logsSearch = (
 // the existing cache.
 
 // Display window controls how far back the initial backfill reaches.
-// Subsequent polls only fetch deltas.
+// Subsequent polls only fetch deltas. The overview slots use the default;
+// the detailed Metrics tab passes a wider window (1h/6h/24h) keyed into
+// the query so each range gets its own cache + backfill.
 const DISPLAY_WINDOW_MS = 15 * 60 * 1000;
 
 interface PointWithTimestamp {
@@ -186,15 +189,20 @@ function latestTimestamp<P extends PointWithTimestamp>(
 // from = lastTimestamp + 1. `to` always omitted — server defaults to now.
 function buildRangeQuery<P extends PointWithTimestamp>(
   cached: MetricsResponse<P> | undefined,
+  windowMs: number,
 ): { from?: number } {
   const last = latestTimestamp(cached);
   if (last !== null) return { from: last + 1 };
-  return { from: Date.now() - DISPLAY_WINDOW_MS };
+  return { from: Date.now() - windowMs };
 }
 
-export const cpuMetrics = (projectId: string, resourceId: string) =>
+export const cpuMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "cpu", projectId, resourceId],
+    queryKey: [...ROOT, "cpu", projectId, resourceId, windowMs],
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -209,13 +217,14 @@ export const cpuMetrics = (projectId: string, resourceId: string) =>
         "cpu",
         projectId,
         resourceId,
+        windowMs,
       ]);
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/cpu",
         {
           params: {
             path: { projectId, resourceId },
-            query: buildRangeQuery(cached),
+            query: buildRangeQuery(cached, windowMs),
           },
         },
       );
@@ -223,9 +232,13 @@ export const cpuMetrics = (projectId: string, resourceId: string) =>
     },
   });
 
-export const memoryMetrics = (projectId: string, resourceId: string) =>
+export const memoryMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "memory", projectId, resourceId],
+    queryKey: [...ROOT, "memory", projectId, resourceId, windowMs],
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -240,13 +253,14 @@ export const memoryMetrics = (projectId: string, resourceId: string) =>
         "memory",
         projectId,
         resourceId,
+        windowMs,
       ]);
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/memory",
         {
           params: {
             path: { projectId, resourceId },
-            query: buildRangeQuery(cached),
+            query: buildRangeQuery(cached, windowMs),
           },
         },
       );
@@ -254,9 +268,85 @@ export const memoryMetrics = (projectId: string, resourceId: string) =>
     },
   });
 
-export const requestRateMetrics = (projectId: string, resourceId: string) =>
+export const diskMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "requestRate", projectId, resourceId],
+    queryKey: [...ROOT, "disk", projectId, resourceId, windowMs],
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as ResourceMetrics | undefined,
+        newData as ResourceMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<ResourceMetrics>([
+        ...ROOT,
+        "disk",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/disk",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const networkMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "network", projectId, resourceId, windowMs],
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as NetworkMetrics | undefined,
+        newData as NetworkMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<NetworkMetrics>([
+        ...ROOT,
+        "network",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/network",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const requestRateMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "requestRate", projectId, resourceId, windowMs],
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -271,13 +361,14 @@ export const requestRateMetrics = (projectId: string, resourceId: string) =>
         "requestRate",
         projectId,
         resourceId,
+        windowMs,
       ]);
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/requestRate",
         {
           params: {
             path: { projectId, resourceId },
-            query: buildRangeQuery(cached),
+            query: buildRangeQuery(cached, windowMs),
           },
         },
       );
@@ -285,9 +376,13 @@ export const requestRateMetrics = (projectId: string, resourceId: string) =>
     },
   });
 
-export const errorRateMetrics = (projectId: string, resourceId: string) =>
+export const errorRateMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "errorRate", projectId, resourceId],
+    queryKey: [...ROOT, "errorRate", projectId, resourceId, windowMs],
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -302,13 +397,14 @@ export const errorRateMetrics = (projectId: string, resourceId: string) =>
         "errorRate",
         projectId,
         resourceId,
+        windowMs,
       ]);
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/errorRate",
         {
           params: {
             path: { projectId, resourceId },
-            query: buildRangeQuery(cached),
+            query: buildRangeQuery(cached, windowMs),
           },
         },
       );
@@ -316,9 +412,13 @@ export const errorRateMetrics = (projectId: string, resourceId: string) =>
     },
   });
 
-export const latencyMetrics = (projectId: string, resourceId: string) =>
+export const latencyMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "latency", projectId, resourceId],
+    queryKey: [...ROOT, "latency", projectId, resourceId, windowMs],
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -333,13 +433,14 @@ export const latencyMetrics = (projectId: string, resourceId: string) =>
         "latency",
         projectId,
         resourceId,
+        windowMs,
       ]);
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/metrics/latency",
         {
           params: {
             path: { projectId, resourceId },
-            query: buildRangeQuery(cached),
+            query: buildRangeQuery(cached, windowMs),
           },
         },
       );

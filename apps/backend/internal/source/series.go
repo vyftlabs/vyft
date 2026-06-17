@@ -28,6 +28,13 @@ type LatencyPoint struct {
 	P99  float64
 }
 
+// NetworkPoint carries both directions for one timestamp, bytes/second.
+type NetworkPoint struct {
+	Time time.Time
+	Rx   float64
+	Tx   float64
+}
+
 // ResourceSeries is per-pod for cpu/memory. ID is the pod name; empty
 // string means "aggregate" (used by sources that can't break down by pod).
 type ResourceSeries struct {
@@ -46,4 +53,10 @@ type RateSeries struct {
 type LatencySeries struct {
 	ID     string
 	Points []LatencyPoint
+}
+
+// NetworkSeries is per-pod throughput. ID is the pod name.
+type NetworkSeries struct {
+	ID     string
+	Points []NetworkPoint
 }

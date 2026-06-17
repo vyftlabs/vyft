@@ -78,7 +78,7 @@ export interface EventTimelineProps {
 
 // --- Helpers ---
 
-function timeAgo(timestamp: string): string {
+export function timeAgo(timestamp: string): string {
   const seconds = Math.floor(
     (Date.now() - new Date(timestamp).getTime()) / 1000,
   );
@@ -91,7 +91,7 @@ function timeAgo(timestamp: string): string {
   return `${days}d ago`;
 }
 
-function formatDuration(start: string, end?: string): string | null {
+export function formatDuration(start: string, end?: string): string | null {
   if (!end) return null;
   const ms = new Date(end).getTime() - new Date(start).getTime();
   const seconds = Math.round(ms / 1000);

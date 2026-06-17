@@ -16,80 +16,15 @@ import {
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api/errors";
 import { MetricSlotChrome } from "./chrome";
-
-const KIND_LABELS: Record<MetricKind, string> = {
-  cpu: "CPU",
-  memory: "Memory",
-  requestRate: "Requests",
-  errorRate: "Error rate",
-  latency: "Latency",
-};
-
-// ── formatters ────────────────────────────────────────────────────────
-
-function formatBytes(b: number): { value: string; unit: string } {
-  if (!Number.isFinite(b)) return { value: "—", unit: "B" };
-  const abs = Math.abs(b);
-  const units: [number, string][] = [
-    [1024 ** 4, "TiB"],
-    [1024 ** 3, "GiB"],
-    [1024 ** 2, "MiB"],
-    [1024, "KiB"],
-  ];
-  for (const [div, unit] of units) {
-    if (abs >= div) return { value: fmtTrim(b / div), unit };
-  }
-  return { value: Math.round(b).toString(), unit: "B" };
-}
-
-// formatCores auto-scales cores → µ/m/cores. Backend emits canonical
-// cores; idle workloads land in µ territory.
-function formatCores(c: number): { value: string; unit: string } {
-  if (!Number.isFinite(c)) return { value: "—", unit: "m" };
-  const abs = Math.abs(c);
-  if (abs >= 1) return { value: fmtTrim(c), unit: "cores" };
-  if (abs >= 0.001) return { value: fmtTrim(c * 1000), unit: "m" };
-  return { value: fmtTrim(c * 1_000_000), unit: "µ" };
-}
-
-function formatSeconds(s: number): { value: string; unit: string } {
-  if (!Number.isFinite(s)) return { value: "—", unit: "ms" };
-  const abs = Math.abs(s);
-  if (abs >= 1) return { value: fmtTrim(s), unit: "s" };
-  if (abs >= 0.001) return { value: fmtTrim(s * 1000), unit: "ms" };
-  return { value: fmtTrim(s * 1_000_000), unit: "µs" };
-}
-
-function formatRate(v: number): { value: string; unit: string } {
-  return { value: fmtTrim(v), unit: "/s" };
-}
-
-// formatFraction renders an errorRate fraction (0..1) as a percent.
-function formatFraction(v: number): { value: string; unit: string } {
-  return { value: fmtTrim(v * 100), unit: "%" };
-}
-
-function fmtTrim(v: number): string {
-  if (!Number.isFinite(v)) return "—";
-  const abs = Math.abs(v);
-  if (abs >= 100) return Math.round(v).toString();
-  if (abs >= 10) return v.toFixed(1);
-  return v.toFixed(2);
-}
-
-// formatPercentOfLimit: percent big, raw small ("47% 473m").
-function formatPercentOfLimit(
-  v: number,
-  limit: number,
-  baseFormatter: (v: number) => { value: string; unit: string },
-): { value: string; unit: string } {
-  const pct = (v / limit) * 100;
-  const raw = baseFormatter(v);
-  return {
-    value: `${fmtTrim(pct)}%`,
-    unit: ` ${raw.value}${raw.unit}`,
-  };
-}
+import {
+  formatBytes,
+  formatCores,
+  formatFraction,
+  formatPercentOfLimit,
+  formatRate,
+  formatSeconds,
+  KIND_LABELS,
+} from "./format";
 
 // ── slot ──────────────────────────────────────────────────────────────
 

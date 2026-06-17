@@ -454,6 +454,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/resources/{resourceId}/metrics/disk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Disk usage timeseries, per-PVC (value=used, limit=capacity) */
+        get: operations["getResourceDiskMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/resources/{resourceId}/metrics/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Network throughput timeseries, per-pod (rx + tx, bytes/sec) */
+        get: operations["getResourceNetworkMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/resources/{resourceId}/metrics/requestRate": {
         parameters: {
             query?: never;
@@ -1041,6 +1075,18 @@ export interface components {
             value: number;
             limit?: number;
             request?: number;
+        };
+        NetworkMetrics: {
+            series: components["schemas"]["NetworkSeries"][];
+        };
+        NetworkSeries: {
+            id?: string;
+            points: components["schemas"]["NetworkPoint"][];
+        };
+        NetworkPoint: {
+            timestamp: number;
+            rx: number;
+            tx: number;
         };
         RateMetrics: {
             series: components["schemas"]["RateSeries"][];
@@ -4011,6 +4057,148 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResourceMetrics"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceDiskMetrics: {
+        parameters: {
+            query?: {
+                from?: number;
+                to?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceMetrics"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getResourceNetworkMetrics: {
+        parameters: {
+            query?: {
+                from?: number;
+                to?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Series */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkMetrics"];
                 };
             };
             /** @description Bad request */

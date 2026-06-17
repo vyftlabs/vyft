@@ -42,7 +42,15 @@ export const LogsCapabilities = z
 // MetricKind is no longer a wire enum (URL path is the discriminator)
 // but the frontend still needs a typed list for layout iteration.
 export const MetricKind = z
-  .enum(["cpu", "memory", "requestRate", "errorRate", "latency"])
+  .enum([
+    "cpu",
+    "memory",
+    "disk",
+    "network",
+    "requestRate",
+    "errorRate",
+    "latency",
+  ])
   .meta({ id: "MetricKind" });
 
 // MetricRange lives on for /logs/search only. Metrics use from/to.
@@ -54,9 +62,14 @@ export const MetricRange = z
 // All values in canonical units:
 //   cpu        cores
 //   memory     bytes
+//   disk       bytes (value=used, limit=capacity), per-PVC series
+//   network    bytes/second (rx + tx), per-pod series
 //   requestRate requests/second
 //   errorRate  fraction (0..1)
 //   latency    seconds
+//
+// disk reuses ResourcePoint/ResourceMetrics: `value` is used bytes,
+// `limit` is the PVC capacity, and the series `id` is the disk name.
 
 export const ResourcePoint = z
   .object({
@@ -83,6 +96,15 @@ export const LatencyPoint = z
   })
   .meta({ id: "LatencyPoint" });
 
+// NetworkPoint carries both directions for one timestamp, bytes/second.
+export const NetworkPoint = z
+  .object({
+    timestamp: z.number().int(),
+    rx: z.number(),
+    tx: z.number(),
+  })
+  .meta({ id: "NetworkPoint" });
+
 // Series envelope. `id` is per-series identity (pod name for cpu/memory)
 // and is omitted for aggregate series (rates, latency).
 
@@ -107,6 +129,14 @@ export const LatencySeries = z
   })
   .meta({ id: "LatencySeries" });
 
+// NetworkSeries is per-pod; `id` is the pod name.
+export const NetworkSeries = z
+  .object({
+    id: z.string().optional(),
+    points: z.array(NetworkPoint),
+  })
+  .meta({ id: "NetworkSeries" });
+
 // Response envelopes per endpoint family.
 
 export const ResourceMetrics = z
@@ -120,6 +150,10 @@ export const RateMetrics = z
 export const LatencyMetrics = z
   .object({ series: z.array(LatencySeries) })
   .meta({ id: "LatencyMetrics" });
+
+export const NetworkMetrics = z
+  .object({ series: z.array(NetworkSeries) })
+  .meta({ id: "NetworkMetrics" });
 
 export const LogsCeiling: Partial<
   Record<z.infer<typeof SourceKind>, z.infer<typeof LogCapability>[]>
@@ -138,9 +172,12 @@ export type MetricRange = z.infer<typeof MetricRange>;
 export type ResourcePoint = z.infer<typeof ResourcePoint>;
 export type RatePoint = z.infer<typeof RatePoint>;
 export type LatencyPoint = z.infer<typeof LatencyPoint>;
+export type NetworkPoint = z.infer<typeof NetworkPoint>;
 export type ResourceSeries = z.infer<typeof ResourceSeries>;
 export type RateSeries = z.infer<typeof RateSeries>;
 export type LatencySeries = z.infer<typeof LatencySeries>;
+export type NetworkSeries = z.infer<typeof NetworkSeries>;
 export type ResourceMetrics = z.infer<typeof ResourceMetrics>;
 export type RateMetrics = z.infer<typeof RateMetrics>;
 export type LatencyMetrics = z.infer<typeof LatencyMetrics>;
+export type NetworkMetrics = z.infer<typeof NetworkMetrics>;
