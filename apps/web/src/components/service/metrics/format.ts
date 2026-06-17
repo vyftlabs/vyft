@@ -12,7 +12,25 @@ export const KIND_LABELS: Record<MetricKind, string> = {
   requestRate: "Requests",
   errorRate: "Error rate",
   latency: "Latency",
+  connections: "Connections",
+  transactions: "Transactions",
+  cacheHit: "Cache hit",
+  dbSize: "Storage",
+  replicationLag: "Replication lag",
+  redisMemory: "Memory",
+  redisClients: "Clients",
+  redisOps: "Ops/sec",
 };
+
+// formatCount renders a plain count (e.g. connections) — integer-ish, no unit.
+export function formatCount(v: number): Formatted {
+  return { value: fmtTrim(v), unit: "" };
+}
+
+// formatTps renders transactions/second.
+export function formatTps(v: number): Formatted {
+  return { value: fmtTrim(v), unit: " tx/s" };
+}
 
 export interface Formatted {
   value: string;
@@ -91,6 +109,6 @@ export function formatPercentOfLimit(
   const cap = baseFormatter(limit);
   return {
     value: `${fmtTrim(pct)}%`,
-    unit: ` ${raw.value}${raw.unit} / ${cap.value}${cap.unit}`,
+    unit: ` ${raw.value}${raw.unit}\u2009/\u2009${cap.value}${cap.unit}`,
   };
 }

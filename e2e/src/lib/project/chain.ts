@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import * as actions from "./actions.ts";
-import type { CreateInput, ImageInput } from "./actions.ts";
+import type { CreateInput, ImageInput, PostgresInput } from "./actions.ts";
 import type { ProjectHandle } from "../types.ts";
 
 /**
@@ -16,6 +16,7 @@ import type { ProjectHandle } from "../types.ts";
  */
 export type ProjectChain = Promise<ProjectHandle> & {
   createImageService(input: ImageInput): ProjectChain;
+  createPostgres(input: PostgresInput): ProjectChain;
   deploy(opts?: { timeoutMs?: number }): ProjectChain;
   remove(): ProjectChain;
 };
@@ -26,6 +27,16 @@ function attach(p: Promise<ProjectHandle>, page: Page): ProjectChain {
       return attach(
         p.then(async (h) => {
           const res = await actions.createImageService(page, input);
+          h.resources[res.name] = res;
+          return h;
+        }),
+        page,
+      );
+    },
+    createPostgres(input: PostgresInput): ProjectChain {
+      return attach(
+        p.then(async (h) => {
+          const res = await actions.createPostgres(page, input);
           h.resources[res.name] = res;
           return h;
         }),

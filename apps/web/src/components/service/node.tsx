@@ -1,3 +1,4 @@
+import { SiPostgresql, SiRedis } from "@icons-pack/react-simple-icons";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { BoxIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,6 +22,8 @@ export interface ServiceStatus {
 export interface ServiceNodeData extends Record<string, unknown> {
   label: string;
   image?: string;
+  // Resource kind — drives the icon for non-app kinds (e.g. postgres).
+  kind?: string;
   status: ServiceStatus;
   deployedAt?: string;
   onClick?: () => void;
@@ -77,13 +80,21 @@ const iconSizes = { xs: "size-3", sm: "size-4", md: "size-5" } as const;
 
 export function ServiceIcon({
   image,
+  kind,
   size = "md",
 }: {
   image?: string;
+  kind?: string;
   size?: keyof typeof iconSizes;
 }) {
-  const slug = getIconSlug(image);
   const sizeClass = iconSizes[size];
+  if (kind === "postgres") {
+    return <SiPostgresql className={cn(sizeClass, "text-foreground/80")} />;
+  }
+  if (kind === "redis") {
+    return <SiRedis className={cn(sizeClass, "text-foreground/80")} />;
+  }
+  const slug = getIconSlug(image);
   if (!slug) return <BoxIcon className={sizeClass} />;
   const url = `https://cdn.simpleicons.org/${slug}`;
   return (
@@ -160,6 +171,7 @@ const statusTheme: Partial<
 export function ServiceNodeCard({
   label,
   image,
+  kind,
   status,
   deployedAt,
   onClick,
@@ -227,7 +239,7 @@ export function ServiceNodeCard({
         <div className="p-3 space-y-1">
           <div className="flex items-center gap-2">
             <div className="shrink-0 text-foreground/80">
-              <ServiceIcon image={image} />
+              <ServiceIcon image={image} kind={kind} />
             </div>
             <p className="text-sm font-medium truncate">{label}</p>
             {isProgressing && (

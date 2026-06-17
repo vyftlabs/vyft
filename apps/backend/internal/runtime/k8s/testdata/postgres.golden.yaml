@@ -1,0 +1,31 @@
+Clusters:
+- apiVersion: postgresql.cnpg.io/v1
+  kind: Cluster
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: db
+    name: db
+  spec:
+    bootstrap:
+      initdb:
+        database: appdb
+        owner: appdb
+    imageName: ghcr.io/cloudnative-pg/postgresql:16
+    instances: 1
+    monitoring:
+      enablePodMonitor: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    storage:
+      size: 1024Mi
+Deployments: null
+Ingresses: null
+PVCs: null
+Secrets: null
+Services: null

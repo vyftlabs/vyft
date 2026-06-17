@@ -1,6 +1,6 @@
 import { CheckIcon, CopyIcon, DicesIcon, LockIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { ServiceIcon } from "@/components/service/node";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -47,7 +47,6 @@ export function VariableForm({
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { isSubmitted },
   } = useForm<VariableFormValues>({
     defaultValues: { key: "", value: "", secret: true },
@@ -60,8 +59,9 @@ export function VariableForm({
   // toggle is hidden (source decides). Cleared when user edits value.
   const [linked, setLinked] = useState<VariableSuggestion | null>(null);
 
-  const keyValue = watch("key");
-  const valueValue = watch("value");
+  const keyValue = useWatch({ control, name: "key" });
+  const valueValue = useWatch({ control, name: "value" });
+  const isSecret = useWatch({ control, name: "secret" });
 
   const handleFormSubmit = (data: VariableFormValues) => {
     onSubmit({
@@ -145,7 +145,7 @@ export function VariableForm({
                         shouldTouch: true,
                       })
                     }
-                    isSecret={watch("secret")}
+                    isSecret={isSecret}
                     groups={suggestionGroups}
                     filterText={valueValue}
                     onPick={(s) => setLinked(s)}

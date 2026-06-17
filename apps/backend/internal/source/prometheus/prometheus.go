@@ -44,6 +44,14 @@ func (p *Prometheus) Supports() []source.MetricKind {
 		source.KindRequestRate,
 		source.KindErrorRate,
 		source.KindLatency,
+		source.KindConnections,
+		source.KindTransactions,
+		source.KindCacheHit,
+		source.KindDbSize,
+		source.KindReplicationLag,
+		source.KindRedisMemory,
+		source.KindRedisClients,
+		source.KindRedisOps,
 	}
 }
 
@@ -67,6 +75,22 @@ func (p *Prometheus) ProbeMetricNames(kind source.MetricKind) []string {
 		}
 	case source.KindLatency:
 		return []string{"http_server_request_duration_seconds_bucket"}
+	case source.KindConnections:
+		return []string{"cnpg_backends_total"}
+	case source.KindTransactions:
+		return []string{"cnpg_pg_stat_database_xact_commit"}
+	case source.KindCacheHit:
+		return []string{"cnpg_pg_stat_database_blks_hit"}
+	case source.KindDbSize:
+		return []string{"cnpg_pg_database_size_bytes"}
+	case source.KindReplicationLag:
+		return []string{"cnpg_pg_replication_lag"}
+	case source.KindRedisMemory:
+		return []string{"redis_memory_used_bytes"}
+	case source.KindRedisClients:
+		return []string{"redis_connected_clients"}
+	case source.KindRedisOps:
+		return []string{"redis_commands_processed_total"}
 	}
 	return nil
 }
@@ -78,6 +102,18 @@ func (p *Prometheus) ProbeMetricNames(kind source.MetricKind) []string {
 func (p *Prometheus) QueryResource(ctx context.Context, kind source.MetricKind, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
 	if kind == source.KindDisk {
 		return p.queryDisk(ctx, sel, r)
+	}
+	if kind == source.KindConnections {
+		return p.queryConnections(ctx, sel, r)
+	}
+	if kind == source.KindDbSize {
+		return p.queryDbSize(ctx, sel, r)
+	}
+	if kind == source.KindRedisMemory {
+		return p.queryAggregatedWithLimit(ctx, redisMemoryTmpl, redisMemoryLimitTmpl, sel, r)
+	}
+	if kind == source.KindRedisClients {
+		return p.queryAggregatedWithLimit(ctx, redisClientsTmpl, redisClientsLimitTmpl, sel, r)
 	}
 
 	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
@@ -132,6 +168,14 @@ func (p *Prometheus) QueryRate(ctx context.Context, kind source.MetricKind, sel 
 		primary, fallback = reqRateSemconv, reqRateLegacy
 	case source.KindErrorRate:
 		primary, fallback = errRateSemconv, errRateLegacy
+	case source.KindTransactions:
+		return p.queryRateSingle(ctx, expand(txnTmpl, vars), rng)
+	case source.KindCacheHit:
+		return p.queryRateSingle(ctx, expand(cacheHitTmpl, vars), rng)
+	case source.KindReplicationLag:
+		return p.queryRateSingle(ctx, expand(replicationLagTmpl, vars), rng)
+	case source.KindRedisOps:
+		return p.queryRateSingle(ctx, expand(redisOpsTmpl, vars), rng)
 	default:
 		return source.RateSeries{}, fmt.Errorf("prometheus: not a rate kind: %q", kind)
 	}
@@ -197,6 +241,72 @@ func (p *Prometheus) queryDisk(ctx context.Context, sel source.ResourceSelector,
 		out[i] = source.ResourceSeries{ID: ps.Pod, Points: points}
 	}
 	return out, nil
+}
+
+// queryConnections serves the postgres connections kind: a single aggregate
+// series (active backends) with max_connections as the per-point limit.
+func (p *Prometheus) queryConnections(ctx context.Context, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+	pts, err := p.queryAggregated(ctx, expand(connectionsTmpl, vars), rng)
+	if err != nil {
+		return nil, err
+	}
+	limit, _ := p.queryLimitInstant(ctx, expand(connectionsLimitTmpl, vars))
+	points := make([]source.ResourcePoint, len(pts))
+	for i, pt := range pts {
+		points[i] = source.ResourcePoint{Time: pt.Time, Value: pt.Value, Limit: limit}
+	}
+	return []source.ResourceSeries{{Points: points}}, nil
+}
+
+// queryDbSize serves the postgres dbSize kind: a single aggregate series
+// (sum of database sizes) with the PVC's requested storage as the limit.
+func (p *Prometheus) queryDbSize(ctx context.Context, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+	pts, err := p.queryAggregated(ctx, expand(dbSizeTmpl, vars), rng)
+	if err != nil {
+		return nil, err
+	}
+	limit, _ := p.queryLimitInstant(ctx, expand(dbSizeLimitTmpl, vars))
+	points := make([]source.ResourcePoint, len(pts))
+	for i, pt := range pts {
+		points[i] = source.ResourcePoint{Time: pt.Time, Value: pt.Value, Limit: limit}
+	}
+	return []source.ResourceSeries{{Points: points}}, nil
+}
+
+// queryAggregatedWithLimit runs an aggregated value query + an instant limit
+// query and returns a single ResourceSeries (value + per-point limit). Shared
+// by the redis memory/clients kinds.
+func (p *Prometheus) queryAggregatedWithLimit(ctx context.Context, valTmpl, limitTmpl string, sel source.ResourceSelector, r source.TimeRange) ([]source.ResourceSeries, error) {
+	vars := queryVars{Namespace: sel.Namespace, Resource: sel.ResourceName}
+	rng := promRange(r)
+	pts, err := p.queryAggregated(ctx, expand(valTmpl, vars), rng)
+	if err != nil {
+		return nil, err
+	}
+	limit, _ := p.queryLimitInstant(ctx, expand(limitTmpl, vars))
+	points := make([]source.ResourcePoint, len(pts))
+	for i, pt := range pts {
+		points[i] = source.ResourcePoint{Time: pt.Time, Value: pt.Value, Limit: limit}
+	}
+	return []source.ResourceSeries{{Points: points}}, nil
+}
+
+// queryRateSingle runs one aggregated range query and wraps it as a single
+// RateSeries. Used by the postgres transactions + cacheHit kinds.
+func (p *Prometheus) queryRateSingle(ctx context.Context, q string, rng promv1.Range) (source.RateSeries, error) {
+	pts, err := p.queryAggregated(ctx, q, rng)
+	if err != nil {
+		return source.RateSeries{}, err
+	}
+	rate := make([]source.RatePoint, len(pts))
+	for i, pt := range pts {
+		rate[i] = source.RatePoint{Time: pt.Time, Value: pt.Value}
+	}
+	return source.RateSeries{Points: rate}, nil
 }
 
 // QueryNetwork serves the network kind: per-pod rx + tx throughput in

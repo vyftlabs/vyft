@@ -9,6 +9,11 @@ prometheus:
     retention: 24h
     scrapeInterval: 5s
     evaluationInterval: 5s
+    # Scrape every Pod/ServiceMonitor, not just release-labeled ones — lets
+    # operator-created monitors (e.g. CloudNativePG's per-cluster PodMonitor)
+    # be picked up without injecting a release label.
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
     enableFeatures:
       - otlp-write-receiver
     otlp:

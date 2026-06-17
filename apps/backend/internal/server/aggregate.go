@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
@@ -66,7 +67,7 @@ type ClusterHooks struct {
 // caller can fire boot recovery before serving requests. mcs may be nil
 // when the kube metrics client could not be built; the metrics-server
 // source kind silently degrades in that case.
-func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, hooks ClusterHooks) (*API, *deployment.Service) {
+func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, dyn dynamic.Interface, mcs metricsclient.Interface, hooks ClusterHooks) (*API, *deployment.Service) {
 	envSvc := environment.New(database)
 	depSvc := deployment.New(database, envSvc, rt)
 
@@ -87,7 +88,7 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, mcs
 	return &API{
 		projectAPI:       project.NewHandler(projectSvc),
 		environmentAPI:   environment.NewHandler(envSvc),
-		resourceAPI:      resource.NewHandler(resource.New(database, envSvc, cs)),
+		resourceAPI:      resource.NewHandler(resource.New(database, envSvc, cs, dyn)),
 		routeAPI:         route.NewHandler(route.New(database, envSvc)),
 		variableAPI:      variable.NewHandler(variable.New(database, envSvc)),
 		registryAPI:      registry.NewHandler(registrySvc),

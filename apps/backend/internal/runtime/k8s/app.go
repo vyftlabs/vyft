@@ -59,17 +59,27 @@ func buildApp(m *Manifests, p deployment.Project, r deployment.Resource, rvars [
 		secretApplied = true
 	}
 
-	// Container env: plain values inline, secrets via secretKeyRef.
+	// Container env: external secret-refs (e.g. imported postgres connection
+	// vars) point at another resource's secret; inline secrets live in this
+	// app's own env Secret; plain values inline.
 	envEntries := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(rvars))
 	for _, v := range rvars {
-		if v.Secret {
+		switch {
+		case v.SecretName != "":
+			envEntries = append(envEntries, corev1ac.EnvVar().
+				WithName(v.Key).
+				WithValueFrom(corev1ac.EnvVarSource().
+					WithSecretKeyRef(corev1ac.SecretKeySelector().
+						WithName(v.SecretName).
+						WithKey(v.SecretKey))))
+		case v.Secret:
 			envEntries = append(envEntries, corev1ac.EnvVar().
 				WithName(v.Key).
 				WithValueFrom(corev1ac.EnvVarSource().
 					WithSecretKeyRef(corev1ac.SecretKeySelector().
 						WithName(appSecretName(r.Slug)).
 						WithKey(v.Key))))
-		} else {
+		default:
 			envEntries = append(envEntries, corev1ac.EnvVar().
 				WithName(v.Key).
 				WithValue(v.Value))

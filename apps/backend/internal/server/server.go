@@ -53,14 +53,14 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("sync provisioning: %w", err)
 	}
 
-	rt, cs, mcs, hooks := buildRuntime(config, pool)
+	rt, cs, dyn, mcs, hooks := buildRuntime(config, pool)
 
 	// Live status watcher: one set of cluster watches feeds every SSE
 	// subscriber. Tied to ctx so its watches stop on shutdown.
-	watcher := status.NewWatcher(cs)
+	watcher := status.NewWatcher(cs, dyn)
 	watcher.Start(ctx)
 
-	server, depSvc := New(config, pool, rt, cs, mcs, hooks, watcher)
+	server, depSvc := New(config, pool, rt, cs, dyn, mcs, hooks, watcher)
 
 	// Boot recovery: re-fire goroutines for any deployment row stuck in
 	// pending/applying (process crashed mid-apply).
@@ -99,10 +99,10 @@ func Run(ctx context.Context) error {
 	}
 }
 
-func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, hooks ClusterHooks, watcher *status.Watcher) (*http.Server, *deployment.Service) {
+func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, dyn dynamic.Interface, mcs metricsclient.Interface, hooks ClusterHooks, watcher *status.Watcher) (*http.Server, *deployment.Service) {
 	database := vdb.New(pool)
 
-	api, depSvc := NewAPI(database, rt, cs, mcs, hooks)
+	api, depSvc := NewAPI(database, rt, cs, dyn, mcs, hooks)
 	strict := openapi.NewStrictHandler(api, nil)
 	apiHandler := openapi.HandlerWithOptions(strict, openapi.StdHTTPServerOptions{
 		ErrorHandlerFunc: writeError,
@@ -135,21 +135,21 @@ func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes
 // Also returns the kube clientset (needed by the kube-logs source), the
 // metrics-server client (may be nil), and the cluster hooks used by non-
 // deploy paths.
-func buildRuntime(cfg Config, pool *pgxpool.Pool) (deployment.Runtime, kubernetes.Interface, metricsclient.Interface, ClusterHooks) {
+func buildRuntime(cfg Config, pool *pgxpool.Pool) (deployment.Runtime, kubernetes.Interface, dynamic.Interface, metricsclient.Interface, ClusterHooks) {
 	restCfg, err := loadKubeConfig(cfg.KubeconfigPath)
 	if err != nil {
 		slog.Warn("k8s runtime unavailable, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
+		return deployment.NewStubRuntime(), nil, nil, nil, ClusterHooks{}
 	}
 	cs, err := kubernetes.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("kubernetes client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
+		return deployment.NewStubRuntime(), nil, nil, nil, ClusterHooks{}
 	}
 	dyn, err := dynamic.NewForConfig(restCfg)
 	if err != nil {
 		slog.Warn("dynamic client init failed, falling back to stub", "error", err)
-		return deployment.NewStubRuntime(), nil, nil, ClusterHooks{}
+		return deployment.NewStubRuntime(), nil, nil, nil, ClusterHooks{}
 	}
 	mcs, err := metricsclient.NewForConfig(restCfg)
 	if err != nil {
@@ -158,7 +158,7 @@ func buildRuntime(cfg Config, pool *pgxpool.Pool) (deployment.Runtime, kubernete
 	}
 	rt := k8srt.New(cs, dyn)
 	hooks := buildClusterHooks(cs, pool)
-	return rt, cs, mcs, hooks
+	return rt, cs, dyn, mcs, hooks
 }
 
 // buildClusterHooks wires every non-deploy path that reaches into the cluster.

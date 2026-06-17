@@ -75,7 +75,7 @@ export function Overview({
         <div className="shrink-0 border-b pb-5">{metricsArea}</div>
       )}
       {showLogs && (
-        <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-5">
+        <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 min-w-0 min-h-0">{logsArea}</div>
           {deploymentsArea && (
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
@@ -141,6 +141,7 @@ export function ServiceDrawerShell({
     <>
       <motion.div
         className="absolute inset-0 z-40 bg-black/5"
+        data-testid="service.drawer.backdrop"
         initial={skipEntryAnimation ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

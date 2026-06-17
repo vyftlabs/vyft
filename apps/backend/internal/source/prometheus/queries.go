@@ -82,3 +82,39 @@ func latencyQuantile(q float64) string {
 		q,
 	)
 }
+
+// Postgres (CNPG) database metrics. CNPG's instance exporter emits
+// cnpg_<collector>_<field>; the PodMonitor scrape tags each sample with
+// namespace + pod, so we select with the same pod-name pattern as the
+// cAdvisor queries. Summed across pods (single-instance by default).
+const (
+	// Active backends; limit is max_connections (from the pg_settings collector).
+	connectionsTmpl      = `sum(cnpg_backends_total{namespace="{namespace}",pod=~"{resource}-.*"})`
+	connectionsLimitTmpl = `max(cnpg_pg_settings_setting{namespace="{namespace}",pod=~"{resource}-.*",name="max_connections"})`
+
+	// Transactions/sec: commits + rollbacks across databases.
+	txnTmpl = `sum(rate(cnpg_pg_stat_database_xact_commit{namespace="{namespace}",pod=~"{resource}-.*"}[5m])) + sum(rate(cnpg_pg_stat_database_xact_rollback{namespace="{namespace}",pod=~"{resource}-.*"}[5m]))`
+
+	// Buffer cache hit ratio: hits / (hits + disk reads). clamp_min keeps the
+	// idle 0/0 case at 0 instead of NaN.
+	cacheHitTmpl = `sum(rate(cnpg_pg_stat_database_blks_hit{namespace="{namespace}",pod=~"{resource}-.*"}[5m])) / clamp_min(sum(rate(cnpg_pg_stat_database_blks_hit{namespace="{namespace}",pod=~"{resource}-.*"}[5m])) + sum(rate(cnpg_pg_stat_database_blks_read{namespace="{namespace}",pod=~"{resource}-.*"}[5m])), 1)`
+
+	// Database size (used) from CNPG; capacity = the PVC's requested storage
+	// (kube-state-metrics). The DB-meaningful "storage", and it dodges the
+	// kubelet_volume_stats gap that disk relies on. `max by (datname)` dedups
+	// replicas (each instance mirrors the same DBs) before summing databases.
+	dbSizeTmpl      = `sum(max by (datname) (cnpg_pg_database_size_bytes{namespace="{namespace}",pod=~"{resource}-.*"}))`
+	dbSizeLimitTmpl = `max(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="{namespace}",persistentvolumeclaim=~"{resource}-.*"})`
+
+	// Replication lag (seconds), worst-case across instances. 0 / no replicas
+	// → empty series, which the UI renders as "no data".
+	replicationLagTmpl = `max(cnpg_pg_replication_lag{namespace="{namespace}",pod=~"{resource}-.*"})`
+
+	// Redis (redis_exporter) metrics. The PodMonitor scrape tags samples with
+	// namespace + pod, so we select with the same pod-name pattern.
+	redisMemoryTmpl       = `sum(redis_memory_used_bytes{namespace="{namespace}",pod=~"{resource}-.*"})`
+	redisMemoryLimitTmpl  = `max(redis_memory_max_bytes{namespace="{namespace}",pod=~"{resource}-.*"})`
+	redisClientsTmpl      = `sum(redis_connected_clients{namespace="{namespace}",pod=~"{resource}-.*"})`
+	redisClientsLimitTmpl = `max(redis_config_maxclients{namespace="{namespace}",pod=~"{resource}-.*"})`
+	redisOpsTmpl          = `sum(rate(redis_commands_processed_total{namespace="{namespace}",pod=~"{resource}-.*"}[5m]))`
+)

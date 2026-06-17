@@ -3,10 +3,12 @@ package k8s
 import (
 	"github.com/google/uuid"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	netv1ac "k8s.io/client-go/applyconfigurations/networking/v1"
 
+	"github.com/vyftlabs/vyft/apps/backend/internal/connref"
 	"github.com/vyftlabs/vyft/apps/backend/internal/deployment"
 )
 
@@ -19,6 +21,19 @@ type Manifests struct {
 	PVCs        []*corev1ac.PersistentVolumeClaimApplyConfiguration
 	Ingresses   []*netv1ac.IngressApplyConfiguration
 	Secrets     []*corev1ac.SecretApplyConfiguration
+	// Clusters are CloudNativePG Cluster CRs (unstructured — a CRD, not a
+	// core type). Applied + pruned via the dynamic client. omitempty keeps it
+	// out of the manifest YAML for the common no-postgres case.
+	Clusters []*unstructured.Unstructured `json:",omitempty"`
+	// ScheduledBackups are CNPG ScheduledBackup CRs (one per backup-enabled
+	// postgres). Same dynamic apply/prune path as Clusters.
+	ScheduledBackups []*unstructured.Unstructured `json:",omitempty"`
+	// RedisCRs are OT redis-operator Redis CRs (one per redis resource). The
+	// operator owns the StatefulSet/Services/PVC it spawns.
+	RedisCRs []*unstructured.Unstructured `json:",omitempty"`
+	// PodMonitors are Prometheus-operator PodMonitor CRs (e.g. to scrape a
+	// redis_exporter sidecar). Dynamic apply/prune.
+	PodMonitors []*unstructured.Unstructured `json:",omitempty"`
 }
 
 // Build is pure: (Project, State) → typed ApplyConfigurations. No I/O.
@@ -34,7 +49,11 @@ func Build(p deployment.Project, s deployment.State) Manifests {
 		switch r.Kind {
 		case "app":
 			buildApp(&m, p, r, rvars)
-			// future kinds: worker, postgres, redis, cron, template
+		case "postgres":
+			buildPostgres(&m, p, r)
+		case "redis":
+			buildRedis(&m, p, r, rvars)
+			// future kinds: worker, cron, template
 		}
 	}
 
@@ -67,7 +86,7 @@ func varsForResource(vars []deployment.Variable, imports []deployment.ResourceVa
 	// Owned vars: every variable whose resource_id equals this resource's id.
 	for _, v := range vars {
 		if v.ResourceID != nil && *v.ResourceID == resourceID {
-			out = append(out, resolvedVar{Key: v.Key, Value: v.Value, Secret: v.Secret})
+			out = append(out, resolveVar(v.Key, v.Value, v.Secret))
 		}
 	}
 
@@ -79,7 +98,7 @@ func varsForResource(vars []deployment.Variable, imports []deployment.ResourceVa
 		}
 		for _, v := range vars {
 			if v.ID == imp.VariableID {
-				out = append(out, resolvedVar{Key: imp.Key, Value: v.Value, Secret: v.Secret})
+				out = append(out, resolveVar(imp.Key, v.Value, v.Secret))
 				break
 			}
 		}
@@ -87,29 +106,52 @@ func varsForResource(vars []deployment.Variable, imports []deployment.ResourceVa
 	return out
 }
 
-// resolvedVar is the env-resolution result handed to buildApp.
+// resolveVar turns a stored variable into an env-resolution result. A
+// secret-ref sentinel value (postgres connection vars) becomes a reference to
+// an external secret; everything else carries its literal value.
+func resolveVar(key, value string, secret bool) resolvedVar {
+	if name, sk, ok := connref.Parse(value); ok {
+		return resolvedVar{Key: key, SecretName: name, SecretKey: sk}
+	}
+	return resolvedVar{Key: key, Value: value, Secret: secret}
+}
+
+// resolvedVar is the env-resolution result handed to buildApp. When SecretName
+// is set the env is rendered as a secretKeyRef to that external secret (and
+// Value/Secret are unused); otherwise Secret picks inline-value vs the app's
+// own env Secret.
 type resolvedVar struct {
-	Key    string
-	Value  string
-	Secret bool
+	Key        string
+	Value      string
+	Secret     bool
+	SecretName string
+	SecretKey  string
 }
 
 // knownNames groups manifest names by kind for the prune step.
 type knownNames struct {
-	deployments map[string]struct{}
-	services    map[string]struct{}
-	pvcs        map[string]struct{}
-	ingresses   map[string]struct{}
-	secrets     map[string]struct{}
+	deployments      map[string]struct{}
+	services         map[string]struct{}
+	pvcs             map[string]struct{}
+	ingresses        map[string]struct{}
+	secrets          map[string]struct{}
+	clusters         map[string]struct{}
+	scheduledBackups map[string]struct{}
+	redisCRs         map[string]struct{}
+	podMonitors      map[string]struct{}
 }
 
 func collectKnown(m Manifests) knownNames {
 	k := knownNames{
-		deployments: map[string]struct{}{},
-		services:    map[string]struct{}{},
-		pvcs:        map[string]struct{}{},
-		ingresses:   map[string]struct{}{},
-		secrets:     map[string]struct{}{},
+		deployments:      map[string]struct{}{},
+		services:         map[string]struct{}{},
+		pvcs:             map[string]struct{}{},
+		ingresses:        map[string]struct{}{},
+		secrets:          map[string]struct{}{},
+		clusters:         map[string]struct{}{},
+		scheduledBackups: map[string]struct{}{},
+		redisCRs:         map[string]struct{}{},
+		podMonitors:      map[string]struct{}{},
 	}
 	for _, d := range m.Deployments {
 		if d.Name != nil {
@@ -135,6 +177,18 @@ func collectKnown(m Manifests) knownNames {
 		if s.Name != nil {
 			k.secrets[*s.Name] = struct{}{}
 		}
+	}
+	for _, c := range m.Clusters {
+		k.clusters[c.GetName()] = struct{}{}
+	}
+	for _, sb := range m.ScheduledBackups {
+		k.scheduledBackups[sb.GetName()] = struct{}{}
+	}
+	for _, rc := range m.RedisCRs {
+		k.redisCRs[rc.GetName()] = struct{}{}
+	}
+	for _, pm := range m.PodMonitors {
+		k.podMonitors[pm.GetName()] = struct{}{}
 	}
 	return k
 }

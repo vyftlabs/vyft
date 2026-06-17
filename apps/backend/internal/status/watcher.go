@@ -4,14 +4,20 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -29,8 +35,13 @@ import (
 type Watcher struct {
 	factory   informers.SharedInformerFactory
 	depLister appslisters.DeploymentLister
+	stsLister appslisters.StatefulSetLister
 	podLister corelisters.PodLister
-	synced    []cache.InformerSynced
+	// CNPG Cluster CR informer (postgres). nil when no dynamic client or the
+	// CRD isn't installed — then postgres nodes simply have no live status.
+	dynFactory    dynamicinformer.DynamicSharedInformerFactory
+	clusterLister cache.GenericLister
+	synced        []cache.InformerSynced
 
 	mu   sync.Mutex
 	next int
@@ -42,7 +53,7 @@ type Watcher struct {
 
 // NewWatcher builds the watcher and registers informer event handlers. Call
 // Start to begin watching. Returns nil if cs is nil (no cluster configured).
-func NewWatcher(cs kubernetes.Interface) *Watcher {
+func NewWatcher(cs kubernetes.Interface, dyn dynamic.Interface) *Watcher {
 	if cs == nil {
 		return nil
 	}
@@ -53,11 +64,13 @@ func NewWatcher(cs kubernetes.Interface) *Watcher {
 		}))
 
 	depInf := factory.Apps().V1().Deployments()
+	stsInf := factory.Apps().V1().StatefulSets()
 	podInf := factory.Core().V1().Pods()
 
 	w := &Watcher{
 		factory:   factory,
 		depLister: depInf.Lister(),
+		stsLister: stsInf.Lister(),
 		podLister: podInf.Lister(),
 		subs:      map[string]map[int]chan struct{}{},
 	}
@@ -69,12 +82,43 @@ func NewWatcher(cs kubernetes.Interface) *Watcher {
 	}
 	// AddEventHandler can error only before Start; ignore for brevity.
 	_, _ = depInf.Informer().AddEventHandler(h)
+	_, _ = stsInf.Informer().AddEventHandler(h)
 	_, _ = podInf.Informer().AddEventHandler(h)
 	w.synced = []cache.InformerSynced{
 		depInf.Informer().HasSynced,
+		stsInf.Informer().HasSynced,
 		podInf.Informer().HasSynced,
 	}
+
+	// CNPG Cluster CR informer for postgres. Only when the CRD exists —
+	// otherwise the informer would error-loop on a missing API.
+	if dyn != nil && cnpgInstalled(dyn) {
+		dynFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(
+			dyn, 0, metav1.NamespaceAll, func(o *metav1.ListOptions) {
+				o.LabelSelector = k8s.LabelProject
+			})
+		cInf := dynFactory.ForResource(k8s.CNPGClusterGVR)
+		_, _ = cInf.Informer().AddEventHandler(h)
+		w.dynFactory = dynFactory
+		w.clusterLister = cInf.Lister()
+		w.synced = append(w.synced, cInf.Informer().HasSynced)
+	}
 	return w
+}
+
+// cnpgInstalled probes for the CNPG Cluster CRD. Returns false only on a
+// definitive "type not registered" — transient errors assume installed so the
+// informer (which retries) still attaches.
+func cnpgInstalled(dyn dynamic.Interface) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := dyn.Resource(k8s.CNPGClusterGVR).
+		Namespace(metav1.NamespaceAll).
+		List(ctx, metav1.ListOptions{Limit: 1})
+	if err == nil {
+		return true
+	}
+	return !(meta.IsNoMatchError(err) || apierrors.IsNotFound(err))
 }
 
 // Start begins the informers and blocks (in a goroutine) until the cache
@@ -84,6 +128,9 @@ func (w *Watcher) Start(ctx context.Context) {
 		return
 	}
 	w.factory.Start(ctx.Done())
+	if w.dynFactory != nil {
+		w.dynFactory.Start(ctx.Done())
+	}
 	go func() {
 		if !cache.WaitForCacheSync(ctx.Done(), w.synced...) {
 			slog.Warn("status watcher: cache sync failed")
@@ -105,11 +152,31 @@ func (w *Watcher) Statuses(projectSlug string) map[string]Status {
 	if err != nil {
 		return nil
 	}
+	stsets, err := w.stsLister.List(sel)
+	if err != nil {
+		return nil
+	}
 	pods, err := w.podLister.List(sel)
 	if err != nil {
 		return nil
 	}
-	return statusesFrom(deps, pods)
+	out := statusesFrom(deps, stsets, pods)
+
+	// Merge CR-backed postgres status from the Cluster informer cache.
+	if w.clusterLister != nil {
+		if objs, err := w.clusterLister.List(sel); err == nil {
+			clusters := make([]*unstructured.Unstructured, 0, len(objs))
+			for _, o := range objs {
+				if u, ok := o.(*unstructured.Unstructured); ok {
+					clusters = append(clusters, u)
+				}
+			}
+			for slug, st := range clusterStatusesFrom(clusters) {
+				out[slug] = st
+			}
+		}
+	}
+	return out
 }
 
 // Subscribe registers interest in a project's changes. The returned channel
@@ -161,8 +228,12 @@ func projectSlugOf(obj any) string {
 	switch o := obj.(type) {
 	case *appsv1.Deployment:
 		return o.Labels[k8s.LabelProject]
+	case *appsv1.StatefulSet:
+		return o.Labels[k8s.LabelProject]
 	case *corev1.Pod:
 		return o.Labels[k8s.LabelProject]
+	case *unstructured.Unstructured:
+		return o.GetLabels()[k8s.LabelProject]
 	}
 	return ""
 }

@@ -1,3 +1,4 @@
+export * as backups from "./backups";
 export * as deployments from "./deployments";
 export { ApiError } from "./errors";
 export * as observability from "./observability";

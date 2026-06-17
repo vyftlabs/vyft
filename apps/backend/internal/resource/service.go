@@ -11,18 +11,22 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
+	"github.com/vyftlabs/vyft/apps/backend/internal/pgbackup"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
+	"github.com/vyftlabs/vyft/apps/backend/internal/runtime/k8s"
 	"github.com/vyftlabs/vyft/apps/backend/internal/status"
 )
 
@@ -54,10 +58,12 @@ type Service struct {
 	// cs is the cluster client used for best-effort live status reads. May
 	// be nil in tests / when no cluster is configured — status is then omitted.
 	cs kubernetes.Interface
+	// dyn reads CR-backed kinds (CNPG Cluster for postgres). May be nil.
+	dyn dynamic.Interface
 }
 
-func New(d *db.DB, env *environment.Service, cs kubernetes.Interface) *Service {
-	return &Service{db: d, env: env, cs: cs}
+func New(d *db.DB, env *environment.Service, cs kubernetes.Interface, dyn dynamic.Interface) *Service {
+	return &Service{db: d, env: env, cs: cs, dyn: dyn}
 }
 
 // StatusesByProject returns the live health of each resource in a project,
@@ -68,7 +74,53 @@ func (s *Service) StatusesByProject(ctx context.Context, projectID uuid.UUID) ma
 	if err != nil {
 		return nil
 	}
-	return status.ProjectStatuses(ctx, s.cs, proj.Slug, environment.DefaultSlug)
+	return status.ProjectStatuses(ctx, s.cs, s.dyn, proj.Slug, environment.DefaultSlug)
+}
+
+// nsAndSlug resolves a resource to its cluster namespace, its slug, and its
+// project slug.
+func (s *Service) nsAndSlug(ctx context.Context, resourceID uuid.UUID) (ns, slug, projSlug string, err error) {
+	row, err := s.db.Q.GetResource(ctx, pgxid.PgUUID(resourceID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", "", apierr.NotFound("resource not found")
+		}
+		return "", "", "", apierr.Internal(err)
+	}
+	proj, err := s.db.Q.GetProject(ctx, row.ProjectID)
+	if err != nil {
+		return "", "", "", apierr.Internal(err)
+	}
+	return k8s.NamespaceFor(proj.Slug, environment.DefaultSlug), row.Slug, proj.Slug, nil
+}
+
+// ListBackups returns the resource's CNPG backups (newest first). Best-effort —
+// a missing CRD or read error yields an empty list rather than an error.
+func (s *Service) ListBackups(ctx context.Context, resourceID uuid.UUID) ([]pgbackup.Backup, error) {
+	ns, slug, _, err := s.nsAndSlug(ctx, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	bks, err := pgbackup.List(ctx, s.dyn, ns, slug)
+	if err != nil {
+		return []pgbackup.Backup{}, nil
+	}
+	return bks, nil
+}
+
+// CreateBackup triggers an on-demand backup for the resource.
+func (s *Service) CreateBackup(ctx context.Context, resourceID uuid.UUID) (pgbackup.Backup, error) {
+	ns, slug, projSlug, err := s.nsAndSlug(ctx, resourceID)
+	if err != nil {
+		return pgbackup.Backup{}, err
+	}
+	name := slug + "-manual-" + time.Now().UTC().Format("20060102150405")
+	labels := map[string]string{k8s.LabelProject: projSlug, k8s.LabelResource: slug}
+	b, err := pgbackup.Create(ctx, s.dyn, ns, slug, name, labels)
+	if err != nil {
+		return pgbackup.Backup{}, apierr.ServiceUnavailable(err.Error())
+	}
+	return b, nil
 }
 
 func (s *Service) ListByProject(ctx context.Context, projectID uuid.UUID) ([]ResourceWithRoutes, error) {
@@ -146,6 +198,7 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 	}
 
 	resourceID := uuid.New()
+	slug := deriveSlug(body.Name, resourceID)
 	var row sqlc.Resource
 	err = s.db.WithTx(ctx, func(q *sqlc.Queries) error {
 		var txErr error
@@ -153,7 +206,7 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 			ID:        pgxid.PgUUID(resourceID),
 			ProjectID: pgxid.PgUUID(projectID),
 			Name:      body.Name,
-			Slug:      deriveSlug(body.Name, resourceID),
+			Slug:      slug,
 			Kind:      configEnvelope.Kind,
 			PositionX: float64(body.PositionX),
 			PositionY: float64(body.PositionY),
@@ -172,6 +225,18 @@ func (s *Service) Create(ctx context.Context, projectID uuid.UUID, body openapi.
 				if err := persistEmbeddedVariable(ctx, q, projectID, envID, resourceID, v); err != nil {
 					return err
 				}
+			}
+		}
+		// Postgres exposes its connection as importable secret-ref variables.
+		if configEnvelope.Kind == "postgres" {
+			if err := seedPostgresConnVars(ctx, q, projectID, envID, resourceID, slug); err != nil {
+				return err
+			}
+		}
+		// Redis: generated-password connection vars (HOST/PORT/PASSWORD/URL).
+		if configEnvelope.Kind == "redis" {
+			if err := seedRedisConnVars(ctx, q, projectID, envID, resourceID, slug); err != nil {
+				return err
 			}
 		}
 		return nil

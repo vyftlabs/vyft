@@ -51,6 +51,43 @@ export async function createImage(page: Page, input: ImageInput): Promise<Resour
   return { name: input.name, slug: body.slug };
 }
 
+export type PostgresInput = {
+  name: string;
+};
+
+/**
+ * Drive the "Add resource → Postgres" flow and submit the create drawer.
+ * Defaults (version/storage/compute/database) are accepted as-is. Must be
+ * called on a project page.
+ */
+export async function createPostgres(
+  page: Page,
+  input: PostgresInput,
+): Promise<ResourceHandle> {
+  const picker = page.getByTestId("service.picker.postgres");
+  const addBtn = page.getByTestId("service.canvas.add");
+  await picker.or(addBtn).first().waitFor({ state: "visible" });
+  if (!(await picker.isVisible())) {
+    await addBtn.click();
+  }
+  await picker.click();
+
+  const drawer = page.getByTestId("service.drawer");
+  await expect(drawer).toBeVisible();
+  await drawer.getByTestId("service.form.name").fill(input.name);
+
+  const createResponse = page.waitForResponse(
+    (r) =>
+      /\/api\/projects\/[^/]+\/resources$/.test(r.url()) &&
+      r.request().method() === "POST" &&
+      r.status() === 201,
+  );
+  await page.getByTestId("service.drawer.create-submit").click();
+  const body = await (await createResponse).json();
+  await expect(drawer).toBeHidden();
+  return { name: input.name, slug: body.slug };
+}
+
 function normalizeEnv(env: ImageInput["env"]): EnvVar[] {
   if (!env) return [];
   if (Array.isArray(env)) return env;

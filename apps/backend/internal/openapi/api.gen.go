@@ -19,6 +19,39 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for BackupCompression.
+const (
+	BackupCompressionBzip2  BackupCompression = "bzip2"
+	BackupCompressionGzip   BackupCompression = "gzip"
+	BackupCompressionLz4    BackupCompression = "lz4"
+	BackupCompressionNone   BackupCompression = "none"
+	BackupCompressionSnappy BackupCompression = "snappy"
+	BackupCompressionXz     BackupCompression = "xz"
+	BackupCompressionZstd   BackupCompression = "zstd"
+)
+
+// Valid indicates whether the value is a known member of the BackupCompression enum.
+func (e BackupCompression) Valid() bool {
+	switch e {
+	case BackupCompressionBzip2:
+		return true
+	case BackupCompressionGzip:
+		return true
+	case BackupCompressionLz4:
+		return true
+	case BackupCompressionNone:
+		return true
+	case BackupCompressionSnappy:
+		return true
+	case BackupCompressionXz:
+		return true
+	case BackupCompressionZstd:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeploymentStatus.
 const (
 	DeploymentStatusApplied  DeploymentStatus = "applied"
@@ -343,6 +376,48 @@ func (e PathType) Valid() bool {
 	}
 }
 
+// Defines values for PostgresVersion.
+const (
+	N14 PostgresVersion = "14"
+	N15 PostgresVersion = "15"
+	N16 PostgresVersion = "16"
+	N17 PostgresVersion = "17"
+)
+
+// Valid indicates whether the value is a known member of the PostgresVersion enum.
+func (e PostgresVersion) Valid() bool {
+	switch e {
+	case N14:
+		return true
+	case N15:
+		return true
+	case N16:
+		return true
+	case N17:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RedisVersion.
+const (
+	N6 RedisVersion = "6"
+	N7 RedisVersion = "7"
+)
+
+// Valid indicates whether the value is a known member of the RedisVersion enum.
+func (e RedisVersion) Valid() bool {
+	switch e {
+	case N6:
+		return true
+	case N7:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceConfig0Kind.
 const (
 	ResourceConfig0KindApp ResourceConfig0Kind = "app"
@@ -352,6 +427,36 @@ const (
 func (e ResourceConfig0Kind) Valid() bool {
 	switch e {
 	case ResourceConfig0KindApp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceConfig1Kind.
+const (
+	ResourceConfig1KindPostgres ResourceConfig1Kind = "postgres"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfig1Kind enum.
+func (e ResourceConfig1Kind) Valid() bool {
+	switch e {
+	case ResourceConfig1KindPostgres:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceConfig2Kind.
+const (
+	ResourceConfig2KindRedis ResourceConfig2Kind = "redis"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfig2Kind enum.
+func (e ResourceConfig2Kind) Valid() bool {
+	switch e {
+	case ResourceConfig2KindRedis:
 		return true
 	default:
 		return false
@@ -373,6 +478,36 @@ func (e ResourceConfigCreate0Kind) Valid() bool {
 	}
 }
 
+// Defines values for ResourceConfigCreate1Kind.
+const (
+	ResourceConfigCreate1KindPostgres ResourceConfigCreate1Kind = "postgres"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfigCreate1Kind enum.
+func (e ResourceConfigCreate1Kind) Valid() bool {
+	switch e {
+	case ResourceConfigCreate1KindPostgres:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceConfigCreate2Kind.
+const (
+	ResourceConfigCreate2KindRedis ResourceConfigCreate2Kind = "redis"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfigCreate2Kind enum.
+func (e ResourceConfigCreate2Kind) Valid() bool {
+	switch e {
+	case ResourceConfigCreate2KindRedis:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceConfigUpdate0Kind.
 const (
 	App ResourceConfigUpdate0Kind = "app"
@@ -382,6 +517,36 @@ const (
 func (e ResourceConfigUpdate0Kind) Valid() bool {
 	switch e {
 	case App:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceConfigUpdate1Kind.
+const (
+	Postgres ResourceConfigUpdate1Kind = "postgres"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfigUpdate1Kind enum.
+func (e ResourceConfigUpdate1Kind) Valid() bool {
+	switch e {
+	case Postgres:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceConfigUpdate2Kind.
+const (
+	Redis ResourceConfigUpdate2Kind = "redis"
+)
+
+// Valid indicates whether the value is a known member of the ResourceConfigUpdate2Kind enum.
+func (e ResourceConfigUpdate2Kind) Valid() bool {
+	switch e {
+	case Redis:
 		return true
 	default:
 		return false
@@ -642,13 +807,13 @@ func (e SourceAuth2Type) Valid() bool {
 
 // Defines values for SourceAuthSafe0Type.
 const (
-	SourceAuthSafe0TypeNone SourceAuthSafe0Type = "none"
+	None SourceAuthSafe0Type = "none"
 )
 
 // Valid indicates whether the value is a known member of the SourceAuthSafe0Type enum.
 func (e SourceAuthSafe0Type) Valid() bool {
 	switch e {
-	case SourceAuthSafe0TypeNone:
+	case None:
 		return true
 	default:
 		return false
@@ -862,6 +1027,20 @@ type AppSpecUpdate struct {
 	Source       *ImageSource         `json:"source,omitempty"`
 	StartCommand *string              `json:"startCommand,omitempty"`
 }
+
+// Backup defines model for Backup.
+type Backup struct {
+	BackupId  *string    `json:"backupId,omitempty"`
+	Error     *string    `json:"error,omitempty"`
+	Method    *string    `json:"method,omitempty"`
+	Name      string     `json:"name"`
+	Phase     string     `json:"phase"`
+	StartedAt *time.Time `json:"startedAt,omitempty"`
+	StoppedAt *time.Time `json:"stoppedAt,omitempty"`
+}
+
+// BackupCompression defines model for BackupCompression.
+type BackupCompression string
 
 // Deployment defines model for Deployment.
 type Deployment struct {
@@ -1157,6 +1336,70 @@ type OwnedResourceVariableKind string
 // PathType defines model for PathType.
 type PathType string
 
+// PostgresBackup defines model for PostgresBackup.
+type PostgresBackup struct {
+	AccessKeyId     string             `json:"accessKeyId"`
+	Compression     *BackupCompression `json:"compression,omitempty"`
+	DestinationPath string             `json:"destinationPath"`
+	EndpointURL     *string            `json:"endpointURL,omitempty"`
+	Region          *string            `json:"region,omitempty"`
+	RetentionDays   int                `json:"retentionDays"`
+	Schedule        string             `json:"schedule"`
+	SecretAccessKey string             `json:"secretAccessKey"`
+}
+
+// PostgresBackupOutput defines model for PostgresBackupOutput.
+type PostgresBackupOutput struct {
+	AccessKeyId     string             `json:"accessKeyId"`
+	Compression     *BackupCompression `json:"compression,omitempty"`
+	DestinationPath string             `json:"destinationPath"`
+	EndpointURL     *string            `json:"endpointURL,omitempty"`
+	Region          *string            `json:"region,omitempty"`
+	RetentionDays   int                `json:"retentionDays"`
+	Schedule        string             `json:"schedule"`
+	SecretAccessKey string             `json:"secretAccessKey"`
+}
+
+// PostgresSpec defines model for PostgresSpec.
+type PostgresSpec struct {
+	Backup    *PostgresBackup `json:"backup,omitempty"`
+	Database  string          `json:"database"`
+	Instances int             `json:"instances"`
+
+	// Resources `cpu` is fractional cores. `memory` is megabytes.
+	Resources Resources       `json:"resources"`
+	Storage   int             `json:"storage"`
+	Version   PostgresVersion `json:"version"`
+}
+
+// PostgresSpecCreate defines model for PostgresSpecCreate.
+type PostgresSpecCreate = PostgresSpec
+
+// PostgresSpecOutput defines model for PostgresSpecOutput.
+type PostgresSpecOutput struct {
+	Backup    *PostgresBackupOutput `json:"backup,omitempty"`
+	Database  string                `json:"database"`
+	Instances int                   `json:"instances"`
+
+	// Resources `cpu` is fractional cores. `memory` is megabytes.
+	Resources ResourcesOutput `json:"resources"`
+	Storage   int             `json:"storage"`
+	Version   PostgresVersion `json:"version"`
+}
+
+// PostgresSpecUpdate defines model for PostgresSpecUpdate.
+type PostgresSpecUpdate struct {
+	Backup    *PostgresBackup  `json:"backup,omitempty"`
+	Database  *string          `json:"database,omitempty"`
+	Instances *int             `json:"instances,omitempty"`
+	Resources *Resources       `json:"resources,omitempty"`
+	Storage   *int             `json:"storage,omitempty"`
+	Version   *PostgresVersion `json:"version,omitempty"`
+}
+
+// PostgresVersion defines model for PostgresVersion.
+type PostgresVersion string
+
 // Project defines model for Project.
 type Project struct {
 	CreatedAt   time.Time          `json:"createdAt"`
@@ -1209,6 +1452,35 @@ type RateSeries struct {
 	Points []RatePoint `json:"points"`
 }
 
+// RedisSpec defines model for RedisSpec.
+type RedisSpec struct {
+	// Resources `cpu` is fractional cores. `memory` is megabytes.
+	Resources Resources    `json:"resources"`
+	Storage   int          `json:"storage"`
+	Version   RedisVersion `json:"version"`
+}
+
+// RedisSpecCreate defines model for RedisSpecCreate.
+type RedisSpecCreate = RedisSpec
+
+// RedisSpecOutput defines model for RedisSpecOutput.
+type RedisSpecOutput struct {
+	// Resources `cpu` is fractional cores. `memory` is megabytes.
+	Resources ResourcesOutput `json:"resources"`
+	Storage   int             `json:"storage"`
+	Version   RedisVersion    `json:"version"`
+}
+
+// RedisSpecUpdate defines model for RedisSpecUpdate.
+type RedisSpecUpdate struct {
+	Resources *Resources    `json:"resources,omitempty"`
+	Storage   *int          `json:"storage,omitempty"`
+	Version   *RedisVersion `json:"version,omitempty"`
+}
+
+// RedisVersion defines model for RedisVersion.
+type RedisVersion string
+
 // Registry defines model for Registry.
 type Registry struct {
 	CreatedAt time.Time          `json:"createdAt"`
@@ -1256,6 +1528,24 @@ type ResourceConfig0 struct {
 // ResourceConfig0Kind defines model for ResourceConfig.0.Kind.
 type ResourceConfig0Kind string
 
+// ResourceConfig1 defines model for .
+type ResourceConfig1 struct {
+	Kind ResourceConfig1Kind `json:"kind"`
+	Spec PostgresSpecOutput  `json:"spec"`
+}
+
+// ResourceConfig1Kind defines model for ResourceConfig.1.Kind.
+type ResourceConfig1Kind string
+
+// ResourceConfig2 defines model for .
+type ResourceConfig2 struct {
+	Kind ResourceConfig2Kind `json:"kind"`
+	Spec RedisSpecOutput     `json:"spec"`
+}
+
+// ResourceConfig2Kind defines model for ResourceConfig.2.Kind.
+type ResourceConfig2Kind string
+
 // ResourceConfigCreate defines model for ResourceConfigCreate.
 type ResourceConfigCreate struct {
 	union json.RawMessage
@@ -1270,6 +1560,24 @@ type ResourceConfigCreate0 struct {
 // ResourceConfigCreate0Kind defines model for ResourceConfigCreate.0.Kind.
 type ResourceConfigCreate0Kind string
 
+// ResourceConfigCreate1 defines model for .
+type ResourceConfigCreate1 struct {
+	Kind ResourceConfigCreate1Kind `json:"kind"`
+	Spec PostgresSpecCreate        `json:"spec"`
+}
+
+// ResourceConfigCreate1Kind defines model for ResourceConfigCreate.1.Kind.
+type ResourceConfigCreate1Kind string
+
+// ResourceConfigCreate2 defines model for .
+type ResourceConfigCreate2 struct {
+	Kind ResourceConfigCreate2Kind `json:"kind"`
+	Spec RedisSpecCreate           `json:"spec"`
+}
+
+// ResourceConfigCreate2Kind defines model for ResourceConfigCreate.2.Kind.
+type ResourceConfigCreate2Kind string
+
 // ResourceConfigUpdate defines model for ResourceConfigUpdate.
 type ResourceConfigUpdate struct {
 	union json.RawMessage
@@ -1283,6 +1591,24 @@ type ResourceConfigUpdate0 struct {
 
 // ResourceConfigUpdate0Kind defines model for ResourceConfigUpdate.0.Kind.
 type ResourceConfigUpdate0Kind string
+
+// ResourceConfigUpdate1 defines model for .
+type ResourceConfigUpdate1 struct {
+	Kind ResourceConfigUpdate1Kind `json:"kind"`
+	Spec *PostgresSpecUpdate       `json:"spec,omitempty"`
+}
+
+// ResourceConfigUpdate1Kind defines model for ResourceConfigUpdate.1.Kind.
+type ResourceConfigUpdate1Kind string
+
+// ResourceConfigUpdate2 defines model for .
+type ResourceConfigUpdate2 struct {
+	Kind ResourceConfigUpdate2Kind `json:"kind"`
+	Spec *RedisSpecUpdate          `json:"spec,omitempty"`
+}
+
+// ResourceConfigUpdate2Kind defines model for ResourceConfigUpdate.2.Kind.
+type ResourceConfigUpdate2Kind string
 
 // ResourceCreate defines model for ResourceCreate.
 type ResourceCreate struct {
@@ -1776,8 +2102,26 @@ type TailResourceLogsParams struct {
 	DeploymentId *openapi_types.UUID `form:"deploymentId,omitempty" json:"deploymentId,omitempty"`
 }
 
+// GetResourceCacheHitMetricsParams defines parameters for GetResourceCacheHitMetrics.
+type GetResourceCacheHitMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceConnectionsMetricsParams defines parameters for GetResourceConnectionsMetrics.
+type GetResourceConnectionsMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // GetResourceCpuMetricsParams defines parameters for GetResourceCpuMetrics.
 type GetResourceCpuMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceDbSizeMetricsParams defines parameters for GetResourceDbSizeMetrics.
+type GetResourceDbSizeMetricsParams struct {
 	From *int `form:"from,omitempty" json:"from,omitempty"`
 	To   *int `form:"to,omitempty" json:"to,omitempty"`
 }
@@ -1812,8 +2156,38 @@ type GetResourceNetworkMetricsParams struct {
 	To   *int `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// GetResourceRedisClientsMetricsParams defines parameters for GetResourceRedisClientsMetrics.
+type GetResourceRedisClientsMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceRedisMemoryMetricsParams defines parameters for GetResourceRedisMemoryMetrics.
+type GetResourceRedisMemoryMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceRedisOpsMetricsParams defines parameters for GetResourceRedisOpsMetrics.
+type GetResourceRedisOpsMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceReplicationLagMetricsParams defines parameters for GetResourceReplicationLagMetrics.
+type GetResourceReplicationLagMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // GetResourceRequestRateMetricsParams defines parameters for GetResourceRequestRateMetrics.
 type GetResourceRequestRateMetricsParams struct {
+	From *int `form:"from,omitempty" json:"from,omitempty"`
+	To   *int `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetResourceTransactionsMetricsParams defines parameters for GetResourceTransactionsMetrics.
+type GetResourceTransactionsMetricsParams struct {
 	From *int `form:"from,omitempty" json:"from,omitempty"`
 	To   *int `form:"to,omitempty" json:"to,omitempty"`
 }
@@ -2120,6 +2494,58 @@ func (t *ResourceConfig) MergeResourceConfig0(v ResourceConfig0) error {
 	return err
 }
 
+// AsResourceConfig1 returns the union data inside the ResourceConfig as a ResourceConfig1
+func (t ResourceConfig) AsResourceConfig1() (ResourceConfig1, error) {
+	var body ResourceConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfig1 overwrites any union data inside the ResourceConfig as the provided ResourceConfig1
+func (t *ResourceConfig) FromResourceConfig1(v ResourceConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfig1 performs a merge with any union data inside the ResourceConfig, using the provided ResourceConfig1
+func (t *ResourceConfig) MergeResourceConfig1(v ResourceConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResourceConfig2 returns the union data inside the ResourceConfig as a ResourceConfig2
+func (t ResourceConfig) AsResourceConfig2() (ResourceConfig2, error) {
+	var body ResourceConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfig2 overwrites any union data inside the ResourceConfig as the provided ResourceConfig2
+func (t *ResourceConfig) FromResourceConfig2(v ResourceConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfig2 performs a merge with any union data inside the ResourceConfig, using the provided ResourceConfig2
+func (t *ResourceConfig) MergeResourceConfig2(v ResourceConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ResourceConfig) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -2156,6 +2582,58 @@ func (t *ResourceConfigCreate) MergeResourceConfigCreate0(v ResourceConfigCreate
 	return err
 }
 
+// AsResourceConfigCreate1 returns the union data inside the ResourceConfigCreate as a ResourceConfigCreate1
+func (t ResourceConfigCreate) AsResourceConfigCreate1() (ResourceConfigCreate1, error) {
+	var body ResourceConfigCreate1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfigCreate1 overwrites any union data inside the ResourceConfigCreate as the provided ResourceConfigCreate1
+func (t *ResourceConfigCreate) FromResourceConfigCreate1(v ResourceConfigCreate1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfigCreate1 performs a merge with any union data inside the ResourceConfigCreate, using the provided ResourceConfigCreate1
+func (t *ResourceConfigCreate) MergeResourceConfigCreate1(v ResourceConfigCreate1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResourceConfigCreate2 returns the union data inside the ResourceConfigCreate as a ResourceConfigCreate2
+func (t ResourceConfigCreate) AsResourceConfigCreate2() (ResourceConfigCreate2, error) {
+	var body ResourceConfigCreate2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfigCreate2 overwrites any union data inside the ResourceConfigCreate as the provided ResourceConfigCreate2
+func (t *ResourceConfigCreate) FromResourceConfigCreate2(v ResourceConfigCreate2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfigCreate2 performs a merge with any union data inside the ResourceConfigCreate, using the provided ResourceConfigCreate2
+func (t *ResourceConfigCreate) MergeResourceConfigCreate2(v ResourceConfigCreate2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ResourceConfigCreate) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -2182,6 +2660,58 @@ func (t *ResourceConfigUpdate) FromResourceConfigUpdate0(v ResourceConfigUpdate0
 
 // MergeResourceConfigUpdate0 performs a merge with any union data inside the ResourceConfigUpdate, using the provided ResourceConfigUpdate0
 func (t *ResourceConfigUpdate) MergeResourceConfigUpdate0(v ResourceConfigUpdate0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResourceConfigUpdate1 returns the union data inside the ResourceConfigUpdate as a ResourceConfigUpdate1
+func (t ResourceConfigUpdate) AsResourceConfigUpdate1() (ResourceConfigUpdate1, error) {
+	var body ResourceConfigUpdate1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfigUpdate1 overwrites any union data inside the ResourceConfigUpdate as the provided ResourceConfigUpdate1
+func (t *ResourceConfigUpdate) FromResourceConfigUpdate1(v ResourceConfigUpdate1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfigUpdate1 performs a merge with any union data inside the ResourceConfigUpdate, using the provided ResourceConfigUpdate1
+func (t *ResourceConfigUpdate) MergeResourceConfigUpdate1(v ResourceConfigUpdate1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResourceConfigUpdate2 returns the union data inside the ResourceConfigUpdate as a ResourceConfigUpdate2
+func (t ResourceConfigUpdate) AsResourceConfigUpdate2() (ResourceConfigUpdate2, error) {
+	var body ResourceConfigUpdate2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResourceConfigUpdate2 overwrites any union data inside the ResourceConfigUpdate as the provided ResourceConfigUpdate2
+func (t *ResourceConfigUpdate) FromResourceConfigUpdate2(v ResourceConfigUpdate2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResourceConfigUpdate2 performs a merge with any union data inside the ResourceConfigUpdate, using the provided ResourceConfigUpdate2
+func (t *ResourceConfigUpdate) MergeResourceConfigUpdate2(v ResourceConfigUpdate2) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2875,6 +3405,12 @@ type ServerInterface interface {
 	// Update resource
 	// (PATCH /projects/{projectId}/resources/{id})
 	UpdateResource(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, id openapi_types.UUID)
+	// List Postgres backups for a resource
+	// (GET /projects/{projectId}/resources/{resourceId}/backups)
+	ListResourceBackups(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
+	// Trigger an on-demand backup
+	// (POST /projects/{projectId}/resources/{resourceId}/backups)
+	CreateResourceBackup(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
 	// List deployments that changed a service
 	// (GET /projects/{projectId}/resources/{resourceId}/deployments)
 	ListResourceDeployments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params ListResourceDeploymentsParams)
@@ -2893,9 +3429,18 @@ type ServerInterface interface {
 	// Poll-tail recent log lines
 	// (GET /projects/{projectId}/resources/{resourceId}/logs/tail)
 	TailResourceLogs(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params TailResourceLogsParams)
+	// Postgres buffer cache hit ratio timeseries (fraction 0..1)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/cacheHit)
+	GetResourceCacheHitMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceCacheHitMetricsParams)
+	// Postgres connections timeseries (value=active, limit=max)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/connections)
+	GetResourceConnectionsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceConnectionsMetricsParams)
 	// CPU usage timeseries, per-pod
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/cpu)
 	GetResourceCpuMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceCpuMetricsParams)
+	// Postgres database size timeseries (value=used, limit=capacity)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/dbSize)
+	GetResourceDbSizeMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceDbSizeMetricsParams)
 	// Disk usage timeseries, per-PVC (value=used, limit=capacity)
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/disk)
 	GetResourceDiskMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceDiskMetricsParams)
@@ -2911,9 +3456,24 @@ type ServerInterface interface {
 	// Network throughput timeseries, per-pod (rx + tx, bytes/sec)
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/network)
 	GetResourceNetworkMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceNetworkMetricsParams)
+	// Redis connected clients timeseries (value=clients, limit=max)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisClients)
+	GetResourceRedisClientsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisClientsMetricsParams)
+	// Redis memory used timeseries (value=used, limit=maxmemory)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisMemory)
+	GetResourceRedisMemoryMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisMemoryMetricsParams)
+	// Redis commands/sec timeseries
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisOps)
+	GetResourceRedisOpsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisOpsMetricsParams)
+	// Postgres replication lag timeseries (seconds, HA only)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/replicationLag)
+	GetResourceReplicationLagMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceReplicationLagMetricsParams)
 	// Request rate timeseries
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/requestRate)
 	GetResourceRequestRateMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRequestRateMetricsParams)
+	// Postgres transactions/sec timeseries (commits + rollbacks)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/transactions)
+	GetResourceTransactionsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceTransactionsMetricsParams)
 	// List resource env vars (owned + imported)
 	// (GET /projects/{projectId}/resources/{resourceId}/variables)
 	ListResourceVariables(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID)
@@ -3569,6 +4129,76 @@ func (siw *ServerInterfaceWrapper) UpdateResource(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// ListResourceBackups operation middleware
+func (siw *ServerInterfaceWrapper) ListResourceBackups(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListResourceBackups(w, r, projectId, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateResourceBackup operation middleware
+func (siw *ServerInterfaceWrapper) CreateResourceBackup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateResourceBackup(w, r, projectId, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListResourceDeployments operation middleware
 func (siw *ServerInterfaceWrapper) ListResourceDeployments(w http.ResponseWriter, r *http.Request) {
 
@@ -3927,6 +4557,134 @@ func (siw *ServerInterfaceWrapper) TailResourceLogs(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetResourceCacheHitMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceCacheHitMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceCacheHitMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceCacheHitMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceConnectionsMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceConnectionsMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceConnectionsMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceConnectionsMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetResourceCpuMetrics operation middleware
 func (siw *ServerInterfaceWrapper) GetResourceCpuMetrics(w http.ResponseWriter, r *http.Request) {
 
@@ -3982,6 +4740,70 @@ func (siw *ServerInterfaceWrapper) GetResourceCpuMetrics(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetResourceCpuMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceDbSizeMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceDbSizeMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceDbSizeMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceDbSizeMetrics(w, r, projectId, resourceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4311,6 +5133,262 @@ func (siw *ServerInterfaceWrapper) GetResourceNetworkMetrics(w http.ResponseWrit
 	handler.ServeHTTP(w, r)
 }
 
+// GetResourceRedisClientsMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceRedisClientsMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceRedisClientsMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceRedisClientsMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceRedisMemoryMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceRedisMemoryMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceRedisMemoryMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceRedisMemoryMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceRedisOpsMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceRedisOpsMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceRedisOpsMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceRedisOpsMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceReplicationLagMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceReplicationLagMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceReplicationLagMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceReplicationLagMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetResourceRequestRateMetrics operation middleware
 func (siw *ServerInterfaceWrapper) GetResourceRequestRateMetrics(w http.ResponseWriter, r *http.Request) {
 
@@ -4366,6 +5444,70 @@ func (siw *ServerInterfaceWrapper) GetResourceRequestRateMetrics(w http.Response
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetResourceRequestRateMetrics(w, r, projectId, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceTransactionsMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceTransactionsMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResourceTransactionsMetricsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceTransactionsMetrics(w, r, projectId, resourceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5203,19 +6345,29 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.DeleteResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.GetResource)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/projects/{projectId}/resources/{id}", wrapper.UpdateResource)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/backups", wrapper.ListResourceBackups)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/backups", wrapper.CreateResourceBackup)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/deployments", wrapper.ListResourceDeployments)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/deployments/{id}/restore", wrapper.RestoreResourceDeployment)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/events", wrapper.ListResourceEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/capabilities", wrapper.GetResourceLogsCapabilities)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/search", wrapper.SearchResourceLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/logs/tail", wrapper.TailResourceLogs)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/cacheHit", wrapper.GetResourceCacheHitMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/connections", wrapper.GetResourceConnectionsMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/cpu", wrapper.GetResourceCpuMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/dbSize", wrapper.GetResourceDbSizeMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/disk", wrapper.GetResourceDiskMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/errorRate", wrapper.GetResourceErrorRateMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/latency", wrapper.GetResourceLatencyMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/memory", wrapper.GetResourceMemoryMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/network", wrapper.GetResourceNetworkMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/redisClients", wrapper.GetResourceRedisClientsMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/redisMemory", wrapper.GetResourceRedisMemoryMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/redisOps", wrapper.GetResourceRedisOpsMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/replicationLag", wrapper.GetResourceReplicationLagMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/requestRate", wrapper.GetResourceRequestRateMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/metrics/transactions", wrapper.GetResourceTransactionsMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables", wrapper.ListResourceVariables)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables", wrapper.CreateResourceVariable)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/projects/{projectId}/resources/{resourceId}/variables/{key}", wrapper.DeleteResourceVariable)
@@ -6776,6 +7928,164 @@ func (response UpdateResource409JSONResponse) VisitUpdateResourceResponse(w http
 	return err
 }
 
+type ListResourceBackupsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+}
+
+type ListResourceBackupsResponseObject interface {
+	VisitListResourceBackupsResponse(w http.ResponseWriter) error
+}
+
+type ListResourceBackups200JSONResponse []Backup
+
+func (response ListResourceBackups200JSONResponse) VisitListResourceBackupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListResourceBackups400JSONResponse Error
+
+func (response ListResourceBackups400JSONResponse) VisitListResourceBackupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListResourceBackups401JSONResponse Error
+
+func (response ListResourceBackups401JSONResponse) VisitListResourceBackupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListResourceBackups403JSONResponse Error
+
+func (response ListResourceBackups403JSONResponse) VisitListResourceBackupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListResourceBackups409JSONResponse Error
+
+func (response ListResourceBackups409JSONResponse) VisitListResourceBackupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateResourceBackupRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+}
+
+type CreateResourceBackupResponseObject interface {
+	VisitCreateResourceBackupResponse(w http.ResponseWriter) error
+}
+
+type CreateResourceBackup202JSONResponse Backup
+
+func (response CreateResourceBackup202JSONResponse) VisitCreateResourceBackupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateResourceBackup400JSONResponse Error
+
+func (response CreateResourceBackup400JSONResponse) VisitCreateResourceBackupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateResourceBackup401JSONResponse Error
+
+func (response CreateResourceBackup401JSONResponse) VisitCreateResourceBackupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateResourceBackup403JSONResponse Error
+
+func (response CreateResourceBackup403JSONResponse) VisitCreateResourceBackupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateResourceBackup409JSONResponse Error
+
+func (response CreateResourceBackup409JSONResponse) VisitCreateResourceBackupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListResourceDeploymentsRequestObject struct {
 	ProjectId  openapi_types.UUID `json:"projectId"`
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -7276,6 +8586,194 @@ func (response TailResourceLogs409JSONResponse) VisitTailResourceLogsResponse(w 
 	return err
 }
 
+type GetResourceCacheHitMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceCacheHitMetricsParams
+}
+
+type GetResourceCacheHitMetricsResponseObject interface {
+	VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceCacheHitMetrics200JSONResponse RateMetrics
+
+func (response GetResourceCacheHitMetrics200JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceCacheHitMetrics400JSONResponse Error
+
+func (response GetResourceCacheHitMetrics400JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceCacheHitMetrics401JSONResponse Error
+
+func (response GetResourceCacheHitMetrics401JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceCacheHitMetrics403JSONResponse Error
+
+func (response GetResourceCacheHitMetrics403JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceCacheHitMetrics404JSONResponse Error
+
+func (response GetResourceCacheHitMetrics404JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceCacheHitMetrics409JSONResponse Error
+
+func (response GetResourceCacheHitMetrics409JSONResponse) VisitGetResourceCacheHitMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceConnectionsMetricsParams
+}
+
+type GetResourceConnectionsMetricsResponseObject interface {
+	VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceConnectionsMetrics200JSONResponse ResourceMetrics
+
+func (response GetResourceConnectionsMetrics200JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetrics400JSONResponse Error
+
+func (response GetResourceConnectionsMetrics400JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetrics401JSONResponse Error
+
+func (response GetResourceConnectionsMetrics401JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetrics403JSONResponse Error
+
+func (response GetResourceConnectionsMetrics403JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetrics404JSONResponse Error
+
+func (response GetResourceConnectionsMetrics404JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceConnectionsMetrics409JSONResponse Error
+
+func (response GetResourceConnectionsMetrics409JSONResponse) VisitGetResourceConnectionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetResourceCpuMetricsRequestObject struct {
 	ProjectId  openapi_types.UUID `json:"projectId"`
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -7359,6 +8857,100 @@ func (response GetResourceCpuMetrics404JSONResponse) VisitGetResourceCpuMetricsR
 type GetResourceCpuMetrics409JSONResponse Error
 
 func (response GetResourceCpuMetrics409JSONResponse) VisitGetResourceCpuMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceDbSizeMetricsParams
+}
+
+type GetResourceDbSizeMetricsResponseObject interface {
+	VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceDbSizeMetrics200JSONResponse ResourceMetrics
+
+func (response GetResourceDbSizeMetrics200JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetrics400JSONResponse Error
+
+func (response GetResourceDbSizeMetrics400JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetrics401JSONResponse Error
+
+func (response GetResourceDbSizeMetrics401JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetrics403JSONResponse Error
+
+func (response GetResourceDbSizeMetrics403JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetrics404JSONResponse Error
+
+func (response GetResourceDbSizeMetrics404JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceDbSizeMetrics409JSONResponse Error
+
+func (response GetResourceDbSizeMetrics409JSONResponse) VisitGetResourceDbSizeMetricsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7840,6 +9432,382 @@ func (response GetResourceNetworkMetrics409JSONResponse) VisitGetResourceNetwork
 	return err
 }
 
+type GetResourceRedisClientsMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceRedisClientsMetricsParams
+}
+
+type GetResourceRedisClientsMetricsResponseObject interface {
+	VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceRedisClientsMetrics200JSONResponse ResourceMetrics
+
+func (response GetResourceRedisClientsMetrics200JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisClientsMetrics400JSONResponse Error
+
+func (response GetResourceRedisClientsMetrics400JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisClientsMetrics401JSONResponse Error
+
+func (response GetResourceRedisClientsMetrics401JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisClientsMetrics403JSONResponse Error
+
+func (response GetResourceRedisClientsMetrics403JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisClientsMetrics404JSONResponse Error
+
+func (response GetResourceRedisClientsMetrics404JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisClientsMetrics409JSONResponse Error
+
+func (response GetResourceRedisClientsMetrics409JSONResponse) VisitGetResourceRedisClientsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceRedisMemoryMetricsParams
+}
+
+type GetResourceRedisMemoryMetricsResponseObject interface {
+	VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceRedisMemoryMetrics200JSONResponse ResourceMetrics
+
+func (response GetResourceRedisMemoryMetrics200JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetrics400JSONResponse Error
+
+func (response GetResourceRedisMemoryMetrics400JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetrics401JSONResponse Error
+
+func (response GetResourceRedisMemoryMetrics401JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetrics403JSONResponse Error
+
+func (response GetResourceRedisMemoryMetrics403JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetrics404JSONResponse Error
+
+func (response GetResourceRedisMemoryMetrics404JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisMemoryMetrics409JSONResponse Error
+
+func (response GetResourceRedisMemoryMetrics409JSONResponse) VisitGetResourceRedisMemoryMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceRedisOpsMetricsParams
+}
+
+type GetResourceRedisOpsMetricsResponseObject interface {
+	VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceRedisOpsMetrics200JSONResponse RateMetrics
+
+func (response GetResourceRedisOpsMetrics200JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetrics400JSONResponse Error
+
+func (response GetResourceRedisOpsMetrics400JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetrics401JSONResponse Error
+
+func (response GetResourceRedisOpsMetrics401JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetrics403JSONResponse Error
+
+func (response GetResourceRedisOpsMetrics403JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetrics404JSONResponse Error
+
+func (response GetResourceRedisOpsMetrics404JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceRedisOpsMetrics409JSONResponse Error
+
+func (response GetResourceRedisOpsMetrics409JSONResponse) VisitGetResourceRedisOpsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceReplicationLagMetricsParams
+}
+
+type GetResourceReplicationLagMetricsResponseObject interface {
+	VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceReplicationLagMetrics200JSONResponse RateMetrics
+
+func (response GetResourceReplicationLagMetrics200JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetrics400JSONResponse Error
+
+func (response GetResourceReplicationLagMetrics400JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetrics401JSONResponse Error
+
+func (response GetResourceReplicationLagMetrics401JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetrics403JSONResponse Error
+
+func (response GetResourceReplicationLagMetrics403JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetrics404JSONResponse Error
+
+func (response GetResourceReplicationLagMetrics404JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceReplicationLagMetrics409JSONResponse Error
+
+func (response GetResourceReplicationLagMetrics409JSONResponse) VisitGetResourceReplicationLagMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetResourceRequestRateMetricsRequestObject struct {
 	ProjectId  openapi_types.UUID `json:"projectId"`
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -7923,6 +9891,100 @@ func (response GetResourceRequestRateMetrics404JSONResponse) VisitGetResourceReq
 type GetResourceRequestRateMetrics409JSONResponse Error
 
 func (response GetResourceRequestRateMetrics409JSONResponse) VisitGetResourceRequestRateMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetricsRequestObject struct {
+	ProjectId  openapi_types.UUID `json:"projectId"`
+	ResourceId openapi_types.UUID `json:"resourceId"`
+	Params     GetResourceTransactionsMetricsParams
+}
+
+type GetResourceTransactionsMetricsResponseObject interface {
+	VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error
+}
+
+type GetResourceTransactionsMetrics200JSONResponse RateMetrics
+
+func (response GetResourceTransactionsMetrics200JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetrics400JSONResponse Error
+
+func (response GetResourceTransactionsMetrics400JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetrics401JSONResponse Error
+
+func (response GetResourceTransactionsMetrics401JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetrics403JSONResponse Error
+
+func (response GetResourceTransactionsMetrics403JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetrics404JSONResponse Error
+
+func (response GetResourceTransactionsMetrics404JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceTransactionsMetrics409JSONResponse Error
+
+func (response GetResourceTransactionsMetrics409JSONResponse) VisitGetResourceTransactionsMetricsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -10081,6 +12143,12 @@ type StrictServerInterface interface {
 	// Update resource
 	// (PATCH /projects/{projectId}/resources/{id})
 	UpdateResource(ctx context.Context, request UpdateResourceRequestObject) (UpdateResourceResponseObject, error)
+	// List Postgres backups for a resource
+	// (GET /projects/{projectId}/resources/{resourceId}/backups)
+	ListResourceBackups(ctx context.Context, request ListResourceBackupsRequestObject) (ListResourceBackupsResponseObject, error)
+	// Trigger an on-demand backup
+	// (POST /projects/{projectId}/resources/{resourceId}/backups)
+	CreateResourceBackup(ctx context.Context, request CreateResourceBackupRequestObject) (CreateResourceBackupResponseObject, error)
 	// List deployments that changed a service
 	// (GET /projects/{projectId}/resources/{resourceId}/deployments)
 	ListResourceDeployments(ctx context.Context, request ListResourceDeploymentsRequestObject) (ListResourceDeploymentsResponseObject, error)
@@ -10099,9 +12167,18 @@ type StrictServerInterface interface {
 	// Poll-tail recent log lines
 	// (GET /projects/{projectId}/resources/{resourceId}/logs/tail)
 	TailResourceLogs(ctx context.Context, request TailResourceLogsRequestObject) (TailResourceLogsResponseObject, error)
+	// Postgres buffer cache hit ratio timeseries (fraction 0..1)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/cacheHit)
+	GetResourceCacheHitMetrics(ctx context.Context, request GetResourceCacheHitMetricsRequestObject) (GetResourceCacheHitMetricsResponseObject, error)
+	// Postgres connections timeseries (value=active, limit=max)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/connections)
+	GetResourceConnectionsMetrics(ctx context.Context, request GetResourceConnectionsMetricsRequestObject) (GetResourceConnectionsMetricsResponseObject, error)
 	// CPU usage timeseries, per-pod
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/cpu)
 	GetResourceCpuMetrics(ctx context.Context, request GetResourceCpuMetricsRequestObject) (GetResourceCpuMetricsResponseObject, error)
+	// Postgres database size timeseries (value=used, limit=capacity)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/dbSize)
+	GetResourceDbSizeMetrics(ctx context.Context, request GetResourceDbSizeMetricsRequestObject) (GetResourceDbSizeMetricsResponseObject, error)
 	// Disk usage timeseries, per-PVC (value=used, limit=capacity)
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/disk)
 	GetResourceDiskMetrics(ctx context.Context, request GetResourceDiskMetricsRequestObject) (GetResourceDiskMetricsResponseObject, error)
@@ -10117,9 +12194,24 @@ type StrictServerInterface interface {
 	// Network throughput timeseries, per-pod (rx + tx, bytes/sec)
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/network)
 	GetResourceNetworkMetrics(ctx context.Context, request GetResourceNetworkMetricsRequestObject) (GetResourceNetworkMetricsResponseObject, error)
+	// Redis connected clients timeseries (value=clients, limit=max)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisClients)
+	GetResourceRedisClientsMetrics(ctx context.Context, request GetResourceRedisClientsMetricsRequestObject) (GetResourceRedisClientsMetricsResponseObject, error)
+	// Redis memory used timeseries (value=used, limit=maxmemory)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisMemory)
+	GetResourceRedisMemoryMetrics(ctx context.Context, request GetResourceRedisMemoryMetricsRequestObject) (GetResourceRedisMemoryMetricsResponseObject, error)
+	// Redis commands/sec timeseries
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/redisOps)
+	GetResourceRedisOpsMetrics(ctx context.Context, request GetResourceRedisOpsMetricsRequestObject) (GetResourceRedisOpsMetricsResponseObject, error)
+	// Postgres replication lag timeseries (seconds, HA only)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/replicationLag)
+	GetResourceReplicationLagMetrics(ctx context.Context, request GetResourceReplicationLagMetricsRequestObject) (GetResourceReplicationLagMetricsResponseObject, error)
 	// Request rate timeseries
 	// (GET /projects/{projectId}/resources/{resourceId}/metrics/requestRate)
 	GetResourceRequestRateMetrics(ctx context.Context, request GetResourceRequestRateMetricsRequestObject) (GetResourceRequestRateMetricsResponseObject, error)
+	// Postgres transactions/sec timeseries (commits + rollbacks)
+	// (GET /projects/{projectId}/resources/{resourceId}/metrics/transactions)
+	GetResourceTransactionsMetrics(ctx context.Context, request GetResourceTransactionsMetricsRequestObject) (GetResourceTransactionsMetricsResponseObject, error)
 	// List resource env vars (owned + imported)
 	// (GET /projects/{projectId}/resources/{resourceId}/variables)
 	ListResourceVariables(ctx context.Context, request ListResourceVariablesRequestObject) (ListResourceVariablesResponseObject, error)
@@ -10756,6 +12848,60 @@ func (sh *strictHandler) UpdateResource(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// ListResourceBackups operation middleware
+func (sh *strictHandler) ListResourceBackups(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID) {
+	var request ListResourceBackupsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListResourceBackups(ctx, request.(ListResourceBackupsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListResourceBackups")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListResourceBackupsResponseObject); ok {
+		if err := validResponse.VisitListResourceBackupsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateResourceBackup operation middleware
+func (sh *strictHandler) CreateResourceBackup(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID) {
+	var request CreateResourceBackupRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateResourceBackup(ctx, request.(CreateResourceBackupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateResourceBackup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateResourceBackupResponseObject); ok {
+		if err := validResponse.VisitCreateResourceBackupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListResourceDeployments operation middleware
 func (sh *strictHandler) ListResourceDeployments(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params ListResourceDeploymentsParams) {
 	var request ListResourceDeploymentsRequestObject
@@ -10922,6 +13068,62 @@ func (sh *strictHandler) TailResourceLogs(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// GetResourceCacheHitMetrics operation middleware
+func (sh *strictHandler) GetResourceCacheHitMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceCacheHitMetricsParams) {
+	var request GetResourceCacheHitMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceCacheHitMetrics(ctx, request.(GetResourceCacheHitMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceCacheHitMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceCacheHitMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceCacheHitMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceConnectionsMetrics operation middleware
+func (sh *strictHandler) GetResourceConnectionsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceConnectionsMetricsParams) {
+	var request GetResourceConnectionsMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceConnectionsMetrics(ctx, request.(GetResourceConnectionsMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceConnectionsMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceConnectionsMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceConnectionsMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetResourceCpuMetrics operation middleware
 func (sh *strictHandler) GetResourceCpuMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceCpuMetricsParams) {
 	var request GetResourceCpuMetricsRequestObject
@@ -10943,6 +13145,34 @@ func (sh *strictHandler) GetResourceCpuMetrics(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetResourceCpuMetricsResponseObject); ok {
 		if err := validResponse.VisitGetResourceCpuMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceDbSizeMetrics operation middleware
+func (sh *strictHandler) GetResourceDbSizeMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceDbSizeMetricsParams) {
+	var request GetResourceDbSizeMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceDbSizeMetrics(ctx, request.(GetResourceDbSizeMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceDbSizeMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceDbSizeMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceDbSizeMetricsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11090,6 +13320,118 @@ func (sh *strictHandler) GetResourceNetworkMetrics(w http.ResponseWriter, r *htt
 	}
 }
 
+// GetResourceRedisClientsMetrics operation middleware
+func (sh *strictHandler) GetResourceRedisClientsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisClientsMetricsParams) {
+	var request GetResourceRedisClientsMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceRedisClientsMetrics(ctx, request.(GetResourceRedisClientsMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceRedisClientsMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceRedisClientsMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceRedisClientsMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceRedisMemoryMetrics operation middleware
+func (sh *strictHandler) GetResourceRedisMemoryMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisMemoryMetricsParams) {
+	var request GetResourceRedisMemoryMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceRedisMemoryMetrics(ctx, request.(GetResourceRedisMemoryMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceRedisMemoryMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceRedisMemoryMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceRedisMemoryMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceRedisOpsMetrics operation middleware
+func (sh *strictHandler) GetResourceRedisOpsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRedisOpsMetricsParams) {
+	var request GetResourceRedisOpsMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceRedisOpsMetrics(ctx, request.(GetResourceRedisOpsMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceRedisOpsMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceRedisOpsMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceRedisOpsMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceReplicationLagMetrics operation middleware
+func (sh *strictHandler) GetResourceReplicationLagMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceReplicationLagMetricsParams) {
+	var request GetResourceReplicationLagMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceReplicationLagMetrics(ctx, request.(GetResourceReplicationLagMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceReplicationLagMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceReplicationLagMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceReplicationLagMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetResourceRequestRateMetrics operation middleware
 func (sh *strictHandler) GetResourceRequestRateMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceRequestRateMetricsParams) {
 	var request GetResourceRequestRateMetricsRequestObject
@@ -11111,6 +13453,34 @@ func (sh *strictHandler) GetResourceRequestRateMetrics(w http.ResponseWriter, r 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetResourceRequestRateMetricsResponseObject); ok {
 		if err := validResponse.VisitGetResourceRequestRateMetricsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceTransactionsMetrics operation middleware
+func (sh *strictHandler) GetResourceTransactionsMetrics(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, resourceId openapi_types.UUID, params GetResourceTransactionsMetricsParams) {
+	var request GetResourceTransactionsMetricsRequestObject
+
+	request.ProjectId = projectId
+	request.ResourceId = resourceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceTransactionsMetrics(ctx, request.(GetResourceTransactionsMetricsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceTransactionsMetrics")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceTransactionsMetricsResponseObject); ok {
+		if err := validResponse.VisitGetResourceTransactionsMetricsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

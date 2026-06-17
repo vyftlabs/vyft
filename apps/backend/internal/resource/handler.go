@@ -8,6 +8,7 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
+	"github.com/vyftlabs/vyft/apps/backend/internal/pgbackup"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/status"
 )
@@ -15,6 +16,49 @@ import (
 type Handler struct{ svc *Service }
 
 func NewHandler(s *Service) *Handler { return &Handler{svc: s} }
+
+// ListResourceBackups returns a postgres resource's CNPG backups, newest first.
+func (h *Handler) ListResourceBackups(ctx context.Context, req openapi.ListResourceBackupsRequestObject) (openapi.ListResourceBackupsResponseObject, error) {
+	bks, err := h.svc.ListBackups(ctx, uuid.UUID(req.ResourceId))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]openapi.Backup, 0, len(bks))
+	for _, b := range bks {
+		out = append(out, toWireBackup(b))
+	}
+	return openapi.ListResourceBackups200JSONResponse(out), nil
+}
+
+// CreateResourceBackup triggers an on-demand backup.
+func (h *Handler) CreateResourceBackup(ctx context.Context, req openapi.CreateResourceBackupRequestObject) (openapi.CreateResourceBackupResponseObject, error) {
+	b, err := h.svc.CreateBackup(ctx, uuid.UUID(req.ResourceId))
+	if err != nil {
+		return nil, err
+	}
+	return openapi.CreateResourceBackup202JSONResponse(toWireBackup(b)), nil
+}
+
+// toWireBackup maps a normalized backup to the wire shape (by value, so the
+// optional-field pointers are unique per call).
+func toWireBackup(b pgbackup.Backup) openapi.Backup {
+	w := openapi.Backup{
+		Name:      b.Name,
+		Phase:     b.Phase,
+		StartedAt: b.StartedAt,
+		StoppedAt: b.StoppedAt,
+	}
+	if b.BackupID != "" {
+		w.BackupId = &b.BackupID
+	}
+	if b.Method != "" {
+		w.Method = &b.Method
+	}
+	if b.Error != "" {
+		w.Error = &b.Error
+	}
+	return w
+}
 
 // toWireStatus maps the internal status to the optional wire ServiceStatus.
 // Message is omitted when empty (running/stopped carry no message).

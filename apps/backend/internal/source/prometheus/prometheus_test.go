@@ -257,8 +257,8 @@ func TestQueryDisk_PerPVCUsageAndCapacity(t *testing.T) {
 func TestSupports_ReturnsAllKinds(t *testing.T) {
 	p, _ := New(uuid.New(), "test", "http://localhost", Auth{Type: AuthNone})
 	got := p.Supports()
-	if len(got) != 7 {
-		t.Fatalf("got %d kinds, want 7", len(got))
+	if len(got) != 15 {
+		t.Fatalf("got %d kinds, want 15", len(got))
 	}
 }
 

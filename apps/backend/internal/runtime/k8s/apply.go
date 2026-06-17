@@ -28,7 +28,7 @@ func (r *Runtime) Apply(ctx context.Context, p deployment.Project, env string, s
 		return err
 	}
 	m := Build(p, s)
-	if err := applyAll(ctx, r.cs, ns, m); err != nil {
+	if err := applyAll(ctx, r.cs, r.dyn, ns, m); err != nil {
 		return err
 	}
 	return pruneByLabel(ctx, r.dyn, ns, p.Slug, collectKnown(m))

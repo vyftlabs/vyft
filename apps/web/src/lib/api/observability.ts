@@ -478,3 +478,291 @@ export const latencyMetrics = (
       return data!;
     },
   });
+
+// ── Postgres (CNPG) database metrics ──────────────────────────────────
+
+export const connectionsMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "connections", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as ResourceMetrics | undefined,
+        newData as ResourceMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<ResourceMetrics>([
+        ...ROOT,
+        "connections",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/connections",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const dbSizeMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "dbSize", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as ResourceMetrics | undefined,
+        newData as ResourceMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<ResourceMetrics>([
+        ...ROOT,
+        "dbSize",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/dbSize",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const transactionsMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "transactions", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(oldData as RateMetrics | undefined, newData as RateMetrics),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<RateMetrics>([
+        ...ROOT,
+        "transactions",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/transactions",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const replicationLagMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "replicationLag", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(oldData as RateMetrics | undefined, newData as RateMetrics),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<RateMetrics>([
+        ...ROOT,
+        "replicationLag",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/replicationLag",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const cacheHitMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "cacheHit", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(oldData as RateMetrics | undefined, newData as RateMetrics),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<RateMetrics>([
+        ...ROOT,
+        "cacheHit",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/cacheHit",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+// ── Redis (redis_exporter) database metrics ───────────────────────────
+
+export const redisMemoryMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "redisMemory", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as ResourceMetrics | undefined,
+        newData as ResourceMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<ResourceMetrics>([
+        ...ROOT,
+        "redisMemory",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/redisMemory",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const redisClientsMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "redisClients", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(
+        oldData as ResourceMetrics | undefined,
+        newData as ResourceMetrics,
+      ),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<ResourceMetrics>([
+        ...ROOT,
+        "redisClients",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/redisClients",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });
+
+export const redisOpsMetrics = (
+  projectId: string,
+  resourceId: string,
+  windowMs: number = DISPLAY_WINDOW_MS,
+) =>
+  queryOptions({
+    queryKey: [...ROOT, "redisOps", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
+    refetchInterval: (q: { state: { error: unknown } }) =>
+      is404(q.state.error) ? false : POLL_INTERVAL_MS,
+    retry: (_count: number, err: unknown) => !is404(err),
+    structuralSharing: (oldData, newData) =>
+      mergeSeries(oldData as RateMetrics | undefined, newData as RateMetrics),
+    queryFn: async (ctx) => {
+      const cached = ctx.client?.getQueryData<RateMetrics>([
+        ...ROOT,
+        "redisOps",
+        projectId,
+        resourceId,
+        windowMs,
+      ]);
+      const { data } = await client.GET(
+        "/projects/{projectId}/resources/{resourceId}/metrics/redisOps",
+        {
+          params: {
+            path: { projectId, resourceId },
+            query: buildRangeQuery(cached, windowMs),
+          },
+        },
+      );
+      return data!;
+    },
+  });

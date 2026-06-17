@@ -6,8 +6,60 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api/errors";
+import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 2_000;
+
+// CloudNativePG emits structured JSON logs: a top-level
+// {level, ts, logger, msg, record} envelope. For logger="postgres" the real
+// Postgres line lives in `record` (.error_severity + .message); other loggers
+// (instance-manager) carry it in top-level `msg`/`level`. parseCnpg pulls the
+// human message + severity out so we render that instead of raw JSON. Returns
+// null for anything that isn't this shape (e.g. plain app logs) → shown as-is.
+interface ParsedLog {
+  severity?: string;
+  text: string;
+}
+
+function parseCnpg(raw: string): ParsedLog | null {
+  if (raw.charCodeAt(0) !== 123 /* { */) return null;
+  let o: unknown;
+  try {
+    o = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!o || typeof o !== "object") return null;
+  const obj = o as Record<string, unknown>;
+  const rec = obj.record;
+  if (obj.logger === "postgres" && rec && typeof rec === "object") {
+    const r = rec as Record<string, unknown>;
+    if (typeof r.message === "string") {
+      return {
+        severity:
+          typeof r.error_severity === "string" ? r.error_severity : undefined,
+        text: r.message,
+      };
+    }
+  }
+  if (typeof obj.msg === "string") {
+    return {
+      severity: typeof obj.level === "string" ? obj.level : undefined,
+      text: obj.msg,
+    };
+  }
+  return null;
+}
+
+// Only attention-worthy severities get color; routine LOG/INFO/DEBUG stay
+// in the default foreground so problems stand out.
+const severityClass: Record<string, string> = {
+  ERROR: "text-severity-critical-text",
+  FATAL: "text-severity-critical-text",
+  PANIC: "text-severity-critical-text",
+  WARN: "text-severity-warning-text",
+  WARNING: "text-severity-warning-text",
+};
 
 function isUnreachable(err: unknown): boolean {
   return err instanceof ApiError && err.code === "INTERNAL";
@@ -169,14 +221,19 @@ function Status({ text, cta }: { text: string; cta?: boolean }) {
 }
 
 function Row({ line }: { line: LogLine }) {
+  const parsed = parseCnpg(line.message);
+  const text = parsed?.text ?? line.message;
+  const sevClass = parsed?.severity
+    ? severityClass[parsed.severity.toUpperCase()]
+    : undefined;
   return (
-    // Hanging indent: each entry starts flush-left, wrapped continuation
-    // lines are indented so a long line reads as one entry, not several.
     <div
-      className="pr-1 hover:bg-muted/50 rounded-sm text-foreground whitespace-pre-wrap break-words"
-      style={{ paddingLeft: "2ch", textIndent: "-2ch" }}
+      className={cn(
+        "pr-1 hover:bg-muted/50 rounded-sm whitespace-pre-wrap break-words",
+        sevClass ?? "text-foreground",
+      )}
     >
-      {line.message}
+      {text}
     </div>
   );
 }

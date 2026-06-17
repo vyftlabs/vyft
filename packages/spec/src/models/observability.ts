@@ -54,6 +54,14 @@ export const MetricKind = z
     "requestRate",
     "errorRate",
     "latency",
+    "connections",
+    "transactions",
+    "cacheHit",
+    "dbSize",
+    "replicationLag",
+    "redisMemory",
+    "redisClients",
+    "redisOps",
   ])
   .meta({ id: "MetricKind" });
 

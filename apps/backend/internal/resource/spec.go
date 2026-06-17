@@ -2,10 +2,14 @@ package resource
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 
+	"github.com/vyftlabs/vyft/apps/backend/internal/connref"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
@@ -67,6 +71,89 @@ func persistEmbeddedRoute(ctx context.Context, q *sqlc.Queries, projectID, envir
 		Config:        cfg,
 	})
 	return err
+}
+
+// postgresConnVars maps the exported env-var name → key in the CNPG-generated
+// "<slug>-app" secret. Seeded as owned secret-ref variables so other resources
+// can import the connection without the password ever entering our store.
+var postgresConnVars = []struct{ Key, SecretKey string }{
+	{"DATABASE_URL", "uri"},
+	{"PGHOST", "host"},
+	{"PGPORT", "port"},
+	{"PGUSER", "username"},
+	{"PGPASSWORD", "password"},
+	{"PGDATABASE", "dbname"},
+}
+
+// seedPostgresConnVars creates the owned secret-ref variables for a postgres
+// resource. The secret name is deterministic ("<slug>-app"), so this runs at
+// create time even though CNPG fills the secret's values asynchronously.
+func seedPostgresConnVars(ctx context.Context, q *sqlc.Queries, projectID, environmentID, resourceID uuid.UUID, slug string) error {
+	secretName := slug + "-app"
+	for _, cv := range postgresConnVars {
+		val := connref.Value(secretName, cv.SecretKey)
+		if _, err := q.CreatePlainVariable(ctx, sqlc.CreatePlainVariableParams{
+			ID:            pgxid.PgUUID(uuid.New()),
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: pgxid.PgUUID(environmentID),
+			ResourceID:    pgxid.PgUUID(resourceID),
+			Key:           cv.Key,
+			Value:         &val,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// randomSecret returns a URL-safe random token for generated credentials.
+func randomSecret() string {
+	b := make([]byte, 24)
+	_, _ = rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// seedRedisConnVars creates the owned connection variables for a redis
+// resource. Unlike postgres (where CNPG owns the password), we generate the
+// password ourselves, so REDIS_PASSWORD/REDIS_URL are stored secret values —
+// buildRedis reads REDIS_PASSWORD to configure auth, and apps import them.
+// HOST/PORT are deterministic plain values.
+func seedRedisConnVars(ctx context.Context, q *sqlc.Queries, projectID, environmentID, resourceID uuid.UUID, slug string) error {
+	pw := randomSecret()
+	plain := []struct{ Key, Val string }{
+		{"REDIS_HOST", slug},
+		{"REDIS_PORT", "6379"},
+	}
+	for _, kv := range plain {
+		val := kv.Val
+		if _, err := q.CreatePlainVariable(ctx, sqlc.CreatePlainVariableParams{
+			ID:            pgxid.PgUUID(uuid.New()),
+			ProjectID:     pgxid.PgUUID(projectID),
+			EnvironmentID: pgxid.PgUUID(environmentID),
+			ResourceID:    pgxid.PgUUID(resourceID),
+			Key:           kv.Key,
+			Value:         &val,
+		}); err != nil {
+			return err
+		}
+	}
+	secret := []struct{ Key, Val string }{
+		{"REDIS_PASSWORD", pw},
+		{"REDIS_URL", fmt.Sprintf("redis://default:%s@%s:6379", pw, slug)},
+	}
+	for _, kv := range secret {
+		if _, err := q.CreateSecretVariable(ctx, sqlc.CreateSecretVariableParams{
+			ID:             pgxid.PgUUID(uuid.New()),
+			ProjectID:      pgxid.PgUUID(projectID),
+			EnvironmentID:  pgxid.PgUUID(environmentID),
+			ResourceID:     pgxid.PgUUID(resourceID),
+			Key:            kv.Key,
+			ValueEncrypted: []byte(kv.Val),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func persistEmbeddedVariable(ctx context.Context, q *sqlc.Queries, projectID, environmentID, resourceID uuid.UUID, v openapi.ResourceVariableCreate) error {

@@ -433,6 +433,117 @@ func (h *Handler) GetResourceLatencyMetrics(ctx context.Context, req openapi.Get
 	return openapi.GetResourceLatencyMetrics200JSONResponse(toLatencyMetrics(s, r.Step())), nil
 }
 
+// GetResourceConnectionsMetrics serves /metrics/connections — postgres active
+// backends (value) vs max_connections (limit).
+func (h *Handler) GetResourceConnectionsMetrics(ctx context.Context, req openapi.GetResourceConnectionsMetricsRequestObject) (openapi.GetResourceConnectionsMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindConnections, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindConnections, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceConnectionsMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
+}
+
+// GetResourceDbSizeMetrics serves /metrics/dbSize — postgres database size
+// (value) vs the PVC's requested storage (limit).
+func (h *Handler) GetResourceDbSizeMetrics(ctx context.Context, req openapi.GetResourceDbSizeMetricsRequestObject) (openapi.GetResourceDbSizeMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindDbSize, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindDbSize, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceDbSizeMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
+}
+
+// GetResourceRedisMemoryMetrics serves /metrics/redisMemory — redis memory
+// used (value) vs maxmemory (limit).
+func (h *Handler) GetResourceRedisMemoryMetrics(ctx context.Context, req openapi.GetResourceRedisMemoryMetricsRequestObject) (openapi.GetResourceRedisMemoryMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindRedisMemory, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindRedisMemory, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceRedisMemoryMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
+}
+
+// GetResourceRedisClientsMetrics serves /metrics/redisClients — connected
+// clients (value) vs maxclients (limit).
+func (h *Handler) GetResourceRedisClientsMetrics(ctx context.Context, req openapi.GetResourceRedisClientsMetricsRequestObject) (openapi.GetResourceRedisClientsMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindRedisClients, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	series, err := mc.QueryResource(ctx, source.KindRedisClients, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceRedisClientsMetrics200JSONResponse(toResourceMetrics(series, r.Step())), nil
+}
+
+// GetResourceRedisOpsMetrics serves /metrics/redisOps — commands/sec.
+func (h *Handler) GetResourceRedisOpsMetrics(ctx context.Context, req openapi.GetResourceRedisOpsMetricsRequestObject) (openapi.GetResourceRedisOpsMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindRedisOps, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindRedisOps, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceRedisOpsMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
+}
+
+// GetResourceReplicationLagMetrics serves /metrics/replicationLag — postgres
+// replication lag in seconds (HA only; empty for single-instance).
+func (h *Handler) GetResourceReplicationLagMetrics(ctx context.Context, req openapi.GetResourceReplicationLagMetricsRequestObject) (openapi.GetResourceReplicationLagMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindReplicationLag, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindReplicationLag, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceReplicationLagMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
+}
+
+// GetResourceTransactionsMetrics serves /metrics/transactions — postgres
+// transactions/sec (commits + rollbacks).
+func (h *Handler) GetResourceTransactionsMetrics(ctx context.Context, req openapi.GetResourceTransactionsMetricsRequestObject) (openapi.GetResourceTransactionsMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindTransactions, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindTransactions, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceTransactionsMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
+}
+
+// GetResourceCacheHitMetrics serves /metrics/cacheHit — postgres buffer cache
+// hit ratio (fraction 0..1).
+func (h *Handler) GetResourceCacheHitMetrics(ctx context.Context, req openapi.GetResourceCacheHitMetricsRequestObject) (openapi.GetResourceCacheHitMetricsResponseObject, error) {
+	mc, sel, r, err := h.metricsContext(ctx, req.ResourceId, source.KindCacheHit, req.Params.From, req.Params.To)
+	if err != nil {
+		return nil, err
+	}
+	s, err := mc.QueryRate(ctx, source.KindCacheHit, sel, r)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	return openapi.GetResourceCacheHitMetrics200JSONResponse(toRateMetrics(s, r.Step())), nil
+}
+
 // toResourceMetrics converts internal ResourceSeries slices to the
 // generated wire shape. Empty/zero Limit/Request are omitted from the
 // payload.

@@ -1,7 +1,12 @@
 import { expect, type Page } from "@playwright/test";
 
 import { namespaceFor } from "../k8s/client.ts";
-import { createImage, type ImageInput } from "../resource/actions.ts";
+import {
+  createImage,
+  createPostgres,
+  type ImageInput,
+  type PostgresInput,
+} from "../resource/actions.ts";
 import type { ProjectHandle } from "../types.ts";
 
 export type CreateInput = {
@@ -79,6 +84,6 @@ export async function remove(page: Page, slug: string): Promise<void> {
   await page.waitForURL(/\/(?:projects)?$/, { timeout: 30_000 });
 }
 
-// Re-export the resource action signature for the chain.
-export { createImage as createImageService };
-export type { ImageInput };
+// Re-export the resource action signatures for the chain.
+export { createImage as createImageService, createPostgres };
+export type { ImageInput, PostgresInput };

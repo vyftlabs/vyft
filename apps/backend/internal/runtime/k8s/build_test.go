@@ -110,6 +110,52 @@ func TestBuild_RegistryGolden(t *testing.T) {
 	checkGolden(t, "registry.golden.yaml", got)
 }
 
+func TestBuild_PostgresGolden(t *testing.T) {
+	resID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	specJSON, _ := json.Marshal(map[string]any{
+		"version":   "16",
+		"instances": 1,
+		"storage":   1024,
+		"resources": map[string]any{"cpu": 0.5, "memory": 512},
+		"database":  "appdb",
+	})
+
+	p := deployment.Project{Slug: "demo", Name: "Demo"}
+	state := deployment.State{
+		Resources: []deployment.Resource{
+			{ID: resID, Name: "db", Slug: "db", Kind: "postgres", Spec: specJSON},
+		},
+	}
+
+	m := Build(p, state)
+	got := mustYAML(t, m)
+	checkGolden(t, "postgres.golden.yaml", got)
+}
+
+func TestBuild_RedisGolden(t *testing.T) {
+	resID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	specJSON, _ := json.Marshal(map[string]any{
+		"version":   "7",
+		"storage":   512,
+		"resources": map[string]any{"cpu": 0.25, "memory": 256},
+	})
+
+	p := deployment.Project{Slug: "demo", Name: "Demo"}
+	state := deployment.State{
+		Resources: []deployment.Resource{
+			{ID: resID, Name: "cache", Slug: "cache", Kind: "redis", Spec: specJSON},
+		},
+		Variables: []deployment.Variable{
+			{ID: uuid.MustParse("00000000-0000-0000-0000-00000000bbb1"),
+				ResourceID: &resID, Key: "REDIS_PASSWORD", Value: "s3cret", Secret: true},
+		},
+	}
+
+	m := Build(p, state)
+	got := mustYAML(t, m)
+	checkGolden(t, "redis.golden.yaml", got)
+}
+
 func mustYAML(t *testing.T, m Manifests) []byte {
 	t.Helper()
 	out, err := yaml.Marshal(m)

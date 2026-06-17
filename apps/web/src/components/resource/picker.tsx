@@ -64,6 +64,18 @@ export function ResourcePickerCommand({
                 .filter((d) => d.category === category)
                 .map((def) => {
                   const Icon = def.icon;
+                  if (def.available) {
+                    return (
+                      <CommandItem
+                        key={def.type}
+                        onSelect={() => onSelect(def.type)}
+                        data-testid={`service.picker.${def.type}`}
+                      >
+                        <Icon className="text-muted-foreground" />
+                        {def.name}
+                      </CommandItem>
+                    );
+                  }
                   return (
                     <CommandItem key={def.type} disabled className="opacity-50">
                       <Icon className="text-muted-foreground" />

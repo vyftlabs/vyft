@@ -207,4 +207,127 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
       },
     },
   },
+  // Postgres (CNPG) database metrics. connections is resource-shaped
+  // (value=active, limit=max_connections); transactions + cacheHit are
+  // single aggregate rate series.
+  "/projects/{projectId}/resources/{resourceId}/metrics/connections": {
+    get: {
+      operationId: "getResourceConnectionsMetrics",
+      summary: "Postgres connections timeseries (value=active, limit=max)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/transactions": {
+    get: {
+      operationId: "getResourceTransactionsMetrics",
+      summary: "Postgres transactions/sec timeseries (commits + rollbacks)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/dbSize": {
+    get: {
+      operationId: "getResourceDbSizeMetrics",
+      summary: "Postgres database size timeseries (value=used, limit=capacity)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/redisMemory": {
+    get: {
+      operationId: "getResourceRedisMemoryMetrics",
+      summary: "Redis memory used timeseries (value=used, limit=maxmemory)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/redisClients": {
+    get: {
+      operationId: "getResourceRedisClientsMetrics",
+      summary: "Redis connected clients timeseries (value=clients, limit=max)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: ResourceMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/redisOps": {
+    get: {
+      operationId: "getResourceRedisOpsMetrics",
+      summary: "Redis commands/sec timeseries",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/replicationLag": {
+    get: {
+      operationId: "getResourceReplicationLagMetrics",
+      summary: "Postgres replication lag timeseries (seconds, HA only)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
+  "/projects/{projectId}/resources/{resourceId}/metrics/cacheHit": {
+    get: {
+      operationId: "getResourceCacheHitMetrics",
+      summary: "Postgres buffer cache hit ratio timeseries (fraction 0..1)",
+      tags: ["Observability"],
+      requestParams: { path: ResourceScope, query: MetricsRangeQuery },
+      responses: {
+        200: {
+          description: "Series",
+          content: { "application/json": { schema: RateMetrics } },
+        },
+        ...itemErrors,
+      },
+    },
+  },
 };

@@ -1,0 +1,69 @@
+Deployments: null
+Ingresses: null
+PVCs: null
+PodMonitors:
+- apiVersion: monitoring.coreos.com/v1
+  kind: PodMonitor
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: cache
+    name: cache
+  spec:
+    podMetricsEndpoints:
+    - targetPort: 9121
+    selector:
+      matchLabels:
+        vyft.dev/resource: cache
+RedisCRs:
+- apiVersion: redis.redis.opstreelabs.in/v1beta2
+  kind: Redis
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: cache
+    name: cache
+  spec:
+    kubernetesConfig:
+      image: quay.io/opstree/redis:v7.0.15
+      imagePullPolicy: IfNotPresent
+      redisSecret:
+        key: REDIS_PASSWORD
+        name: cache-redis
+      resources:
+        limits:
+          cpu: 250m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+    redisExporter:
+      enabled: true
+      env:
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: REDIS_PASSWORD
+            name: cache-redis
+      image: quay.io/opstree/redis-exporter:v1.44.0
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 512Mi
+Secrets:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    labels:
+      vyft.dev/project: demo
+      vyft.dev/resource: cache
+    name: cache-redis
+    namespace: ""
+  stringData:
+    REDIS_PASSWORD: s3cret
+  type: Opaque
+Services: null

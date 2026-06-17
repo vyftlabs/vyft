@@ -6,6 +6,7 @@ import {
   type Resource,
   ResourceAppCreate,
 } from "@vyft/spec";
+import { SiPostgresql, SiRedis } from "@icons-pack/react-simple-icons";
 import { LoaderIcon, MoreHorizontalIcon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -71,8 +72,11 @@ import {
   RangeSelector,
 } from "../metrics/tab";
 import { ServiceIcon } from "../node";
+import { BackupsTab } from "./backups-tab";
 import { DeploymentDetail } from "./deployment-detail";
 import { EventsTab } from "./events-tab";
+import { PostgresSettings } from "./postgres-settings";
+import { RedisSettings } from "./redis-settings";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
 import { formatDuration, timeAgo } from "./timeline";
 
@@ -149,14 +153,12 @@ function DeploymentRow({
   return (
     <div
       className={cn(
-        "group flex gap-2 py-3",
-        // Compact (Overview) list tightens the first row to nothing. The
-        // detailed tab balances the top: container pt-4 (16px) + first-item top
-        // == the tab's horizontal padding (px-4=16 / sm:px-6=24), so the first
-        // row's top inset matches the sides.
-        !detailed && "first:pt-0",
-        detailed && "first:pt-0 sm:first:pt-2",
-        onSelect && "transition-colors hover:bg-muted/50",
+        "group flex gap-2 py-2",
+        // Detailed tab uses roomier rows + balances the top: container pt-4
+        // (16px) + first-item top == the tab's horizontal padding (px-4=16 /
+        // sm:px-6=24), so the first row's top inset matches the sides.
+        detailed && "py-3 first:pt-0 sm:first:pt-2",
+        onSelect && "px-2 transition-colors hover:bg-muted/50",
       )}
     >
       <div
@@ -829,7 +831,7 @@ function AddDiskDialog({
     handleSubmit,
     reset,
     setValue,
-    watch,
+    control,
     formState: { errors, isSubmitted },
   } = useForm<DiskFormValues>({
     defaultValues: { name: "", size: DEFAULT_DISK_MB, path: "" },
@@ -843,7 +845,7 @@ function AddDiskDialog({
     if (open) reset({ name: "", size: DEFAULT_DISK_MB, path: "" });
   }, [open, reset]);
 
-  const size = watch("size");
+  const size = useWatch({ control, name: "size" });
   const currentIdx = closestDiskIndex(size);
   const currentGib = DISK_GIB_STEPS[currentIdx] ?? 1;
 
@@ -1183,6 +1185,9 @@ function useServiceDrawerTabs(
   },
   onClose?: () => void,
   initialTab?: string,
+  // creatingKind selects which create form renders in "creating" mode (the
+  // resource doesn't exist yet, so kind can't come from it).
+  creatingKind?: "app" | "postgres" | "redis",
 ): {
   tabs: DrawerTab[];
   defaultTab: string;
@@ -1211,13 +1216,21 @@ function useServiceDrawerTabs(
         {
           id: "settings",
           label: "Settings",
-          content: (
-            <SettingsTab
-              project={project}
-              projectId={projectId}
-              createProps={createProps}
-            />
-          ),
+          content:
+            creatingKind === "postgres" ? (
+              <PostgresSettings
+                projectId={projectId}
+                createProps={createProps}
+              />
+            ) : creatingKind === "redis" ? (
+              <RedisSettings projectId={projectId} createProps={createProps} />
+            ) : (
+              <SettingsTab
+                project={project}
+                projectId={projectId}
+                createProps={createProps}
+              />
+            ),
         },
       ],
     };
@@ -1301,6 +1314,12 @@ function useServiceDrawerTabs(
             resourceId={resource.id}
             projectId={projectId}
             windowMs={metricsWindow}
+            kind={resource.config.kind}
+            instances={
+              resource.config.kind === "postgres"
+                ? resource.config.spec.instances
+                : undefined
+            }
           />
         ),
       },
@@ -1326,6 +1345,21 @@ function useServiceDrawerTabs(
           <EventsTab resourceId={resource.id} projectId={projectId} />
         ),
       },
+      // Backups tab — postgres only (CNPG-backed). Inserted before Settings.
+      ...(resource.config.kind === "postgres"
+        ? [
+            {
+              id: "backups",
+              label: "Backups",
+              onHover: () => {
+                prefetch(api.backups.list(projectId, resource.id));
+              },
+              content: (
+                <BackupsTab resourceId={resource.id} projectId={projectId} />
+              ),
+            },
+          ]
+        : []),
       {
         id: "settings",
         label: "Settings",
@@ -1335,14 +1369,19 @@ function useServiceDrawerTabs(
           prefetch(api.variables.resource.list(projectId, resource.id));
           prefetch(api.resources.list(projectId));
         },
-        content: (
-          <SettingsTab
-            resource={resource}
-            project={project}
-            projectId={projectId}
-            onClose={onClose}
-          />
-        ),
+        content:
+          resource.config.kind === "postgres" ? (
+            <PostgresSettings resource={resource} projectId={projectId} />
+          ) : resource.config.kind === "redis" ? (
+            <RedisSettings resource={resource} projectId={projectId} />
+          ) : (
+            <SettingsTab
+              resource={resource}
+              project={project}
+              projectId={projectId}
+              onClose={onClose}
+            />
+          ),
       },
     ],
   };
@@ -1358,6 +1397,7 @@ export function ServiceDrawer({
   expanded,
   expandedContent,
   initialTab,
+  creatingKind,
   onClose,
   onCreated,
 }: {
@@ -1373,6 +1413,8 @@ export function ServiceDrawer({
   // menu's "Logs"/"Metrics" shortcuts). Ignored if that tab isn't present
   // for this resource; falls back to the computed default.
   initialTab?: string;
+  // creatingKind picks the create form when creating a new resource.
+  creatingKind?: "app" | "postgres" | "redis";
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -1383,8 +1425,21 @@ export function ServiceDrawer({
     enabled: !!resourceId,
   });
 
+  // Managed-service kind (postgres/redis) drives a brand icon + subtitle.
+  const kind = resource ? resource.config.kind : creatingKind;
+  const managedLabel =
+    kind === "postgres" ? "Postgres" : kind === "redis" ? "Redis" : null;
+  const managedIcon =
+    kind === "postgres" ? (
+      <SiPostgresql className="size-5 text-muted-foreground" />
+    ) : kind === "redis" ? (
+      <SiRedis className="size-5 text-muted-foreground" />
+    ) : null;
+
   const drawerName = isCreating
-    ? "New service"
+    ? managedLabel
+      ? `New ${managedLabel}`
+      : "New service"
     : (resource?.name ?? "New service");
   const { tabs, defaultTab, activeTab, setActiveTab } = useServiceDrawerTabs(
     resource ?? undefined,
@@ -1400,6 +1455,7 @@ export function ServiceDrawer({
     initialTab && ["overview", "deployments", "metrics", "logs", "events", "settings"].includes(initialTab)
       ? initialTab
       : undefined,
+    creatingKind,
   );
 
   if (!isOpen) return null;
@@ -1408,8 +1464,23 @@ export function ServiceDrawer({
 
   return (
     <ServiceDrawerShell
-      name={drawerName}
-      icon={resource ? <ServiceIcon image={image} /> : undefined}
+      name={
+        managedLabel && resource ? (
+          <div className="min-w-0">
+            <p className="text-lg font-semibold truncate leading-tight">
+              {resource.name}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              {managedLabel}
+            </p>
+          </div>
+        ) : (
+          drawerName
+        )
+      }
+      icon={
+        managedIcon ?? (resource ? <ServiceIcon image={image} /> : undefined)
+      }
       tabs={tabs}
       defaultTab={
         initialTab && tabs.some((t) => t.id === initialTab)

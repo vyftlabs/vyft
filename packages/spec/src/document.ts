@@ -1,4 +1,5 @@
 import { createDocument } from "zod-openapi";
+import { backupPaths } from "./paths/backups.ts";
 import { deploymentPaths } from "./paths/deployments.ts";
 import { environmentPaths } from "./paths/environments.ts";
 import { observabilityPaths } from "./paths/observability.ts";
@@ -28,6 +29,7 @@ export const document = createDocument({
     { name: "Deployments" },
     { name: "Observability" },
     { name: "Sources" },
+    { name: "Backups" },
   ],
   paths: {
     ...projectPaths,
@@ -39,5 +41,6 @@ export const document = createDocument({
     ...deploymentPaths,
     ...observabilityPaths,
     ...sourcePaths,
+    ...backupPaths,
   },
 });

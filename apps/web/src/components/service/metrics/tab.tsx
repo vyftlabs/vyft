@@ -19,10 +19,12 @@ import {
   formatBytes,
   formatBytesPerSec,
   formatCores,
+  formatCount,
   formatFraction,
   formatPercentOfLimit,
   formatRate,
   formatSeconds,
+  formatTps,
   KIND_LABELS,
 } from "./format";
 
@@ -42,11 +44,137 @@ export function MetricsTab({
   projectId,
   resourceId,
   windowMs,
+  kind,
+  instances,
 }: {
   projectId: string;
   resourceId: string;
   windowMs: number;
+  kind?: string;
+  // instances drives the HA-only replication-lag panel for postgres.
+  instances?: number;
 }) {
+  // Redis: CPU + redis memory used/max, connected clients, ops/sec — the
+  // cache-relevant signals (no HTTP panels). redis_exporter via the PodMonitor.
+  if (kind === "redis") {
+    return (
+      <ScrollArea className="h-full -mr-6 pr-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
+          <Cell className="px-0 pt-0 pb-5 sm:pr-5">
+            <ResourcePanel
+              kind="cpu"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 py-5 sm:pt-0 sm:pl-5">
+            <ResourcePanel
+              kind="redisMemory"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 py-5 sm:pb-0 sm:pr-5">
+            <ResourcePanel
+              kind="redisClients"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 pt-5 pb-0 sm:pl-5">
+            <RatePanel
+              kind="redisOps"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+        </div>
+      </ScrollArea>
+    );
+  }
+
+  // Postgres: CPU/Memory/Storage only — the HTTP RED/latency panels are
+  // meaningless for a database. (DB-specific panels — connections/TPS/cache —
+  // land once CNPG's exporter metrics are scraped.)
+  if (kind === "postgres") {
+    // Curated for app-dev audience (matches cloud consoles, not DBA
+    // dashboards): CPU/Memory lead (the universal at-rest glance, consistent
+    // with app cards), then the DB-critical pair Connections + Storage, then
+    // Transactions for activity. Cache-hit omitted (near-constant,
+    // non-actionable); replication lag deferred to HA work.
+    return (
+      <ScrollArea className="h-full -mr-6 pr-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
+          <Cell className="px-0 pt-0 pb-5 sm:pr-5">
+            <ResourcePanel
+              kind="cpu"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 py-5 sm:pt-0 sm:pl-5">
+            <ResourcePanel
+              kind="memory"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 py-5 sm:pr-5">
+            <ResourcePanel
+              kind="connections"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          <Cell className="px-0 py-5 sm:pl-5">
+            <ResourcePanel
+              kind="dbSize"
+              projectId={projectId}
+              resourceId={resourceId}
+              windowMs={windowMs}
+            />
+          </Cell>
+          {(instances ?? 1) > 1 ? (
+            <>
+              <Cell className="px-0 pt-5 pb-0 sm:pr-5">
+                <RatePanel
+                  kind="transactions"
+                  projectId={projectId}
+                  resourceId={resourceId}
+                  windowMs={windowMs}
+                />
+              </Cell>
+              <Cell className="px-0 pt-5 pb-0 sm:pl-5">
+                <RatePanel
+                  kind="replicationLag"
+                  projectId={projectId}
+                  resourceId={resourceId}
+                  windowMs={windowMs}
+                />
+              </Cell>
+            </>
+          ) : (
+            <Cell full className="px-0 pt-5 pb-0">
+              <RatePanel
+                kind="transactions"
+                projectId={projectId}
+                resourceId={resourceId}
+                windowMs={windowMs}
+              />
+            </Cell>
+          )}
+        </div>
+      </ScrollArea>
+    );
+  }
+
   // gap-px over a bg-border container: the 1px gutters between cells ARE the
   // rules. Horizontal gaps (between rows) and the vertical gap (between the
   // cpu/memory + rate pairs) are the same gutter, so they meet cleanly at the
@@ -192,7 +320,14 @@ function ResourcePanel({
   resourceId,
   windowMs,
 }: {
-  kind: "cpu" | "memory" | "disk";
+  kind:
+    | "cpu"
+    | "memory"
+    | "disk"
+    | "connections"
+    | "dbSize"
+    | "redisMemory"
+    | "redisClients";
   projectId: string;
   resourceId: string;
   windowMs: number;
@@ -202,7 +337,23 @@ function ResourcePanel({
       ? api.observability.cpuMetrics(projectId, resourceId, windowMs)
       : kind === "memory"
         ? api.observability.memoryMetrics(projectId, resourceId, windowMs)
-        : api.observability.diskMetrics(projectId, resourceId, windowMs);
+        : kind === "connections"
+          ? api.observability.connectionsMetrics(projectId, resourceId, windowMs)
+          : kind === "dbSize"
+            ? api.observability.dbSizeMetrics(projectId, resourceId, windowMs)
+            : kind === "redisMemory"
+              ? api.observability.redisMemoryMetrics(
+                  projectId,
+                  resourceId,
+                  windowMs,
+                )
+              : kind === "redisClients"
+                ? api.observability.redisClientsMetrics(
+                    projectId,
+                    resourceId,
+                    windowMs,
+                  )
+                : api.observability.diskMetrics(projectId, resourceId, windowMs);
   const q = useQuery(opts);
   const title = KIND_LABELS[kind];
 
@@ -230,7 +381,12 @@ function ResourcePanel({
   if (series.length === 0)
     return <ChartMessage title={title} message="No data yet." />;
 
-  const base = kind === "cpu" ? formatCores : formatBytes;
+  const base =
+    kind === "cpu"
+      ? formatCores
+      : kind === "connections" || kind === "redisClients"
+        ? formatCount
+        : formatBytes;
   const limit = maxLimit(data.series);
   const headlineFormat =
     limit > 0 ? (v: number) => formatPercentOfLimit(v, limit, base) : undefined;
@@ -322,7 +478,13 @@ function RatePanel({
   resourceId,
   windowMs,
 }: {
-  kind: "requestRate" | "errorRate";
+  kind:
+    | "requestRate"
+    | "errorRate"
+    | "transactions"
+    | "cacheHit"
+    | "replicationLag"
+    | "redisOps";
   projectId: string;
   resourceId: string;
   windowMs: number;
@@ -330,7 +492,23 @@ function RatePanel({
   const q = useQuery(
     kind === "requestRate"
       ? api.observability.requestRateMetrics(projectId, resourceId, windowMs)
-      : api.observability.errorRateMetrics(projectId, resourceId, windowMs),
+      : kind === "errorRate"
+        ? api.observability.errorRateMetrics(projectId, resourceId, windowMs)
+        : kind === "transactions"
+          ? api.observability.transactionsMetrics(projectId, resourceId, windowMs)
+          : kind === "replicationLag"
+            ? api.observability.replicationLagMetrics(
+                projectId,
+                resourceId,
+                windowMs,
+              )
+            : kind === "redisOps"
+              ? api.observability.redisOpsMetrics(projectId, resourceId, windowMs)
+              : api.observability.cacheHitMetrics(
+                  projectId,
+                  resourceId,
+                  windowMs,
+                ),
   );
   const title = KIND_LABELS[kind];
 
@@ -354,10 +532,34 @@ function RatePanel({
       title={title}
       series={[{ key: "value", label: title, points }]}
       windowMs={windowMs}
-      format={kind === "requestRate" ? formatRate : formatFraction}
+      format={rateFormat(kind)}
       pending={q.isPlaceholderData}
     />
   );
+}
+
+// rateFormat picks the unit for a RatePanel kind: requests + transactions are
+// per-second counts; errorRate + cacheHit are 0..1 fractions shown as percent.
+function rateFormat(
+  kind:
+    | "requestRate"
+    | "errorRate"
+    | "transactions"
+    | "cacheHit"
+    | "replicationLag"
+    | "redisOps",
+) {
+  switch (kind) {
+    case "requestRate":
+    case "redisOps":
+      return formatRate;
+    case "transactions":
+      return formatTps;
+    case "replicationLag":
+      return formatSeconds;
+    default:
+      return formatFraction;
+  }
 }
 
 function LatencyPanel({

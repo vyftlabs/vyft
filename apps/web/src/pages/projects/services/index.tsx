@@ -96,6 +96,9 @@ function ServicesCanvas() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [creatingService, setCreatingService] = useState(false);
+  const [creatingKind, setCreatingKind] = useState<
+    "app" | "postgres" | "redis"
+  >("app");
   const [drawerKey, setDrawerKey] = useState(0);
   // Tab to open the drawer on, set by the node context-menu shortcuts.
   const [drawerTab, setDrawerTab] = useState<string | undefined>(undefined);
@@ -196,6 +199,7 @@ function ServicesCanvas() {
         const data: ServiceNodeData = {
           label: r.name,
           image,
+          kind: r.config.kind,
           status: r.status ?? { state: "unknown" },
           onHover: () => {
             // staleTime on prefetchQuery makes it a no-op when cached
@@ -341,6 +345,7 @@ function ServicesCanvas() {
               key={drawerKey}
               resourceId={selectedId}
               creating={creatingService}
+              creatingKind={creatingKind}
               createPosition={createPosition ?? undefined}
               project={project ?? ""}
               projectId={projectId}
@@ -368,9 +373,12 @@ function ServicesCanvas() {
             onOpenChange={isEmpty ? undefined : setAddDialogOpen}
             dismissible={!isEmpty}
             container={container}
-            onSelect={() => {
+            onSelect={(type) => {
               setAddDialogOpen(false);
               setSelectedId(null);
+              setCreatingKind(
+                type === "postgres" || type === "redis" ? type : "app",
+              );
               setCreatingService(true);
               setDrawerKey((k) => k + 1);
             }}
@@ -411,7 +419,7 @@ function ServicesCanvas() {
             x={contextMenu.x}
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
-            onSelect={() => {
+            onSelect={(type) => {
               const flow = screenToFlowPosition({
                 x: contextMenu.x,
                 y: contextMenu.y,
@@ -422,6 +430,9 @@ function ServicesCanvas() {
               });
               setContextMenu(null);
               setSelectedId(null);
+              setCreatingKind(
+                type === "postgres" || type === "redis" ? type : "app",
+              );
               setCreatingService(true);
               setDrawerKey((k) => k + 1);
             }}

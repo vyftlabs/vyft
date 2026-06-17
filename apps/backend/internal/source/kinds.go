@@ -12,4 +12,14 @@ const (
 	KindRequestRate MetricKind = "requestRate"
 	KindErrorRate   MetricKind = "errorRate"
 	KindLatency     MetricKind = "latency"
+	// Postgres (CNPG) database metrics.
+	KindConnections  MetricKind = "connections"
+	KindTransactions MetricKind = "transactions"
+	KindCacheHit       MetricKind = "cacheHit"
+	KindDbSize         MetricKind = "dbSize"
+	KindReplicationLag MetricKind = "replicationLag"
+	// Redis (redis_exporter) metrics.
+	KindRedisMemory  MetricKind = "redisMemory"
+	KindRedisClients MetricKind = "redisClients"
+	KindRedisOps     MetricKind = "redisOps"
 )
