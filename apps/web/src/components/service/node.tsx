@@ -1,6 +1,7 @@
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { BoxIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export type ServiceState =
@@ -175,6 +176,10 @@ export function ServiceNodeCard({
   const tag = getImageTag(image);
   const isDeploying = status.state === "pending";
   const isStopped = status.state === "stopped";
+  // Transient states where the cluster is actively converging — surface a
+  // spinner so the node reads as "working", not just a static color.
+  const isProgressing =
+    status.state === "pending" || status.state === "terminating";
 
   return (
     <div className={cn("relative w-56 h-20", isStopped && "opacity-50")}>
@@ -225,6 +230,14 @@ export function ServiceNodeCard({
               <ServiceIcon image={image} />
             </div>
             <p className="text-sm font-medium truncate">{label}</p>
+            {isProgressing && (
+              <Spinner
+                className={cn(
+                  "size-3.5 ml-auto shrink-0",
+                  theme?.text ?? "text-muted-foreground",
+                )}
+              />
+            )}
           </div>
 
           {/* Subtitle: message takes priority, then image tag for deploy/recent */}

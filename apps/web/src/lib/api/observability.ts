@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type {
   LatencyMetrics,
   LogLine,
@@ -203,6 +203,7 @@ export const cpuMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "cpu", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -239,6 +240,7 @@ export const memoryMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "memory", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -275,6 +277,7 @@ export const diskMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "disk", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -311,6 +314,7 @@ export const networkMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "network", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -347,6 +351,7 @@ export const requestRateMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "requestRate", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -383,6 +388,7 @@ export const errorRateMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "errorRate", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),
@@ -419,6 +425,7 @@ export const latencyMetrics = (
 ) =>
   queryOptions({
     queryKey: [...ROOT, "latency", projectId, resourceId, windowMs],
+    placeholderData: keepPreviousData,
     refetchInterval: (q: { state: { error: unknown } }) =>
       is404(q.state.error) ? false : POLL_INTERVAL_MS,
     retry: (_count: number, err: unknown) => !is404(err),

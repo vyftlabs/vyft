@@ -9,11 +9,22 @@ import (
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
+	"github.com/vyftlabs/vyft/apps/backend/internal/status"
 )
 
 type Handler struct{ svc *Service }
 
 func NewHandler(s *Service) *Handler { return &Handler{svc: s} }
+
+// toWireStatus maps the internal status to the optional wire ServiceStatus.
+// Message is omitted when empty (running/stopped carry no message).
+func toWireStatus(st status.Status) *openapi.ServiceStatus {
+	w := &openapi.ServiceStatus{State: openapi.ServiceState(st.State)}
+	if st.Message != "" {
+		w.Message = &st.Message
+	}
+	return w
+}
 
 // resourceToWire composes a Resource wire object from a row + joined routes.
 // Resource is the documented exception to inline mapping (~60 LOC, 4 callers).
@@ -80,11 +91,17 @@ func (h *Handler) ListResources(ctx context.Context, req openapi.ListResourcesRe
 	if err != nil {
 		return nil, err
 	}
+	// Best-effort live health, folded in by slug. A cluster error yields an
+	// empty map — resources stay status-less and render as "unknown".
+	statuses := h.svc.StatusesByProject(ctx, uuid.UUID(req.ProjectId))
 	out := make([]openapi.Resource, 0, len(rows))
 	for _, r := range rows {
 		w, err := resourceToWire(r)
 		if err != nil {
 			return nil, err
+		}
+		if st, ok := statuses[w.Slug]; ok {
+			w.Status = toWireStatus(st)
 		}
 		out = append(out, w)
 	}

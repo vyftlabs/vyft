@@ -24,6 +24,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/httpx"
 	k8srt "github.com/vyftlabs/vyft/apps/backend/internal/runtime/k8s"
 	"github.com/vyftlabs/vyft/apps/backend/internal/source/crud"
+	"github.com/vyftlabs/vyft/apps/backend/internal/status"
 	"github.com/vyftlabs/vyft/apps/backend/internal/web"
 )
 
@@ -53,7 +54,13 @@ func Run(ctx context.Context) error {
 	}
 
 	rt, cs, mcs, hooks := buildRuntime(config, pool)
-	server, depSvc := New(config, pool, rt, cs, mcs, hooks)
+
+	// Live status watcher: one set of cluster watches feeds every SSE
+	// subscriber. Tied to ctx so its watches stop on shutdown.
+	watcher := status.NewWatcher(cs)
+	watcher.Start(ctx)
+
+	server, depSvc := New(config, pool, rt, cs, mcs, hooks, watcher)
 
 	// Boot recovery: re-fire goroutines for any deployment row stuck in
 	// pending/applying (process crashed mid-apply).
@@ -92,7 +99,7 @@ func Run(ctx context.Context) error {
 	}
 }
 
-func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, hooks ClusterHooks) (*http.Server, *deployment.Service) {
+func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes.Interface, mcs metricsclient.Interface, hooks ClusterHooks, watcher *status.Watcher) (*http.Server, *deployment.Service) {
 	database := vdb.New(pool)
 
 	api, depSvc := NewAPI(database, rt, cs, mcs, hooks)
@@ -103,6 +110,11 @@ func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealthz)
+	// SSE status stream is mounted raw (not via the generated handler, which
+	// can't stream). The specific pattern wins over the "/api/" catch-all.
+	if watcher != nil {
+		mux.Handle("GET /api/sse/projects/{projectId}/status", statusSSEHandler(database, watcher))
+	}
 	mux.Handle("/api/", http.StripPrefix("/api", apiHandler))
 	mux.Handle("/", web.NewStaticHandler())
 

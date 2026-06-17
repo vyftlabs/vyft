@@ -215,8 +215,10 @@ function ResourcePanel({
     <DetailChart
       title={title}
       series={series}
-      windowMs={windowMs}      format={base}
+      windowMs={windowMs}
+      format={base}
       headlineFormat={headlineFormat}
+      pending={q.isPlaceholderData}
     />
   );
 }
@@ -282,7 +284,9 @@ function NetworkPanel({
     <DetailChart
       title={title}
       series={series}
-      windowMs={windowMs}      format={formatBytesPerSec}
+      windowMs={windowMs}
+      format={formatBytesPerSec}
+      pending={q.isPlaceholderData}
     />
   );
 }
@@ -324,7 +328,9 @@ function RatePanel({
     <DetailChart
       title={title}
       series={[{ key: "value", label: title, points }]}
-      windowMs={windowMs}      format={kind === "requestRate" ? formatRate : formatFraction}
+      windowMs={windowMs}
+      format={kind === "requestRate" ? formatRate : formatFraction}
+      pending={q.isPlaceholderData}
     />
   );
 }
@@ -363,7 +369,9 @@ function LatencyPanel({
   return (
     <DetailLatencyChart
       rows={rows}
-      windowMs={windowMs}      format={formatSeconds}
+      windowMs={windowMs}
+      format={formatSeconds}
+      pending={q.isPlaceholderData}
     />
   );
 }

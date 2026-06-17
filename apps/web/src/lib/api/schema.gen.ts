@@ -892,6 +892,7 @@ export interface components {
             positionY: number;
             variables?: components["schemas"]["ResourceVariable"][];
             config: components["schemas"]["ResourceConfig"];
+            status?: components["schemas"]["ServiceStatus"];
         };
         ResourceVariable: components["schemas"]["OwnedResourceVariable"] | components["schemas"]["ImportedResourceVariable"];
         OwnedResourceVariable: {
@@ -984,6 +985,12 @@ export interface components {
             tls: boolean;
             config?: components["schemas"]["RouteConfigOutput"];
         };
+        ServiceStatus: {
+            state: components["schemas"]["ServiceState"];
+            message?: string;
+        };
+        /** @enum {string} */
+        ServiceState: "running" | "pending" | "degraded" | "failed" | "stopped" | "terminating" | "unknown";
         Variable: {
             /** Format: uuid */
             id: string;

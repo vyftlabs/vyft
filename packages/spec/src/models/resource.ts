@@ -115,6 +115,28 @@ export const ResourceConfigUpdate = z
   ])
   .meta({ id: "ResourceConfigUpdate" });
 
+// Runtime health state, derived from the live k8s Deployment + Pods at
+// read time (see backend internal/status). Best-effort: omitted/`unknown`
+// when the cluster is unreachable. Drives the service-graph node coloring.
+export const ServiceState = z
+  .enum([
+    "running", // all replicas ready
+    "pending", // deploying, scaling, scheduling, pulling image
+    "degraded", // partial — some replicas ready, some not
+    "failed", // CrashLoopBackOff, OOMKilled, ImagePullBackOff, etc.
+    "stopped", // scaled to 0 intentionally
+    "terminating", // being deleted
+    "unknown", // no deployment yet, or cluster unreachable
+  ])
+  .meta({ id: "ServiceState" });
+
+export const ServiceStatus = z
+  .object({
+    state: ServiceState,
+    message: z.string().optional(),
+  })
+  .meta({ id: "ServiceStatus" });
+
 const ResourceBase = BaseFields.extend({
   name: ResourceName,
   // Slug is the immutable k8s identifier — derived from name + uuid suffix
@@ -129,6 +151,8 @@ const ResourceBase = BaseFields.extend({
 
 export const Resource = ResourceBase.extend({
   config: ResourceConfig,
+  // Populated only on list/get reads, best-effort. Absent on create/update.
+  status: ServiceStatus.optional(),
 }).meta({ id: "Resource" });
 
 export const ResourceCreate = z
@@ -165,6 +189,8 @@ export const ResourceUpdate = z
   })
   .meta({ id: "ResourceUpdate" });
 
+export type ServiceState = z.infer<typeof ServiceState>;
+export type ServiceStatus = z.infer<typeof ServiceStatus>;
 export type ImageSource = z.infer<typeof ImageSource>;
 export type Resources = z.infer<typeof Resources>;
 export type HealthCheck = z.infer<typeof HealthCheck>;

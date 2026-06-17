@@ -87,7 +87,7 @@ func NewAPI(database *db.DB, rt deployment.Runtime, cs kubernetes.Interface, mcs
 	return &API{
 		projectAPI:       project.NewHandler(projectSvc),
 		environmentAPI:   environment.NewHandler(envSvc),
-		resourceAPI:      resource.NewHandler(resource.New(database, envSvc)),
+		resourceAPI:      resource.NewHandler(resource.New(database, envSvc, cs)),
 		routeAPI:         route.NewHandler(route.New(database, envSvc)),
 		variableAPI:      variable.NewHandler(variable.New(database, envSvc)),
 		registryAPI:      registry.NewHandler(registrySvc),

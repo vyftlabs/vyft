@@ -5,9 +5,15 @@ import { client } from "./client";
 
 const ROOT = ["resources"] as const;
 
+// Live status arrives via the SSE stream (see status-stream.ts). This slow
+// poll is a reconciliation fallback for when the stream is down or a tab was
+// backgrounded — it re-syncs the folded-in status without hammering the API.
+const STATUS_RECONCILE_MS = 30_000;
+
 export const list = (projectId: string) =>
   queryOptions({
     queryKey: [...ROOT, projectId, "list"],
+    refetchInterval: STATUS_RECONCILE_MS,
     queryFn: async () => {
       const { data } = await client.GET("/projects/{projectId}/resources", {
         params: { path: { projectId } },

@@ -21,22 +21,22 @@ import (
 
 // Defines values for DeploymentStatus.
 const (
-	Applied  DeploymentStatus = "applied"
-	Applying DeploymentStatus = "applying"
-	Failed   DeploymentStatus = "failed"
-	Pending  DeploymentStatus = "pending"
+	DeploymentStatusApplied  DeploymentStatus = "applied"
+	DeploymentStatusApplying DeploymentStatus = "applying"
+	DeploymentStatusFailed   DeploymentStatus = "failed"
+	DeploymentStatusPending  DeploymentStatus = "pending"
 )
 
 // Valid indicates whether the value is a known member of the DeploymentStatus enum.
 func (e DeploymentStatus) Valid() bool {
 	switch e {
-	case Applied:
+	case DeploymentStatusApplied:
 		return true
-	case Applying:
+	case DeploymentStatusApplying:
 		return true
-	case Failed:
+	case DeploymentStatusFailed:
 		return true
-	case Pending:
+	case DeploymentStatusPending:
 		return true
 	default:
 		return false
@@ -496,6 +496,39 @@ func (e ServiceEventType) Valid() bool {
 	case Normal:
 		return true
 	case Warning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServiceState.
+const (
+	ServiceStateDegraded    ServiceState = "degraded"
+	ServiceStateFailed      ServiceState = "failed"
+	ServiceStatePending     ServiceState = "pending"
+	ServiceStateRunning     ServiceState = "running"
+	ServiceStateStopped     ServiceState = "stopped"
+	ServiceStateTerminating ServiceState = "terminating"
+	ServiceStateUnknown     ServiceState = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the ServiceState enum.
+func (e ServiceState) Valid() bool {
+	switch e {
+	case ServiceStateDegraded:
+		return true
+	case ServiceStateFailed:
+		return true
+	case ServiceStatePending:
+		return true
+	case ServiceStateRunning:
+		return true
+	case ServiceStateStopped:
+		return true
+	case ServiceStateTerminating:
+		return true
+	case ServiceStateUnknown:
 		return true
 	default:
 		return false
@@ -1204,6 +1237,7 @@ type Resource struct {
 	PositionY float32             `json:"positionY"`
 	ProjectId openapi_types.UUID  `json:"projectId"`
 	Slug      string              `json:"slug"`
+	Status    *ServiceStatus      `json:"status,omitempty"`
 	UpdatedAt time.Time           `json:"updatedAt"`
 	Variables *[]ResourceVariable `json:"variables,omitempty"`
 }
@@ -1460,6 +1494,15 @@ type ServiceEvent struct {
 
 // ServiceEventType defines model for ServiceEvent.Type.
 type ServiceEventType string
+
+// ServiceState defines model for ServiceState.
+type ServiceState string
+
+// ServiceStatus defines model for ServiceStatus.
+type ServiceStatus struct {
+	Message *string      `json:"message,omitempty"`
+	State   ServiceState `json:"state"`
+}
 
 // Source defines model for Source.
 type Source struct {

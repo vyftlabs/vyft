@@ -29,6 +29,7 @@ import { AnimatePresence } from "motion/react";
 import type { ServiceNodeData } from "@/components/service/node";
 import { ServiceNode } from "@/components/service/node";
 import * as api from "@/lib/api";
+import { useResourceStatusStream } from "@/lib/api/status-stream";
 import { getAppSpec } from "@/lib/resource";
 
 const ServiceDrawer = lazy(() =>
@@ -129,6 +130,9 @@ function ServicesCanvas() {
   const isEmpty = resourcesReady && resources.length === 0;
   const resourceDialogOpen = isEmpty || addDialogOpen;
 
+  // Live node coloring: SSE pushes status changes into the resource cache.
+  useResourceStatusStream(projectId);
+
   // Derive cross-resource variable references client-side: for each resource,
   // list its env (owned + imported) and pick imported entries whose source
   // belongs to a different resource. One parallel fetch per resource.
@@ -190,7 +194,7 @@ function ServicesCanvas() {
         const data: ServiceNodeData = {
           label: r.name,
           image,
-          status: { state: "running" },
+          status: r.status ?? { state: "unknown" },
           onHover: () => {
             // staleTime on prefetchQuery makes it a no-op when cached
             // data is still fresh — repeated hovers don't re-fetch. Cast

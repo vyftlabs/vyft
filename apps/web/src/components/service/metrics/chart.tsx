@@ -121,12 +121,17 @@ function ChartFrame({
   summary,
   legend,
   children,
+  // pending = the shown data is from the previous window while a new range
+  // loads (react-query keepPreviousData). Surfaced as a faint pulse so the
+  // chart reads as "refreshing" instead of frozen.
+  pending,
 }: {
   title: React.ReactNode;
   headline: React.ReactNode;
   summary?: React.ReactNode;
   legend?: React.ReactNode;
   children: React.ReactNode;
+  pending?: boolean;
 }) {
   return (
     <div className="py-5">
@@ -140,8 +145,11 @@ function ChartFrame({
           {summary}
         </p>
       )}
-      <div className="mt-3" style={{ height: CHART_HEIGHT }}>
+      <div className="relative mt-3" style={{ height: CHART_HEIGHT }}>
         {children}
+        {pending && (
+          <div className="absolute inset-0 rounded-md bg-foreground/[0.04] animate-pulse pointer-events-none" />
+        )}
       </div>
     </div>
   );
@@ -170,6 +178,7 @@ export function DetailChart({
   windowMs,
   format,
   headlineFormat,
+  pending,
 }: {
   title: string;
   series: ChartSeries[];
@@ -178,6 +187,8 @@ export function DetailChart({
   format: (v: number) => Formatted;
   // headlineFormat optionally overrides the big number (e.g. percent-of-limit).
   headlineFormat?: (v: number) => Formatted;
+  // pending = a new time window is loading; show the prior data pulsing.
+  pending?: boolean;
 }) {
   const now = latestTime(series);
   const { rows, min } = pivot(series, windowMs, now);
@@ -188,22 +199,23 @@ export function DetailChart({
   return (
     <ChartFrame
       title={title}
+      pending={pending}
       headline={<Headline f={headFmt(stats.current)} />}
       summary={`avg ${fmtPair(format(stats.avg))} · max ${fmtPair(format(stats.max))}`}
       legend={
         multi ? (
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {series.map((s, i) => (
+              // Swatch-only legend: the per-pod id can be long and there can
+              // be many pods, so collapse to a color chip and surface the id
+              // on hover instead of letting labels overflow the header.
               <span
                 key={s.key}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground"
-              >
-                <span
-                  className="inline-block size-2 rounded-[2px]"
-                  style={{ background: PALETTE[i % PALETTE.length] }}
-                />
-                {s.label}
-              </span>
+                title={s.label}
+                aria-label={s.label}
+                className="inline-block size-2.5 rounded-[2px] cursor-default"
+                style={{ background: PALETTE[i % PALETTE.length] }}
+              />
             ))}
           </div>
         ) : undefined
@@ -301,6 +313,7 @@ export function DetailLatencyChart({
   rows,
   windowMs,
   format,
+  pending,
 }: {
   // p50/p95/p99 are null at gap buckets; the chart breaks each line there.
   rows: {
@@ -311,6 +324,8 @@ export function DetailLatencyChart({
   }[];
   windowMs: number;
   format: (v: number) => Formatted;
+  // pending = a new time window is loading; show the prior data pulsing.
+  pending?: boolean;
 }) {
   let now = 0;
   for (const r of rows) {
@@ -336,6 +351,7 @@ export function DetailLatencyChart({
   return (
     <ChartFrame
       title="Latency"
+      pending={pending}
       headline={<Headline f={headline} />}
       summary={
         latest

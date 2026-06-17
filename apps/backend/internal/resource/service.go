@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
 	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
@@ -22,6 +23,7 @@ import (
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgerr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
+	"github.com/vyftlabs/vyft/apps/backend/internal/status"
 )
 
 // deriveSlug returns "<sanitized name>-<6 hex of id>". Slug is DNS-1123 safe
@@ -49,9 +51,25 @@ type ResourceWithRoutes struct {
 type Service struct {
 	db  *db.DB
 	env *environment.Service
+	// cs is the cluster client used for best-effort live status reads. May
+	// be nil in tests / when no cluster is configured — status is then omitted.
+	cs kubernetes.Interface
 }
 
-func New(d *db.DB, env *environment.Service) *Service { return &Service{db: d, env: env} }
+func New(d *db.DB, env *environment.Service, cs kubernetes.Interface) *Service {
+	return &Service{db: d, env: env, cs: cs}
+}
+
+// StatusesByProject returns the live health of each resource in a project,
+// keyed by slug. Best-effort — a cluster error or nil client yields nil, and
+// the caller leaves those resources without a status (rendered "unknown").
+func (s *Service) StatusesByProject(ctx context.Context, projectID uuid.UUID) map[string]status.Status {
+	proj, err := s.db.Q.GetProject(ctx, pgxid.PgUUID(projectID))
+	if err != nil {
+		return nil
+	}
+	return status.ProjectStatuses(ctx, s.cs, proj.Slug, environment.DefaultSlug)
+}
 
 func (s *Service) ListByProject(ctx context.Context, projectID uuid.UUID) ([]ResourceWithRoutes, error) {
 	envID, err := s.env.DefaultID(ctx, projectID)
