@@ -76,7 +76,7 @@ export function Sparkline({
     : data;
 
   return (
-    <div className="p-3">
+    <div>
       <p className="text-[11px] text-muted-foreground">{title}</p>
       <p
         className={cn(
@@ -265,7 +265,7 @@ export function MultiSparkline({
     : { value: fmt(headlineVal), unit: "" };
 
   return (
-    <div className="p-3">
+    <div>
       <p className="text-[11px] text-muted-foreground">{title}</p>
       <p className="text-lg font-semibold font-mono leading-7">
         {headline.value}
@@ -367,7 +367,7 @@ export function LatencySparkline({
   );
 
   return (
-    <div className="p-3">
+    <div>
       <div className="flex items-baseline justify-between">
         <p className="text-xs text-muted-foreground">Latency</p>
         <div className="flex items-center gap-2">

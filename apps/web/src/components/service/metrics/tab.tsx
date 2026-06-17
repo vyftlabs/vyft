@@ -47,65 +47,89 @@ export function MetricsTab({
   resourceId: string;
   windowMs: number;
 }) {
+  // gap-px over a bg-border container: the 1px gutters between cells ARE the
+  // rules. Horizontal gaps (between rows) and the vertical gap (between the
+  // cpu/memory + rate pairs) are the same gutter, so they meet cleanly at the
+  // T-junctions. Cells paint the drawer bg over the border; padding inside
+  // each cell gives the chart breathing room.
   return (
     <ScrollArea className="h-full -mr-6 pr-6">
-      <div className="divide-y pb-4 [&>*:first-child>*]:!pt-0">
-
-        <PairRow>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
+        {/* Padding only on gutter-facing edges; grid-outer edges get 0 so the
+            tab content's own padding is the only outer space. */}
+        <Cell className="px-0 pt-0 pb-5 sm:pr-5">
           <ResourcePanel
             kind="cpu"
             projectId={projectId}
             resourceId={resourceId}
             windowMs={windowMs}
           />
+        </Cell>
+        <Cell className="px-0 py-5 sm:pt-0 sm:pl-5">
           <ResourcePanel
             kind="memory"
             projectId={projectId}
             resourceId={resourceId}
             windowMs={windowMs}
           />
-        </PairRow>
-        <NetworkPanel
-          projectId={projectId}
-          resourceId={resourceId}
-          windowMs={windowMs}
-        />
-        <ResourcePanel
-          kind="disk"
-          projectId={projectId}
-          resourceId={resourceId}
-          windowMs={windowMs}
-        />
-        <PairRow>
+        </Cell>
+        <Cell full className="px-0 py-5">
+          <NetworkPanel
+            projectId={projectId}
+            resourceId={resourceId}
+            windowMs={windowMs}
+          />
+        </Cell>
+        <Cell full className="px-0 py-5">
+          <ResourcePanel
+            kind="disk"
+            projectId={projectId}
+            resourceId={resourceId}
+            windowMs={windowMs}
+          />
+        </Cell>
+        <Cell className="px-0 py-5 sm:pr-5">
           <RatePanel
             kind="requestRate"
             projectId={projectId}
             resourceId={resourceId}
             windowMs={windowMs}
           />
+        </Cell>
+        <Cell className="px-0 py-5 sm:pl-5">
           <RatePanel
             kind="errorRate"
             projectId={projectId}
             resourceId={resourceId}
             windowMs={windowMs}
           />
-        </PairRow>
-        <LatencyPanel
-          projectId={projectId}
-          resourceId={resourceId}
-          windowMs={windowMs}
-        />
+        </Cell>
+        <Cell full className="px-0 pt-5 pb-0">
+          <LatencyPanel
+            projectId={projectId}
+            resourceId={resourceId}
+            windowMs={windowMs}
+          />
+        </Cell>
       </div>
     </ScrollArea>
   );
 }
 
-// PairRow places two charts side by side, split by a vertical rule (on
-// desktop) or stacked with a horizontal rule (on mobile). Rows themselves
-// are separated by the divide-y on their container.
-function PairRow({ children }: { children: React.ReactNode }) {
+// Cell is one grid tile: paints the drawer bg over the bg-border gutter.
+// Padding is passed per-cell (see callers) so only gutter-facing edges are
+// padded. `full` spans both columns for the single-series rows.
+function Cell({
+  children,
+  full,
+  className,
+}: {
+  children: React.ReactNode;
+  full?: boolean;
+  className?: string;
+}) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 [&>*:last-child]:border-t lg:[&>*:last-child]:border-t-0 [&>*:first-child]:lg:pr-8 [&>*:last-child]:lg:border-l [&>*:last-child]:lg:pl-8">
+    <div className={cn("bg-background", full && "sm:col-span-2", className)}>
       {children}
     </div>
   );
@@ -287,6 +311,7 @@ function NetworkPanel({
       windowMs={windowMs}
       format={formatBytesPerSec}
       pending={q.isPlaceholderData}
+      namedSeries
     />
   );
 }

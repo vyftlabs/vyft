@@ -59,6 +59,7 @@ import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { AddVariableDialog } from "@/components/variable/add";
 import * as api from "@/lib/api";
+import { describeDeploymentChange } from "@/lib/deployment-change";
 import { getAppSpec } from "@/lib/resource";
 import { type CurrentUser, useCurrentUser, userInitials } from "@/lib/user";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,8 @@ import {
   RangeSelector,
 } from "../metrics/tab";
 import { ServiceIcon } from "../node";
+import { DeploymentDetail } from "./deployment-detail";
+import { EventsTab } from "./events-tab";
 import { type DrawerTab, Overview, ServiceDrawerShell } from "./shell";
 import { formatDuration, timeAgo } from "./timeline";
 
@@ -78,10 +81,12 @@ type ResourceData = Resource;
 function OverviewTab({
   resourceId,
   projectId,
+  onOpenDeployment,
 }: {
   resourceId: string;
   projectId: string;
   project: string;
+  onOpenDeployment: (id: string) => void;
 }) {
   return (
     <Overview
@@ -90,7 +95,11 @@ function OverviewTab({
       }
       logsArea={<LogsPanel projectId={projectId} resourceId={resourceId} />}
       deploymentsArea={
-        <RecentDeployments projectId={projectId} resourceId={resourceId} />
+        <RecentDeployments
+          projectId={projectId}
+          resourceId={resourceId}
+          onSelect={onOpenDeployment}
+        />
       }
     />
   );
@@ -116,51 +125,117 @@ function deploymentRefetchInterval(query: {
 function DeploymentRow({
   d,
   user,
+  detailed,
+  label,
   onRestore,
+  onSelect,
 }: {
   d: Deployment;
-  user: CurrentUser;
+  // user + detailed are the full Deployments-tab card: avatar + name on a
+  // second line. The compact Overview list omits both.
+  user?: CurrentUser;
+  detailed?: boolean;
+  // label is the inferred change summary ("Scaled to 3", "Updated image",
+  // "2 changes") used as the title in the compact list. Falls back to the
+  // status word when absent.
+  label?: string;
   onRestore?: (d: Deployment) => void;
+  // When set, the row's content is clickable and opens the deployment detail.
+  onSelect?: (d: Deployment) => void;
 }) {
   const duration = formatDuration(d.createdAt, d.appliedAt ?? undefined);
   const failed = d.status === "failed";
   const inProgress = d.status === "pending" || d.status === "applying";
   return (
-    <div className="group flex gap-2 py-3">
-      <div className="min-w-0 flex-1">
+    <div
+      className={cn(
+        "group flex gap-2 py-3",
+        // Compact (Overview) list tightens the first row to nothing. The
+        // detailed tab balances the top: container pt-4 (16px) + first-item top
+        // == the tab's horizontal padding (px-4=16 / sm:px-6=24), so the first
+        // row's top inset matches the sides.
+        !detailed && "first:pt-0",
+        detailed && "first:pt-0 sm:first:pt-2",
+        onSelect && "transition-colors hover:bg-muted/50",
+      )}
+    >
+      <div
+        className={cn(
+          "min-w-0 flex-1",
+          onSelect && "cursor-pointer",
+        )}
+        {...(onSelect && {
+          role: "button",
+          tabIndex: 0,
+          onClick: () => onSelect(d),
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect(d);
+            }
+          },
+        })}
+      >
         <div className="flex items-center gap-1.5">
-          {inProgress && (
+          {detailed && inProgress && (
             <LoaderIcon className="size-3.5 text-muted-foreground animate-spin shrink-0" />
           )}
           <span
             className={cn(
-              "text-sm font-medium",
+              "text-sm font-medium leading-none",
               failed && "text-severity-critical-text",
             )}
           >
-            {deploymentStatusLabel[d.status]}
+            {label ?? deploymentStatusLabel[d.status]}
           </span>
           <span className="text-xs font-mono text-muted-foreground/60">
             {d.id.slice(0, 7)}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
-          <Avatar size="sm" className="size-4 shrink-0">
-            {user.avatarUrl && (
-              <AvatarImage src={user.avatarUrl} alt={user.name} />
-            )}
-            <AvatarFallback className="text-[8px]">
-              {userInitials(user.name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="truncate">{user.name}</span>
-          {duration && (
+          {!detailed && (
             <>
-              <span aria-hidden>·</span>
-              <span className="tabular-nums">{duration}</span>
+              {/* Single-user for now — "by You" is a placeholder until
+                  Deployment carries a real triggeredBy actor. */}
+              <span aria-hidden className="text-muted-foreground/60">
+                ·
+              </span>
+              <span className="text-[11px] text-muted-foreground truncate">
+                by You
+              </span>
+              {duration && (
+                <>
+                  <span aria-hidden className="text-muted-foreground/60">
+                    ·
+                  </span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {duration}
+                  </span>
+                </>
+              )}
+              {inProgress && (
+                <LoaderIcon className="size-3.5 text-muted-foreground animate-spin shrink-0 ml-auto" />
+              )}
             </>
           )}
         </div>
+        {detailed && user && (
+          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
+            <Avatar size="sm" className="size-4 shrink-0">
+              {user.avatarUrl && (
+                <AvatarImage src={user.avatarUrl} alt={user.name} />
+              )}
+              <AvatarFallback className="text-[8px]">
+                {userInitials(user.name)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate">{user.name}</span>
+            {duration && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">{duration}</span>
+              </>
+            )}
+          </div>
+        )}
         {d.error && (
           <p className="text-[10px] text-severity-critical-text mt-2 leading-snug">
             {d.error}
@@ -205,24 +280,29 @@ function DeploymentRow({
 function RecentDeployments({
   resourceId,
   projectId,
+  onSelect,
 }: {
   resourceId: string;
   projectId: string;
+  onSelect: (id: string) => void;
 }) {
   const { data: deployments = [] } = useQuery({
     ...api.deployments.listByResource(projectId, resourceId),
     refetchInterval: deploymentRefetchInterval,
   });
-  const user = useCurrentUser();
   return (
     <div>
-      <p className="text-xs font-medium mb-2">Deployments</p>
       {deployments.length === 0 ? (
         <p className="text-xs text-muted-foreground py-2">No deployments yet.</p>
       ) : (
         <div className="divide-y">
-          {deployments.slice(0, 8).map((d) => (
-            <DeploymentRow key={d.id} d={d} user={user} />
+          {deployments.slice(0, 8).map((d, i) => (
+            <DeploymentRow
+              key={d.id}
+              d={d}
+              label={describeDeploymentChange(d, deployments[i + 1], resourceId)}
+              onSelect={(dep) => onSelect(dep.id)}
+            />
           ))}
         </div>
       )}
@@ -233,9 +313,13 @@ function RecentDeployments({
 function DeploymentsTab({
   resourceId,
   projectId,
+  selectedId,
+  onSelectId,
 }: {
   resourceId: string;
   projectId: string;
+  selectedId: string | null;
+  onSelectId: (id: string | null) => void;
 }) {
   const { data: deployments = [] } = useQuery({
     ...api.deployments.listByResource(projectId, resourceId),
@@ -244,6 +328,30 @@ function DeploymentsTab({
   const restore = useMutation(api.deployments.restoreResource);
   const [confirm, setConfirm] = useState<Deployment | null>(null);
   const user = useCurrentUser();
+
+  // Re-resolve the selected deployment from fresh data so its status/error stay
+  // live while open; fall back to closing if it disappears.
+  const selectedIndex = selectedId
+    ? deployments.findIndex((d) => d.id === selectedId)
+    : -1;
+  const selected = selectedIndex >= 0 ? deployments[selectedIndex] : null;
+  if (selected) {
+    return (
+      <DeploymentDetail
+        deployment={selected}
+        projectId={projectId}
+        resourceId={resourceId}
+        title={describeDeploymentChange(
+          selected,
+          deployments[selectedIndex + 1],
+          resourceId,
+        )}
+        // Only the newest deployment's pods are still running, so only it gets a
+        // live log tail; older ones show a static historical view.
+        live={selectedIndex === 0}
+      />
+    );
+  }
 
   if (deployments.length === 0) {
     return (
@@ -268,9 +376,17 @@ function DeploymentsTab({
 
   return (
     <>
-      <div className="divide-y [&>*:first-child]:pt-0">
-        {deployments.map((d) => (
-          <DeploymentRow key={d.id} d={d} user={user} onRestore={setConfirm} />
+      <div className="divide-y">
+        {deployments.map((d, i) => (
+          <DeploymentRow
+            key={d.id}
+            d={d}
+            user={user}
+            detailed
+            label={describeDeploymentChange(d, deployments[i + 1], resourceId)}
+            onRestore={setConfirm}
+            onSelect={(dep) => onSelectId(dep.id)}
+          />
         ))}
       </div>
 
@@ -565,7 +681,7 @@ function SettingsTab({
 
   return (
     <ScrollArea className="h-full -mr-6">
-      <div ref={scrollRef} className="flex gap-16 pb-[40vh]">
+      <div ref={scrollRef} className="flex gap-4 sm:gap-16 pb-[40vh]">
         <div className="flex-1 space-y-12">
           <form
             id={isCreating ? "create-service-form" : undefined}
@@ -1066,14 +1182,31 @@ function useServiceDrawerTabs(
     position?: { x: number; y: number };
   },
   onClose?: () => void,
-): { tabs: DrawerTab[]; defaultTab: string } {
+  initialTab?: string,
+): {
+  tabs: DrawerTab[];
+  defaultTab: string;
+  activeTab?: string;
+  setActiveTab: (id: string) => void;
+} {
   const qc = useQueryClient();
   const [metricsWindow, setMetricsWindow] = useState(DEFAULT_METRICS_WINDOW_MS);
+  const [selectedDeploymentId, setSelectedDeploymentId] = useState<
+    string | null
+  >(null);
+  const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
+  const openDeployment = useCallback((id: string) => {
+    setSelectedDeploymentId(id);
+    setActiveTab("deployments");
+  }, []);
   const isCreating = !resource;
 
   if (isCreating) {
     return {
       defaultTab: "settings",
+      // Creating has a single tab; let the shell manage it internally.
+      activeTab: undefined,
+      setActiveTab,
       tabs: [
         {
           id: "settings",
@@ -1101,6 +1234,8 @@ function useServiceDrawerTabs(
 
   return {
     defaultTab: "overview",
+    activeTab,
+    setActiveTab,
     tabs: [
       {
         id: "overview",
@@ -1119,6 +1254,7 @@ function useServiceDrawerTabs(
             resourceId={resource.id}
             projectId={projectId}
             project={project}
+            onOpenDeployment={openDeployment}
           />
         ),
       },
@@ -1128,8 +1264,15 @@ function useServiceDrawerTabs(
         onHover: () => {
           prefetch(api.deployments.listByResource(projectId, resource.id));
         },
+        // Clicking the tab (even when active) exits the detail drill-in.
+        onActivate: () => setSelectedDeploymentId(null),
         content: (
-          <DeploymentsTab resourceId={resource.id} projectId={projectId} />
+          <DeploymentsTab
+            resourceId={resource.id}
+            projectId={projectId}
+            selectedId={selectedDeploymentId}
+            onSelectId={setSelectedDeploymentId}
+          />
         ),
       },
       {
@@ -1174,6 +1317,16 @@ function useServiceDrawerTabs(
         ),
       },
       {
+        id: "events",
+        label: "Events",
+        onHover: () => {
+          prefetch(api.observability.events(projectId, resource.id));
+        },
+        content: (
+          <EventsTab resourceId={resource.id} projectId={projectId} />
+        ),
+      },
+      {
         id: "settings",
         label: "Settings",
         onHover: () => {
@@ -1204,6 +1357,7 @@ export function ServiceDrawer({
   skipEntryAnimation,
   expanded,
   expandedContent,
+  initialTab,
   onClose,
   onCreated,
 }: {
@@ -1215,6 +1369,10 @@ export function ServiceDrawer({
   skipEntryAnimation?: boolean;
   expanded?: boolean;
   expandedContent?: React.ReactNode;
+  // initialTab opens the drawer on a specific tab (e.g. the node context
+  // menu's "Logs"/"Metrics" shortcuts). Ignored if that tab isn't present
+  // for this resource; falls back to the computed default.
+  initialTab?: string;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -1228,7 +1386,7 @@ export function ServiceDrawer({
   const drawerName = isCreating
     ? "New service"
     : (resource?.name ?? "New service");
-  const { tabs, defaultTab } = useServiceDrawerTabs(
+  const { tabs, defaultTab, activeTab, setActiveTab } = useServiceDrawerTabs(
     resource ?? undefined,
     project,
     projectId,
@@ -1239,6 +1397,9 @@ export function ServiceDrawer({
         }
       : undefined,
     onClose,
+    initialTab && ["overview", "deployments", "metrics", "logs", "events", "settings"].includes(initialTab)
+      ? initialTab
+      : undefined,
   );
 
   if (!isOpen) return null;
@@ -1250,7 +1411,13 @@ export function ServiceDrawer({
       name={drawerName}
       icon={resource ? <ServiceIcon image={image} /> : undefined}
       tabs={tabs}
-      defaultTab={defaultTab}
+      defaultTab={
+        initialTab && tabs.some((t) => t.id === initialTab)
+          ? initialTab
+          : defaultTab
+      }
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
       footer={
         isCreating ? (
           <div className="flex justify-end px-6 py-3 border-t bg-muted/50 shrink-0">

@@ -41,6 +41,19 @@ interface ChartRow {
   [key: string]: number | null;
 }
 
+// fmtStamp is the full hover-tooltip time: date + hh:mm:ss. The axis ticks
+// stay compact (fmtClock, hh:mm); the tooltip wants the precise sample time.
+function fmtStamp(ms: number): string {
+  return new Date(ms).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 function fmtClock(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
     hour: "2-digit",
@@ -134,7 +147,7 @@ function ChartFrame({
   pending?: boolean;
 }) {
   return (
-    <div className="py-5">
+    <div>
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-xs font-medium">{title}</p>
         {legend}
@@ -179,6 +192,7 @@ export function DetailChart({
   format,
   headlineFormat,
   pending,
+  namedSeries,
 }: {
   title: string;
   series: ChartSeries[];
@@ -189,6 +203,10 @@ export function DetailChart({
   headlineFormat?: (v: number) => Formatted;
   // pending = a new time window is loading; show the prior data pulsing.
   pending?: boolean;
+  // namedSeries = the series labels are human-meaningful (e.g. "In"/"Out")
+  // and worth a legend. Per-pod charts label by opaque pod-id hash, which is
+  // noise here — they omit this and rely on the on-hover tooltip instead.
+  namedSeries?: boolean;
 }) {
   const now = latestTime(series);
   const { rows, min } = pivot(series, windowMs, now);
@@ -203,19 +221,19 @@ export function DetailChart({
       headline={<Headline f={headFmt(stats.current)} />}
       summary={`avg ${fmtPair(format(stats.avg))} · max ${fmtPair(format(stats.max))}`}
       legend={
-        multi ? (
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        namedSeries && multi ? (
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {series.map((s, i) => (
-              // Swatch-only legend: the per-pod id can be long and there can
-              // be many pods, so collapse to a color chip and surface the id
-              // on hover instead of letting labels overflow the header.
               <span
                 key={s.key}
-                title={s.label}
-                aria-label={s.label}
-                className="inline-block size-2.5 rounded-[2px] cursor-default"
-                style={{ background: PALETTE[i % PALETTE.length] }}
-              />
+                className="flex items-center gap-1 text-[10px] text-muted-foreground"
+              >
+                <span
+                  className="inline-block size-2 rounded-[2px]"
+                  style={{ background: PALETTE[i % PALETTE.length] }}
+                />
+                {s.label}
+              </span>
             ))}
           </div>
         ) : undefined
@@ -273,7 +291,7 @@ export function DetailChart({
                     );
                   })}
                   <div className="text-[10px] text-muted-foreground pt-0.5">
-                    {fmtClock(label as number)}
+                    {fmtStamp(label as number)}
                   </div>
                 </div>
               );
@@ -416,7 +434,7 @@ export function DetailLatencyChart({
                     );
                   })}
                   <div className="text-[10px] text-muted-foreground pt-0.5">
-                    {fmtClock(label as number)}
+                    {fmtStamp(label as number)}
                   </div>
                 </div>
               );

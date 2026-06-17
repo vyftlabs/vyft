@@ -149,7 +149,7 @@ func buildSelector(sel source.ResourceSelector) string {
 	return fmt.Sprintf(
 		`{k8s_namespace_name=%q,k8s_pod_name=~%q}`,
 		sel.Namespace,
-		sel.ResourceName+"-.*",
+		sel.PodNameRegex(),
 	)
 }
 

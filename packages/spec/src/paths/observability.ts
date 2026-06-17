@@ -65,6 +65,8 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
         query: z.object({
           sincePollAt: z.iso.datetime().optional(),
           limit: z.coerce.number().int().min(1).max(1000).default(500),
+          // Scope to a single deployment's rollout (its pod-template-hash).
+          deploymentId: z.uuid().optional(),
         }),
       },
       responses: {
@@ -87,6 +89,8 @@ export const observabilityPaths: ZodOpenApiPathsObject = {
           range: MetricRange.default("15m"),
           query: z.string().max(500).optional(),
           limit: z.coerce.number().int().min(1).max(1000).default(200),
+          // Scope to a single deployment's rollout (its pod-template-hash).
+          deploymentId: z.uuid().optional(),
         }),
       },
       responses: {

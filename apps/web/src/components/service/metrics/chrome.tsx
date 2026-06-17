@@ -17,7 +17,7 @@ export function MetricSlotChrome({
   className?: string;
 }) {
   return (
-    <div className={cn("p-3 rounded-md", className)}>
+    <div className={cn("rounded-md", className)}>
       <p className="text-[11px] text-muted-foreground">{title}</p>
       <p className="text-lg font-semibold font-mono leading-7">{headline}</p>
       <div className="h-10 mt-1 flex items-end">{body}</div>

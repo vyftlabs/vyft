@@ -29,6 +29,9 @@ export const POLL_INTERVAL_MS = 5_000;
 export const events = (projectId: string, resourceId: string) =>
   queryOptions({
     queryKey: [...ROOT, "events", projectId, resourceId],
+    // Live updates arrive via SSE (events-stream.ts); this slow poll is a
+    // reconciliation fallback when the stream is unavailable.
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/events",
@@ -64,9 +67,13 @@ function mergeTailLines(prev: LogLine[], next: LogLine[]): LogLine[] {
   return [...prev, ...dedup].slice(-MAX_TAIL_LINES);
 }
 
-export const logsTail = (projectId: string, resourceId: string) =>
+export const logsTail = (
+  projectId: string,
+  resourceId: string,
+  deploymentId?: string,
+) =>
   queryOptions({
-    queryKey: [...ROOT, "logsTail", projectId, resourceId],
+    queryKey: [...ROOT, "logsTail", projectId, resourceId, deploymentId ?? null],
     structuralSharing: (oldData, newData) => {
       const prev = (oldData as LogLine[] | undefined) ?? [];
       const next = (newData as LogLine[] | undefined) ?? [];
@@ -78,6 +85,7 @@ export const logsTail = (projectId: string, resourceId: string) =>
         "logsTail",
         projectId,
         resourceId,
+        deploymentId ?? null,
       ]);
       const lastSeen =
         cached && cached.length > 0
@@ -88,7 +96,10 @@ export const logsTail = (projectId: string, resourceId: string) =>
         {
           params: {
             path: { projectId, resourceId },
-            query: lastSeen ? { sincePollAt: lastSeen } : {},
+            query: {
+              ...(lastSeen ? { sincePollAt: lastSeen } : {}),
+              ...(deploymentId ? { deploymentId } : {}),
+            },
           },
         },
       );
@@ -101,16 +112,29 @@ export const logsSearch = (
   resourceId: string,
   range: MetricRange = "15m",
   query: string = "",
+  deploymentId?: string,
 ) =>
   queryOptions({
-    queryKey: [...ROOT, "logsSearch", projectId, resourceId, range, query],
+    queryKey: [
+      ...ROOT,
+      "logsSearch",
+      projectId,
+      resourceId,
+      range,
+      query,
+      deploymentId ?? null,
+    ],
     queryFn: async () => {
       const { data } = await client.GET(
         "/projects/{projectId}/resources/{resourceId}/logs/search",
         {
           params: {
             path: { projectId, resourceId },
-            query: query ? { range, query } : { range },
+            query: {
+              range,
+              ...(query ? { query } : {}),
+              ...(deploymentId ? { deploymentId } : {}),
+            },
           },
         },
       );

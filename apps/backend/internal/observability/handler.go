@@ -15,9 +15,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/vyftlabs/vyft/apps/backend/internal/db"
+	"github.com/vyftlabs/vyft/apps/backend/internal/db/sqlc"
 	"github.com/vyftlabs/vyft/apps/backend/internal/environment"
+	"github.com/vyftlabs/vyft/apps/backend/internal/k8sevents"
 	"github.com/vyftlabs/vyft/apps/backend/internal/openapi"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/apierr"
 	"github.com/vyftlabs/vyft/apps/backend/internal/platform/pgxid"
@@ -30,18 +33,76 @@ type Service struct {
 	db  *db.DB
 	env *environment.Service
 	res *resolver.Resolver
+	cs  kubernetes.Interface
 }
 
-func New(d *db.DB, env *environment.Service, res *resolver.Resolver) *Service {
-	return &Service{db: d, env: env, res: res}
+func New(d *db.DB, env *environment.Service, res *resolver.Resolver, cs kubernetes.Interface) *Service {
+	return &Service{db: d, env: env, res: res, cs: cs}
 }
 
 type Handler struct{ svc *Service }
 
 func NewHandler(s *Service) *Handler { return &Handler{svc: s} }
 
-func (h *Handler) ListResourceEvents(_ context.Context, _ openapi.ListResourceEventsRequestObject) (openapi.ListResourceEventsResponseObject, error) {
-	return openapi.ListResourceEvents200JSONResponse{}, nil
+// ListResourceEvents returns the resource's recent Kubernetes events (last
+// ~1h, per the apiserver event TTL) read live from the cluster.
+func (h *Handler) ListResourceEvents(ctx context.Context, req openapi.ListResourceEventsRequestObject) (openapi.ListResourceEventsResponseObject, error) {
+	resourceID := uuid.UUID(req.ResourceId)
+	sel, err := h.svc.buildSelector(ctx, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	evs, err := k8sevents.List(ctx, h.svc.cs, sel.Namespace, sel.ResourceName)
+	if err != nil {
+		return nil, apierr.ServiceUnavailable(err.Error())
+	}
+	// Resolve each event's owning deployment via the rollout hash; cache by
+	// hash so a backlog of same-rollout events costs one query.
+	byHash := map[string]*openapi_types.UUID{}
+	out := make([]openapi.ServiceEvent, 0, len(evs))
+	for _, e := range evs {
+		w := toAPIEvent(e)
+		w.DeploymentId = h.svc.deploymentForEvent(ctx, resourceID, e.InvolvedName, sel.ResourceName, byHash)
+		out = append(out, w)
+	}
+	return openapi.ListResourceEvents200JSONResponse(out), nil
+}
+
+// deploymentForEvent maps an event's involved object to the deployment that
+// rolled it out, via the pod-template-hash. Returns nil when uncorrelated.
+func (s *Service) deploymentForEvent(ctx context.Context, resourceID uuid.UUID, involvedName, slug string, cache map[string]*openapi_types.UUID) *openapi_types.UUID {
+	hash := k8sevents.ParseHash(involvedName, slug)
+	if hash == "" {
+		return nil
+	}
+	if v, ok := cache[hash]; ok {
+		return v
+	}
+	var out *openapi_types.UUID
+	id, err := s.db.Q.FindDeploymentByRollout(ctx, sqlc.FindDeploymentByRolloutParams{
+		ResourceID:      pgxid.PgUUID(resourceID),
+		PodTemplateHash: hash,
+	})
+	if err == nil && id.Valid {
+		u := openapi_types.UUID(uuid.UUID(id.Bytes))
+		out = &u
+	}
+	cache[hash] = out
+	return out
+}
+
+// toAPIEvent maps a normalized k8s event to the wire ServiceEvent.
+func toAPIEvent(e k8sevents.Event) openapi.ServiceEvent {
+	return openapi.ServiceEvent{
+		Id:           e.ID,
+		Type:         openapi.ServiceEventType(e.Type),
+		Reason:       e.Reason,
+		Message:      e.Message,
+		Timestamp:    e.Timestamp,
+		InvolvedKind: e.InvolvedKind,
+		InvolvedName: e.InvolvedName,
+		Count:        e.Count,
+	}
 }
 
 func (h *Handler) GetResourceLogsCapabilities(ctx context.Context, _ openapi.GetResourceLogsCapabilitiesRequestObject) (openapi.GetResourceLogsCapabilitiesResponseObject, error) {
@@ -77,6 +138,13 @@ func (h *Handler) TailResourceLogs(ctx context.Context, req openapi.TailResource
 	if err != nil {
 		return nil, err
 	}
+	if req.Params.DeploymentId != nil {
+		scoped, ok := h.svc.scopeToDeployment(ctx, sel, uuid.UUID(req.ResourceId), uuid.UUID(*req.Params.DeploymentId))
+		if !ok {
+			return openapi.TailResourceLogs200JSONResponse(nil), nil // no rollout for this deployment
+		}
+		sel = scoped
+	}
 	var from time.Time
 	if req.Params.SincePollAt != nil {
 		from = *req.Params.SincePollAt
@@ -90,6 +158,21 @@ func (h *Handler) TailResourceLogs(ctx context.Context, req openapi.TailResource
 		return nil, apierr.ServiceUnavailable(err.Error())
 	}
 	return openapi.TailResourceLogs200JSONResponse(toWireLines(lines)), nil
+}
+
+// scopeToDeployment narrows a selector to a single deployment's rollout via its
+// pod-template-hash. Returns ok=false when the deployment has no recorded
+// rollout for this resource, so the caller can return no logs rather than all.
+func (s *Service) scopeToDeployment(ctx context.Context, sel source.ResourceSelector, resourceID, deploymentID uuid.UUID) (source.ResourceSelector, bool) {
+	hash, err := s.db.Q.GetRolloutHash(ctx, sqlc.GetRolloutHashParams{
+		DeploymentID: pgxid.PgUUID(deploymentID),
+		ResourceID:   pgxid.PgUUID(resourceID),
+	})
+	if err != nil || hash == "" {
+		return sel, false
+	}
+	sel.PodTemplateHash = hash
+	return sel, true
 }
 
 func (h *Handler) SearchResourceLogs(ctx context.Context, req openapi.SearchResourceLogsRequestObject) (openapi.SearchResourceLogsResponseObject, error) {
@@ -106,6 +189,13 @@ func (h *Handler) SearchResourceLogs(ctx context.Context, req openapi.SearchReso
 	sel, err := h.svc.buildSelector(ctx, uuid.UUID(req.ResourceId))
 	if err != nil {
 		return nil, err
+	}
+	if req.Params.DeploymentId != nil {
+		scoped, ok := h.svc.scopeToDeployment(ctx, sel, uuid.UUID(req.ResourceId), uuid.UUID(*req.Params.DeploymentId))
+		if !ok {
+			return openapi.SearchResourceLogs200JSONResponse(nil), nil
+		}
+		sel = scoped
 	}
 	rangeStr := ""
 	if req.Params.Range != nil {

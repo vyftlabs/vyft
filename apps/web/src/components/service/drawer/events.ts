@@ -206,3 +206,28 @@ const warningReasons = new Set<string>([
 export function isWarningReason(reason: string): boolean {
   return warningReasons.has(reason);
 }
+
+// Hard failures — a subset of warnings that mean the workload is broken and
+// needs intervention (vs. transient/recoverable warnings). Rendered red.
+const criticalReasons = new Set<string>([
+  "Failed",
+  "BackOff",
+  "CrashLoopBackOff",
+  "ErrImagePull",
+  "ImagePullBackOff",
+  "ErrImageNeverPull",
+  "OOMKilling",
+  "OOMKilled",
+  "Evicted",
+  "FailedScheduling",
+  "FailedCreate",
+  "FailedCreatePodSandBox",
+  "FailedMount",
+  "FailedAttachVolume",
+  "FailedSync",
+  "TaintManagerEviction",
+]);
+
+export function isCriticalReason(reason: string): boolean {
+  return criticalReasons.has(reason);
+}

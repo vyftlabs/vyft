@@ -1051,6 +1051,8 @@ export interface components {
             involvedKind: string;
             involvedName: string;
             count: number;
+            /** Format: uuid */
+            deploymentId?: string;
         };
         LogsCapabilities: {
             sourceKind: components["schemas"]["SourceKind"] | null;
@@ -3842,6 +3844,7 @@ export interface operations {
             query?: {
                 sincePollAt?: string;
                 limit?: number;
+                deploymentId?: string;
             };
             header?: never;
             path: {
@@ -3905,6 +3908,7 @@ export interface operations {
                 range?: components["schemas"]["MetricRange"];
                 query?: string;
                 limit?: number;
+                deploymentId?: string;
             };
             header?: never;
             path: {

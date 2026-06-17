@@ -115,6 +115,9 @@ func New(config Config, pool *pgxpool.Pool, rt deployment.Runtime, cs kubernetes
 	if watcher != nil {
 		mux.Handle("GET /api/sse/projects/{projectId}/status", statusSSEHandler(database, watcher))
 	}
+	if cs != nil {
+		mux.Handle("GET /api/sse/projects/{projectId}/resources/{resourceId}/events", eventsSSEHandler(database, cs))
+	}
 	mux.Handle("/api/", http.StripPrefix("/api", apiHandler))
 	mux.Handle("/", web.NewStaticHandler())
 

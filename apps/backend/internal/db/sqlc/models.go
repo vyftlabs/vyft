@@ -236,6 +236,13 @@ type Deployment struct {
 	Snapshot      []byte             `json:"snapshot"`
 }
 
+type DeploymentRollout struct {
+	DeploymentID    pgtype.UUID        `json:"deployment_id"`
+	ResourceID      pgtype.UUID        `json:"resource_id"`
+	PodTemplateHash string             `json:"pod_template_hash"`
+	Created         pgtype.Timestamptz `json:"created"`
+}
+
 type Environment struct {
 	ID        pgtype.UUID        `json:"id"`
 	ProjectID pgtype.UUID        `json:"project_id"`

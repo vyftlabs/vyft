@@ -62,3 +62,27 @@ RETURNING *;
 UPDATE deployments
    SET snapshot = $2
  WHERE id = $1;
+
+-- name: RecordRollout :exec
+-- Records the k8s pod-template-hash a deployment produced for a resource, so
+-- later events on that rollout's RS/Pods can be attributed to the deployment.
+INSERT INTO deployment_rollouts (deployment_id, resource_id, pod_template_hash)
+VALUES ($1, $2, $3)
+ON CONFLICT (deployment_id, resource_id)
+DO UPDATE SET pod_template_hash = EXCLUDED.pod_template_hash;
+
+-- name: FindDeploymentByRollout :one
+-- Resolves a (resource, pod-template-hash) pair to the deployment that created
+-- it. Newest wins when a hash was reused (rollback onto a retained RS).
+SELECT deployment_id
+  FROM deployment_rollouts
+ WHERE resource_id = $1 AND pod_template_hash = $2
+ ORDER BY created DESC
+ LIMIT 1;
+
+-- name: GetRolloutHash :one
+-- Resolves a (deployment, resource) pair to the pod-template-hash, for scoping
+-- logs to a single deployment's pods.
+SELECT pod_template_hash
+  FROM deployment_rollouts
+ WHERE deployment_id = $1 AND resource_id = $2;

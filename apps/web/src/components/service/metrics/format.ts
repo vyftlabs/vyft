@@ -79,7 +79,8 @@ export function formatFraction(v: number): Formatted {
   return { value: fmtTrim(v * 100), unit: "%" };
 }
 
-// formatPercentOfLimit: percent big, raw small ("47% 473m").
+// formatPercentOfLimit: percent big, current + cap small
+// ("47% 473m / 1cores"). The limit it's a percent of is surfaced inline.
 export function formatPercentOfLimit(
   v: number,
   limit: number,
@@ -87,8 +88,9 @@ export function formatPercentOfLimit(
 ): Formatted {
   const pct = (v / limit) * 100;
   const raw = baseFormatter(v);
+  const cap = baseFormatter(limit);
   return {
     value: `${fmtTrim(pct)}%`,
-    unit: ` ${raw.value}${raw.unit}`,
+    unit: ` ${raw.value}${raw.unit} / ${cap.value}${cap.unit}`,
   };
 }

@@ -97,6 +97,8 @@ function ServicesCanvas() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [creatingService, setCreatingService] = useState(false);
   const [drawerKey, setDrawerKey] = useState(0);
+  // Tab to open the drawer on, set by the node context-menu shortcuts.
+  const [drawerTab, setDrawerTab] = useState<string | undefined>(undefined);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -280,6 +282,7 @@ function ServicesCanvas() {
         onNodesChange={onNodesChange}
         onNodeDragStop={onNodeDragStop}
         onNodeClick={(_, node) => {
+          setDrawerTab(undefined);
           setSelectedId(node.id);
           setDrawerKey((k) => k + 1);
         }}
@@ -341,10 +344,12 @@ function ServicesCanvas() {
               createPosition={createPosition ?? undefined}
               project={project ?? ""}
               projectId={projectId}
+              initialTab={drawerTab}
               onClose={() => {
                 setSelectedId(null);
                 setCreatingService(false);
                 setCreatePosition(null);
+                setDrawerTab(undefined);
               }}
               onCreated={() => {
                 setSelectedId(null);
@@ -380,6 +385,13 @@ function ServicesCanvas() {
             y={nodeMenu.y}
             onClose={() => setNodeMenu(null)}
             onOpen={() => {
+              setDrawerTab(undefined);
+              setSelectedId(nodeMenu.nodeId);
+              setDrawerKey((k) => k + 1);
+              setNodeMenu(null);
+            }}
+            onOpenTab={(tab) => {
+              setDrawerTab(tab);
               setSelectedId(nodeMenu.nodeId);
               setDrawerKey((k) => k + 1);
               setNodeMenu(null);

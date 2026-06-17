@@ -1482,14 +1482,15 @@ type RouteUpdate struct {
 
 // ServiceEvent defines model for ServiceEvent.
 type ServiceEvent struct {
-	Count        int              `json:"count"`
-	Id           string           `json:"id"`
-	InvolvedKind string           `json:"involvedKind"`
-	InvolvedName string           `json:"involvedName"`
-	Message      string           `json:"message"`
-	Reason       string           `json:"reason"`
-	Timestamp    time.Time        `json:"timestamp"`
-	Type         ServiceEventType `json:"type"`
+	Count        int                 `json:"count"`
+	DeploymentId *openapi_types.UUID `json:"deploymentId,omitempty"`
+	Id           string              `json:"id"`
+	InvolvedKind string              `json:"involvedKind"`
+	InvolvedName string              `json:"involvedName"`
+	Message      string              `json:"message"`
+	Reason       string              `json:"reason"`
+	Timestamp    time.Time           `json:"timestamp"`
+	Type         ServiceEventType    `json:"type"`
 }
 
 // ServiceEventType defines model for ServiceEvent.Type.
@@ -1762,15 +1763,17 @@ type ListResourceDeploymentsParams struct {
 
 // SearchResourceLogsParams defines parameters for SearchResourceLogs.
 type SearchResourceLogsParams struct {
-	Range *MetricRange `form:"range,omitempty" json:"range,omitempty"`
-	Query *string      `form:"query,omitempty" json:"query,omitempty"`
-	Limit *int         `form:"limit,omitempty" json:"limit,omitempty"`
+	Range        *MetricRange        `form:"range,omitempty" json:"range,omitempty"`
+	Query        *string             `form:"query,omitempty" json:"query,omitempty"`
+	Limit        *int                `form:"limit,omitempty" json:"limit,omitempty"`
+	DeploymentId *openapi_types.UUID `form:"deploymentId,omitempty" json:"deploymentId,omitempty"`
 }
 
 // TailResourceLogsParams defines parameters for TailResourceLogs.
 type TailResourceLogsParams struct {
-	SincePollAt *time.Time `form:"sincePollAt,omitempty" json:"sincePollAt,omitempty"`
-	Limit       *int       `form:"limit,omitempty" json:"limit,omitempty"`
+	SincePollAt  *time.Time          `form:"sincePollAt,omitempty" json:"sincePollAt,omitempty"`
+	Limit        *int                `form:"limit,omitempty" json:"limit,omitempty"`
+	DeploymentId *openapi_types.UUID `form:"deploymentId,omitempty" json:"deploymentId,omitempty"`
 }
 
 // GetResourceCpuMetricsParams defines parameters for GetResourceCpuMetrics.
@@ -3823,6 +3826,19 @@ func (siw *ServerInterfaceWrapper) SearchResourceLogs(w http.ResponseWriter, r *
 		return
 	}
 
+	// ------------- Optional query parameter "deploymentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "deploymentId", r.URL.Query(), &params.DeploymentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "deploymentId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deploymentId", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchResourceLogs(w, r, projectId, resourceId, params)
 	}))
@@ -3883,6 +3899,19 @@ func (siw *ServerInterfaceWrapper) TailResourceLogs(w http.ResponseWriter, r *ht
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "deploymentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "deploymentId", r.URL.Query(), &params.DeploymentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "deploymentId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deploymentId", Err: err})
 		}
 		return
 	}

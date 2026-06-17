@@ -11,6 +11,10 @@ export const ServiceEvent = z
     involvedKind: z.string(),
     involvedName: z.string(),
     count: z.number().int().min(1),
+    // Deployment that produced the rollout this event belongs to, resolved via
+    // the pod-template-hash in the involved object name. Absent for events that
+    // carry no hash (e.g. the Deployment object) or pre-correlation rollouts.
+    deploymentId: z.uuid().optional(),
   })
   .meta({ id: "ServiceEvent" });
 

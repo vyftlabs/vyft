@@ -30,6 +30,11 @@ func (r *StubRuntime) Apply(_ context.Context, p Project, env string, s State) e
 	return err
 }
 
+// RolloutHashes is a no-op for the stub — no cluster, no rollouts.
+func (r *StubRuntime) RolloutHashes(_ context.Context, _ Project, _ string, _ State) (map[string]string, error) {
+	return nil, nil
+}
+
 func (r *StubRuntime) CallCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()

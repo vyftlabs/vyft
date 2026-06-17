@@ -1,4 +1,4 @@
-import { ContainerIcon } from "lucide-react";
+import { ContainerIcon, GitBranchIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   Command,
@@ -44,6 +44,17 @@ export function ResourcePickerCommand({
           >
             <ContainerIcon className="text-muted-foreground" />
             Container Image
+          </CommandItem>
+          <CommandItem
+            disabled
+            className="opacity-50"
+            data-testid="service.picker.github"
+          >
+            <GitBranchIcon className="text-muted-foreground" />
+            <span className="flex-1">GitHub</span>
+            <span className="text-[10px] text-muted-foreground">
+              Coming soon
+            </span>
           </CommandItem>
         </CommandGroup>
         {[...new Set(componentDefinitions.map((d) => d.category))].map(

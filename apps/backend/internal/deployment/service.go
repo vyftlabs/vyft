@@ -186,11 +186,41 @@ func (s *Service) runApply(depID uuid.UUID) {
 		return
 	}
 
+	// Best-effort: correlate this deployment to the k8s rollout it produced so
+	// events can be attributed back to it. Never fails the deploy.
+	s.recordRollouts(ctx, depID, project, envSlug, state)
+
 	if _, err := s.db.Q.MarkDeploymentApplied(ctx, pgxid.PgUUID(depID)); err != nil {
 		slog.Error("deployment: mark applied", "id", depID, "error", err)
 		return
 	}
 	slog.Info("deployment applied", "id", depID, "project", project.Slug, "env", envSlug)
+}
+
+// recordRollouts reads back the pod-template-hash per resource and persists the
+// deployment↔rollout mapping. Best-effort — logs and moves on so correlation
+// gaps never block a deploy.
+func (s *Service) recordRollouts(ctx context.Context, depID uuid.UUID, project Project, envSlug string, state State) {
+	hashes, err := s.rt.RolloutHashes(ctx, project, envSlug, state)
+	if err != nil {
+		slog.Warn("deployment: rollout hashes", "id", depID, "error", err)
+	}
+	if len(hashes) == 0 {
+		return
+	}
+	for _, res := range state.Resources {
+		hash, ok := hashes[res.Slug]
+		if !ok {
+			continue
+		}
+		if err := s.db.Q.RecordRollout(ctx, sqlc.RecordRolloutParams{
+			DeploymentID:    pgxid.PgUUID(depID),
+			ResourceID:      pgxid.PgUUID(res.ID),
+			PodTemplateHash: hash,
+		}); err != nil {
+			slog.Warn("deployment: record rollout", "id", depID, "resource", res.Slug, "error", err)
+		}
+	}
 }
 
 func (s *Service) markFailed(ctx context.Context, depID uuid.UUID, reason string) {

@@ -1,22 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import type { LogLine, LogLevel } from "@vyft/spec";
+import type { LogLine } from "@vyft/spec";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api/errors";
-import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 2_000;
-
-const levelClass: Record<LogLevel, string> = {
-  error: "text-severity-critical-text",
-  warn: "text-severity-warning-text",
-  info: "text-foreground",
-  debug: "text-muted-foreground",
-  unknown: "text-muted-foreground",
-};
 
 function isUnreachable(err: unknown): boolean {
   return err instanceof ApiError && err.code === "INTERNAL";
@@ -25,9 +16,16 @@ function isUnreachable(err: unknown): boolean {
 export function LogsPanel({
   projectId,
   resourceId,
+  deploymentId,
+  live = true,
 }: {
   projectId: string;
   resourceId: string;
+  // When set, logs are scoped to that deployment's rollout (its pods).
+  deploymentId?: string;
+  // When false, fetch once without polling — for a finished deployment whose
+  // pods no longer produce new lines.
+  live?: boolean;
 }) {
   const cap = useQuery({
     ...api.observability.logsCapabilities(projectId, resourceId),
@@ -38,20 +36,20 @@ export function LogsPanel({
   const enabled = !!sk && cap.data?.detected.includes("tail");
 
   const tail = useQuery({
-    ...api.observability.logsTail(projectId, resourceId),
+    ...api.observability.logsTail(projectId, resourceId, deploymentId),
     enabled,
-    refetchInterval: POLL_INTERVAL_MS,
+    refetchInterval: live ? POLL_INTERVAL_MS : false,
   });
 
   if (cap.isError && isUnreachable(cap.error)) {
-    return <Header label="Logs"><Status text="Logs source unreachable." cta /></Header>;
+    return <Header><Status text="Logs source unreachable." cta /></Header>;
   }
   if (!sk) {
-    return <Header label="Logs"><Status text="No logs source configured." cta /></Header>;
+    return <Header><Status text="No logs source configured." cta /></Header>;
   }
   if (tail.isLoading) {
     return (
-      <Header label="Logs">
+      <Header>
         <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
           Loading...
         </div>
@@ -60,7 +58,7 @@ export function LogsPanel({
   }
   if (tail.isError) {
     return (
-      <Header label="Logs">
+      <Header>
         <Status text={tail.error?.message ?? "Logs query failed."} />
       </Header>
     );
@@ -68,14 +66,14 @@ export function LogsPanel({
   const lines = (tail.data ?? []) as LogLine[];
   if (lines.length === 0) {
     return (
-      <Header label="Logs">
+      <Header>
         <Status text="No recent log lines." />
       </Header>
     );
   }
 
   return (
-    <Header label="Logs">
+    <Header>
       <StickyScroll lines={lines} />
     </Header>
   );
@@ -134,22 +132,19 @@ function StickyScroll({ lines }: { lines: LogLine[] }) {
 }
 
 function Header({
-  label,
   sub,
   children,
 }: {
-  label: string;
   sub?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="h-full min-h-0 flex flex-col">
-      <div className="mb-2 shrink-0 flex items-baseline justify-between">
-        <p className="text-xs font-medium">{label}</p>
-        {sub && (
+      {sub && (
+        <div className="mb-2 shrink-0 flex items-baseline justify-end">
           <p className="text-[10px] text-muted-foreground">{sub}</p>
-        )}
-      </div>
+        </div>
+      )}
       <div className="flex-1 min-h-0 relative">{children}</div>
     </div>
   );
@@ -174,26 +169,14 @@ function Status({ text, cta }: { text: string; cta?: boolean }) {
 }
 
 function Row({ line }: { line: LogLine }) {
-  const ts = new Date(line.timestamp);
   return (
-    <div className="flex gap-2 px-1 hover:bg-muted/50 rounded-sm">
-      <span className="text-muted-foreground shrink-0">
-        {ts.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })}
-      </span>
-      <span
-        className={cn(
-          "shrink-0 w-10 uppercase",
-          levelClass[line.level],
-        )}
-      >
-        {line.level}
-      </span>
-      <span className="text-foreground truncate">{line.message}</span>
+    // Hanging indent: each entry starts flush-left, wrapped continuation
+    // lines are indented so a long line reads as one entry, not several.
+    <div
+      className="pr-1 hover:bg-muted/50 rounded-sm text-foreground whitespace-pre-wrap break-words"
+      style={{ paddingLeft: "2ch", textIndent: "-2ch" }}
+    >
+      {line.message}
     </div>
   );
 }

@@ -47,6 +47,28 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 	return i, err
 }
 
+const findDeploymentByRollout = `-- name: FindDeploymentByRollout :one
+SELECT deployment_id
+  FROM deployment_rollouts
+ WHERE resource_id = $1 AND pod_template_hash = $2
+ ORDER BY created DESC
+ LIMIT 1
+`
+
+type FindDeploymentByRolloutParams struct {
+	ResourceID      pgtype.UUID `json:"resource_id"`
+	PodTemplateHash string      `json:"pod_template_hash"`
+}
+
+// Resolves a (resource, pod-template-hash) pair to the deployment that created
+// it. Newest wins when a hash was reused (rollback onto a retained RS).
+func (q *Queries) FindDeploymentByRollout(ctx context.Context, arg FindDeploymentByRolloutParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, findDeploymentByRollout, arg.ResourceID, arg.PodTemplateHash)
+	var deployment_id pgtype.UUID
+	err := row.Scan(&deployment_id)
+	return deployment_id, err
+}
+
 const getActiveDeployment = `-- name: GetActiveDeployment :one
 SELECT id, project_id, environment_id, status, error, created, applied, snapshot FROM deployments
  WHERE project_id     = $1
@@ -94,6 +116,26 @@ func (q *Queries) GetDeployment(ctx context.Context, id pgtype.UUID) (Deployment
 		&i.Snapshot,
 	)
 	return i, err
+}
+
+const getRolloutHash = `-- name: GetRolloutHash :one
+SELECT pod_template_hash
+  FROM deployment_rollouts
+ WHERE deployment_id = $1 AND resource_id = $2
+`
+
+type GetRolloutHashParams struct {
+	DeploymentID pgtype.UUID `json:"deployment_id"`
+	ResourceID   pgtype.UUID `json:"resource_id"`
+}
+
+// Resolves a (deployment, resource) pair to the pod-template-hash, for scoping
+// logs to a single deployment's pods.
+func (q *Queries) GetRolloutHash(ctx context.Context, arg GetRolloutHashParams) (string, error) {
+	row := q.db.QueryRow(ctx, getRolloutHash, arg.DeploymentID, arg.ResourceID)
+	var pod_template_hash string
+	err := row.Scan(&pod_template_hash)
+	return pod_template_hash, err
 }
 
 const listActiveDeployments = `-- name: ListActiveDeployments :many
@@ -275,6 +317,26 @@ func (q *Queries) MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFa
 		&i.Snapshot,
 	)
 	return i, err
+}
+
+const recordRollout = `-- name: RecordRollout :exec
+INSERT INTO deployment_rollouts (deployment_id, resource_id, pod_template_hash)
+VALUES ($1, $2, $3)
+ON CONFLICT (deployment_id, resource_id)
+DO UPDATE SET pod_template_hash = EXCLUDED.pod_template_hash
+`
+
+type RecordRolloutParams struct {
+	DeploymentID    pgtype.UUID `json:"deployment_id"`
+	ResourceID      pgtype.UUID `json:"resource_id"`
+	PodTemplateHash string      `json:"pod_template_hash"`
+}
+
+// Records the k8s pod-template-hash a deployment produced for a resource, so
+// later events on that rollout's RS/Pods can be attributed to the deployment.
+func (q *Queries) RecordRollout(ctx context.Context, arg RecordRolloutParams) error {
+	_, err := q.db.Exec(ctx, recordRollout, arg.DeploymentID, arg.ResourceID, arg.PodTemplateHash)
+	return err
 }
 
 const updateDeploymentSnapshot = `-- name: UpdateDeploymentSnapshot :exec

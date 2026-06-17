@@ -1,4 +1,10 @@
-import { SettingsIcon, Trash2Icon } from "lucide-react";
+import {
+  ActivityIcon,
+  PanelRightOpenIcon,
+  RocketIcon,
+  ScrollTextIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -6,12 +12,15 @@ export function NodeContextMenu({
   x,
   y,
   onOpen,
+  onOpenTab,
   onDelete,
   onClose,
 }: {
   x: number;
   y: number;
   onOpen: () => void;
+  // onOpenTab opens the drawer straight to a specific tab.
+  onOpenTab: (tab: "logs" | "metrics" | "deployments") => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
@@ -33,7 +42,7 @@ export function NodeContextMenu({
   }, [onClose]);
 
   const left = Math.min(x, window.innerWidth - 200);
-  const top = Math.min(y, window.innerHeight - 100);
+  const top = Math.min(y, window.innerHeight - 220);
 
   return (
     <div
@@ -42,9 +51,31 @@ export function NodeContextMenu({
       className="fixed z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
     >
       <MenuItem onClick={onOpen} testId="service.node-menu.open">
-        <SettingsIcon className="size-3.5" />
-        Open settings
+        <PanelRightOpenIcon className="size-3.5" />
+        Open
       </MenuItem>
+      <MenuItem
+        onClick={() => onOpenTab("logs")}
+        testId="service.node-menu.logs"
+      >
+        <ScrollTextIcon className="size-3.5" />
+        Logs
+      </MenuItem>
+      <MenuItem
+        onClick={() => onOpenTab("metrics")}
+        testId="service.node-menu.metrics"
+      >
+        <ActivityIcon className="size-3.5" />
+        Metrics
+      </MenuItem>
+      <MenuItem
+        onClick={() => onOpenTab("deployments")}
+        testId="service.node-menu.deployments"
+      >
+        <RocketIcon className="size-3.5" />
+        Deployments
+      </MenuItem>
+      <div className="my-1 h-px bg-border" />
       <MenuItem
         onClick={onDelete}
         variant="danger"

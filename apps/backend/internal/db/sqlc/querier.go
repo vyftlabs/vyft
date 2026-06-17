@@ -40,6 +40,9 @@ type Querier interface {
 	DeleteRoute(ctx context.Context, id pgtype.UUID) error
 	DeleteSource(ctx context.Context, id pgtype.UUID) error
 	DeleteVariable(ctx context.Context, id pgtype.UUID) error
+	// Resolves a (resource, pod-template-hash) pair to the deployment that created
+	// it. Newest wins when a hash was reused (rollback onto a retained RS).
+	FindDeploymentByRollout(ctx context.Context, arg FindDeploymentByRolloutParams) (pgtype.UUID, error)
 	// The unique partial index guarantees at most one row per (project, env).
 	GetActiveDeployment(ctx context.Context, arg GetActiveDeploymentParams) (Deployment, error)
 	GetDefaultSource(ctx context.Context, domain SourceDomain) (Source, error)
@@ -53,6 +56,9 @@ type Querier interface {
 	GetRegistryByName(ctx context.Context, name string) (Registry, error)
 	GetResource(ctx context.Context, id pgtype.UUID) (Resource, error)
 	GetResourceByName(ctx context.Context, arg GetResourceByNameParams) (Resource, error)
+	// Resolves a (deployment, resource) pair to the pod-template-hash, for scoping
+	// logs to a single deployment's pods.
+	GetRolloutHash(ctx context.Context, arg GetRolloutHashParams) (string, error)
 	GetRoute(ctx context.Context, id pgtype.UUID) (Route, error)
 	GetSource(ctx context.Context, id pgtype.UUID) (Source, error)
 	GetVariable(ctx context.Context, id pgtype.UUID) (Variable, error)
@@ -79,6 +85,9 @@ type Querier interface {
 	LookupRoute(ctx context.Context, arg LookupRouteParams) (Route, error)
 	MarkDeploymentApplied(ctx context.Context, id pgtype.UUID) (Deployment, error)
 	MarkDeploymentFailed(ctx context.Context, arg MarkDeploymentFailedParams) (Deployment, error)
+	// Records the k8s pod-template-hash a deployment produced for a resource, so
+	// later events on that rollout's RS/Pods can be attributed to the deployment.
+	RecordRollout(ctx context.Context, arg RecordRolloutParams) error
 	// Step 2: mark the target row as default. Must run after
 	// ClearDefaultSource inside the same transaction.
 	SetDefaultTrue(ctx context.Context, id pgtype.UUID) error

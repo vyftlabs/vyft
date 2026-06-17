@@ -84,8 +84,13 @@ type State struct {
 	ResourceVariables []ResourceVariable
 }
 
-// Runtime is the swap point between DB and cluster. One method, one
-// direction: take a State snapshot, reconcile the cluster.
+// Runtime is the swap point between DB and cluster. Apply reconciles the
+// cluster to a State snapshot; RolloutHashes reads back the resulting rollout
+// identities for deployment↔event correlation.
 type Runtime interface {
 	Apply(ctx context.Context, project Project, env string, state State) error
+	// RolloutHashes returns, per resource slug, the pod-template-hash of the
+	// ReplicaSet the latest apply produced. Best-effort: callers tolerate a
+	// partial or empty map (correlation is non-critical telemetry).
+	RolloutHashes(ctx context.Context, project Project, env string, state State) (map[string]string, error)
 }

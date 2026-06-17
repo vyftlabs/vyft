@@ -2,12 +2,16 @@ import { Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface DrawerTab {
   id: string;
   label: string;
   content: React.ReactNode;
   onHover?: () => void;
+  // Fired on every click of the tab trigger (even when already active) — used
+  // to reset a tab's internal drill-in (e.g. close the deployment detail).
+  onActivate?: () => void;
   // Optional control rendered right-aligned in the tab bar while this tab
   // is active (e.g. the Metrics range selector).
   headerRight?: React.ReactNode;
@@ -18,6 +22,10 @@ export interface ServiceDrawerShellProps {
   icon?: React.ReactNode;
   tabs: DrawerTab[];
   defaultTab?: string;
+  // Controlled active tab. When provided, the caller owns tab state (used to
+  // switch tabs programmatically, e.g. opening a deployment from Overview).
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
   banner?: React.ReactNode;
   footer?: React.ReactNode;
   skipEntryAnimation?: boolean;
@@ -67,8 +75,8 @@ export function Overview({
         <div className="shrink-0 border-b pb-5">{metricsArea}</div>
       )}
       {showLogs && (
-        <div className="flex-1 min-h-0 flex gap-5">
-          <div className="flex-1 min-w-0">{logsArea}</div>
+        <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-5">
+          <div className="flex-1 min-w-0 min-h-0">{logsArea}</div>
           {deploymentsArea && (
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
               {deploymentsArea}
@@ -95,6 +103,8 @@ export function ServiceDrawerShell({
   icon,
   tabs,
   defaultTab,
+  activeTab,
+  onTabChange,
   banner,
   footer,
   skipEntryAnimation,
@@ -119,7 +129,13 @@ export function ServiceDrawerShell({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  const dockedMaxW = Math.min(1152, vw - 32); // 72rem, 2rem gutter
+  const isMobile = useIsMobile();
+  // Mobile = full-width bottom sheet (no gutter, taller, both top corners
+  // rounded). Desktop = docked bottom-right card capped at 72rem.
+  const dockedMaxW = isMobile ? vw : Math.min(1152, vw - 32);
+  const dockedHeight = isMobile ? "92%" : "80%";
+  const dockedTopRadius = isMobile ? 16 : 8;
+  const dockedRightRadius = isMobile ? 16 : 0;
 
   return (
     <>
@@ -140,15 +156,16 @@ export function ServiceDrawerShell({
             ? false
             : {
                 opacity: 0,
-                scale: 0.96,
-                x: 16,
-                y: 16,
+                scale: isMobile ? 1 : 0.96,
+                x: 0,
+                y: isMobile ? 24 : 16,
                 bottom: 0,
                 right: 0,
                 width: "100%",
                 maxWidth: dockedMaxW,
-                height: "80%",
-                borderTopLeftRadius: 8,
+                height: dockedHeight,
+                borderTopLeftRadius: dockedTopRadius,
+                borderTopRightRadius: dockedRightRadius,
                 borderWidth: 1,
               }
         }
@@ -165,6 +182,7 @@ export function ServiceDrawerShell({
                 maxWidth: vw,
                 height: "100%",
                 borderTopLeftRadius: 0,
+                borderTopRightRadius: 0,
                 borderWidth: 0,
               }
             : {
@@ -176,8 +194,9 @@ export function ServiceDrawerShell({
                 right: 0,
                 width: "100%",
                 maxWidth: dockedMaxW,
-                height: "80%",
-                borderTopLeftRadius: 8,
+                height: dockedHeight,
+                borderTopLeftRadius: dockedTopRadius,
+                borderTopRightRadius: dockedRightRadius,
                 borderWidth: 1,
               }
         }
@@ -193,7 +212,7 @@ export function ServiceDrawerShell({
           expandedContent
         ) : (
           <>
-            <div className="flex items-center gap-2 px-6 py-4 shrink-0">
+            <div className="flex items-center gap-2 px-4 sm:px-6 py-4 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 {icon && (
                   <div className="shrink-0 text-foreground/70">{icon}</div>
@@ -204,25 +223,31 @@ export function ServiceDrawerShell({
                   name
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setFullscreen((v) => !v)}
-                aria-label={fullscreen ? "Exit full screen" : "Full screen"}
-                data-testid="service.drawer.fullscreen"
-                className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                {fullscreen ? (
-                  <Minimize2Icon className="size-4" />
-                ) : (
-                  <Maximize2Icon className="size-4" />
-                )}
-              </button>
+              {/* Full-screen toggle is desktop-only; the mobile sheet is already
+                  effectively full-bleed. */}
+              {!isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setFullscreen((v) => !v)}
+                  aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+                  data-testid="service.drawer.fullscreen"
+                  className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {fullscreen ? (
+                    <Minimize2Icon className="size-4" />
+                  ) : (
+                    <Maximize2Icon className="size-4" />
+                  )}
+                </button>
+              )}
             </div>
 
             {tabs.length > 0 && (
               <ServiceDrawerTabs
                 key={initialTab}
                 initialTab={initialTab}
+                activeTab={activeTab}
+                onTabChange={onTabChange}
                 tabs={tabs}
                 banner={banner}
               />
@@ -238,14 +263,20 @@ export function ServiceDrawerShell({
 
 function ServiceDrawerTabs({
   initialTab,
+  activeTab: controlledTab,
+  onTabChange,
   tabs,
   banner,
 }: {
   initialTab?: string;
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
   tabs: DrawerTab[];
   banner?: React.ReactNode;
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [internalTab, setInternalTab] = useState(initialTab);
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = onTabChange ?? setInternalTab;
   const headerRight = tabs.find((t) => t.id === activeTab)?.headerRight;
 
   return (
@@ -257,7 +288,7 @@ function ServiceDrawerTabs({
       {tabs.length > 1 && (
         <TabsList
           variant="line"
-          className="px-6 border-b !w-full !justify-start [&>*]:!flex-none [&>*]:mb-[-1px]"
+          className="px-4 sm:px-6 border-b !w-full !justify-start [&>*]:!flex-none [&>*]:mb-[-1px]"
         >
           {tabs.map((tab) => (
             <TabsTrigger
@@ -266,6 +297,7 @@ function ServiceDrawerTabs({
               data-testid={`service.drawer.tab.${tab.id}`}
               onMouseEnter={tab.onHover}
               onFocus={tab.onHover}
+              onClick={tab.onActivate}
             >
               {tab.label}
             </TabsTrigger>
@@ -280,7 +312,7 @@ function ServiceDrawerTabs({
         <TabsContent
           key={tab.id}
           value={tab.id}
-          className="flex-1 min-h-0 px-6 pt-4 pb-6"
+          className="flex-1 min-h-0 px-4 sm:px-6 pt-4 pb-6"
         >
           {tab.content}
         </TabsContent>
